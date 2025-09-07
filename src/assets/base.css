@@ -1,86 +1,275 @@
-/* color palette from <https://github.com/vuejs/theme> */
-:root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
-
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
-
-  --vt-c-indigo: #2c3e50;
-
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
-
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
-}
-
-/* semantic color variables for this project */
-:root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
-
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
-
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
-
-  --section-gap: 160px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
-
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
-
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
   }
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  font-weight: normal;
+@layer components {
+  .initial-presets {
+    scroll-behavior: smooth;
+    scroll-padding-top: 6.25rem;
+  }
+
+  .home {
+    display: none;
+  }
+  .home.active {
+    display: flex;
+  }
+  .home .slide-content {
+    animation: home-slide 0.3s linear 0.4s backwards;
+  }
+  .home .slide-image .hero-image img {
+    animation: image-slide 0.4s linear;
+  }
+
+  @keyframes home-slide {
+    0% {
+      opacity: 0;
+      transform: translateX(-60px);
+    }
+  }
+  @keyframes image-slide {
+    0% {
+      opacity: 0;
+      transform: scale(0);
+    }
+  }
+
+  .cart-btn {
+    background: #384857;
+    height: 100%;
+    width: 4.5rem;
+    display: inline-block;
+    line-height: 2rem;
+    text-align: center;
+    margin-left: 1.5rem;
+    border-radius: 0.4rem;
+    padding-left: 0.25rem;
+    transition: all 0.3s ease-in-out;
+  }
+  .cart-btn i {
+    transition: all 0.3s ease-in-out;
+    transform: translateX(0.7rem);
+  }
+  .cart-link:hover .cart-btn {
+    background: #FFCF10;
+  }
+  .cart-link:hover .cart-btn i {
+    color: #384857;
+  }
+
+  .count {
+    display: inline-block;
+    margin-left: 0.6rem;
+    background: #fff;
+    padding: 0.2rem;
+    width: 2.5rem;
+    height: 2.2rem;
+    margin-top: -0.125rem;
+    transform: translateX(1rem);
+    border-radius: 0.4rem;
+    color: #000;
+  }
+
+  .home-1 {
+    background-image: radial-gradient(#ffff 5%, #536474 50%);
+  }
+  .home-2 {
+    background-image: radial-gradient(#ffff 5%, #28a9c9 50%);
+  }
+  .home-3 {
+    background-image: radial-gradient(#ffff 5%, #b237be 50%);
+  }
+
+  @media only screen and (max-width: 768px) {
+    .home-1,
+    .home-2,
+    .home-3 {
+      background-image: none;
+    }
+  }
+
+  .add-cart-btn {
+    background: #FFCF10;
+    padding: 0.6rem 2rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    text-transform: capitalize;
+    font-weight: 600;
+  }
+  @media only screen and (max-width: 640px) {
+    .add-cart-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+  }
+
+  .top-sales-container {
+    grid-template-columns: repeat(auto-fit, minmax(12.75rem, 1fr));
+  }
+
+  .product-image {
+    width: auto;
+    height: 6rem;
+  }
+  .product-image img {
+    height: 100%;
+    width: 100%;
+    transform: scale(0.6);
+  }
+  @media only screen and (max-width: 640px) {
+    .top-sales-container {
+      grid-template-columns: repeat(auto-fit, minmax(6.75rem, 1fr));
+    }
+    .product-image {
+      height: 4rem;
+    }
+  }
+
+  .filter-tags a {
+    transition: all 0.3s ease-in-out;
+  }
+  .filter-tags a.active {
+    color: #28a9c9;
+  }
+  .filter-product-box.hide {
+    display: none;
+  }
+  .filter-product-box.active {
+    -webkit-animation: fadeUp 0.4s linear;
+    animation: fadeUp 0.4s linear;
+  }
+
+  @-webkit-keyframes fadeUp {
+    0% {
+      transform: translateY(5rem);
+      opacity: 0;
+    }
+  }
+  @keyframes fadeUp {
+    0% {
+      transform: translateY(5rem);
+      opacity: 0;
+    }
+  }
+
+  .footer-grid {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
+
+  .accordion.active .accordion-content {
+    display: block;
+  }
+  .accordion .accordion-content {
+    animation: fadeIn 0.5s linear;
+  }
+  @keyframes fadeIn {
+    0% {
+      transform: scale(0.5);
+      opacity: 0;
+    }
+  }
+
+  .payment-methods-container {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+
+  .primary-navigation-bar {
+    display: flex;
+  }
+
+  @media only screen and (max-width: 690px) {
+    .address-container .address-head {
+      font-size: 1rem;
+    }
+    .address-container .address-icon i {
+      font-size: 1.8rem;
+    }
+    .address-container .address-content {
+      font-size: 0.8rem;
+    }
+  }
+
+  @media only screen and (max-width: 376px) {
+    .cart-total {
+      height: 14.5rem;
+    }
+  }
+  @media only screen and (max-width: 350px) {
+    .input-responsive {
+      width: 100%;
+    }
+    .input-responsive button {
+      width: 100%;
+    }
+  }
+
+  .edit-product {
+    box-shadow: 10px 10px 30px 25px rgba(0, 0, 0, 0.5);
+    transform: scale(0);
+    transition: all 0.2s ease-in-out;
+  }
+  .edit-product.active {
+    transform: scale(1);
+  }
+  .side-bar.active,
+  .main-content.active {
+    opacity: 0.2;
+  }
+  .dashboard-box-container {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
+  .uploaded-image {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  .uploaded-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .remove-btn1,
+  .remove-btn2,
+  .remove-btn3,
+  .remove-btn4,
+  .remove-btn1-edit,
+  .remove-btn2-edit,
+  .remove-btn3-edit,
+  .remove-btn4-edit,
+  .remove-btn1-admin {
+    width: 3.2rem;
+    height: 3.2rem;
+    background: #fff;
+    border: 0.1rem solid #1683ff;
+    color: #1683ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    position: absolute;
+    top: -0.5rem;
+    right: -0.8rem;
+    cursor: pointer;
+  }
+  .remove-btn1 i,
+  .remove-btn2 i,
+  .remove-btn3 i,
+  .remove-btn4 i,
+  .remove-btn1-edit i,
+  .remove-btn2-edit i,
+  .remove-btn3-edit i,
+  .remove-btn4-edit i,
+  .remove-btn1-admin i {
+    font-size: 2rem;
+  }
 }
 
-body {
-  min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
-  transition:
-    color 0.5s,
-    background-color 0.5s;
-  line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
-  font-size: 15px;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+
