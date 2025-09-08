@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { Bars3BottomLeftIcon } from '@heroicons/vue/24/solid'
+import { Bars3BottomLeftIcon, ShoppingCartIcon } from '@heroicons/vue/24/solid'
 
 const show = ref(false)
 
@@ -21,7 +21,7 @@ const show = ref(false)
                 <a href="about.html" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">About</a>
                 <a href="products.html" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Products</a>
                 <a href="contact.html" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">contact</a>
-                <a href="cart.html" class="cart-link  flex items-center text-white capitalize ease-in-ou gap-8 px-6 mt-4">cart<span class="cart-btn"><i class="fa-solid fa-cart-shopping"></i><span class="count">0</span></span></a>
+                <a href="cart.html" class="cart-link  flex items-center text-white capitalize ease-in-ou gap-8 px-6 mt-4">cart<span class="cart-btn p-3"><ShoppingCartIcon class="size-6"></ShoppingCartIcon><span class="count right-4 bottom-[0.2px]">0</span></span></a>
             </div>
         </Transition>
         <nav class="primary-navigation-bar flex items-center justify-between">
@@ -29,7 +29,7 @@ const show = ref(false)
           <RouterLink to="/about" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">About</RouterLink>
           <a href="products.html" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Products</a>
           <a href="contact.html" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">contact</a>
-          <a href="cart.html" class="cart-link flex items-center px-3 text-white capitalize ease-in-out">cart<span class="cart-btn"><i class="fa-solid fa-cart-shopping"></i><span class="count">0</span></span></a>
+          <a href="cart.html" class="cart-link flex items-center px-0 text-white capitalize ease-in-out">cart<span class="cart-btn p-3"><ShoppingCartIcon class="size-6 cart-icon"></ShoppingCartIcon><span class="count right-4 bottom-[0.2px]">0</span></span></a>
         </nav>
       </section>
     </header>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted } from 'vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { ChevronRightIcon, ChevronLeftIcon } from '@heroicons/vue/24/solid'
@@ -29,7 +29,6 @@ const slides = ref([
     ]);
 
     const currentIndex = ref(0);
-    let intervalId = null;
 
     const next = () => {
       currentIndex.value = (currentIndex.value + 1) % slides.value.length;
@@ -41,23 +40,14 @@ const slides = ref([
     };
 
     const startAutoPlay = () => {
-      intervalId = setInterval(() => {
+      setInterval(() => {
         next();
       }, 3000);
-    };
-
-    const stopAutoPlay = () => {
-      clearInterval(intervalId);
     };
 
     onMounted(() => {
       startAutoPlay();
     });
-
-    onBeforeUnmount(() => {
-      stopAutoPlay();
-    });
-
 
 </script>
 

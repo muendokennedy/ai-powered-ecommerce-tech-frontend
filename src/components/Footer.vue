@@ -48,7 +48,7 @@
           <div
             class="box-heading text-white py-6 text-xl font-semibold capitalize"
           >
-            KeriTech
+            MoTech
           </div>
           <p class="text-sm text-[#8DAFCF]">
             Eius Vel Sequi Maiores Atque Voluptates Fugiat. Aut Fugit Nobis

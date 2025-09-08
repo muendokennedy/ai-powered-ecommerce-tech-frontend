@@ -42,36 +42,33 @@
 
   .cart-btn {
     background: #384857;
-    height: 100%;
-    width: 4.5rem;
+    position: relative;
+    height: fit-content;
+    width: 5rem;
     display: inline-block;
     line-height: 2rem;
     text-align: center;
     margin-left: 1.5rem;
     border-radius: 0.4rem;
-    padding-left: 0.25rem;
     transition: all 0.3s ease-in-out;
-  }
-  .cart-btn i {
-    transition: all 0.3s ease-in-out;
-    transform: translateX(0.7rem);
   }
   .cart-link:hover .cart-btn {
     background: #FFCF10;
   }
-  .cart-link:hover .cart-btn i {
+  .cart-link:hover .cart-btn .cart-icon {
     color: #384857;
   }
 
   .count {
+    position: absolute;
     display: inline-block;
     margin-left: 0.6rem;
     background: #fff;
     padding: 0.2rem;
     width: 2.5rem;
     height: 2.2rem;
-    margin-top: -0.125rem;
-    transform: translateX(1rem);
+    margin-top: -1rem;
+    transform: translate(2rem, -0.5rem);
     border-radius: 0.4rem;
     color: #000;
   }
