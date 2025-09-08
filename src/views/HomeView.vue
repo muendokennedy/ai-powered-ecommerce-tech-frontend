@@ -9,21 +9,21 @@ const slides = ref([
         title: "Mobile Ready",
         product: "Xiaomi Redmi Note 4",
         description: "The Redmi 8A Dual Comes With AI Portrait Mode And AI Scene Detection",
-        image: "../../public/images/redmi note 12.png",
+        image: "/src/assets/images/redmi note 12.png",
         bgColor: "bg-[#536474]",
       },
       {
         title: "Mobile Ready",
         product: "Techno Spark 10P",
         description: "The Redmi 8A Dual Comes With AI Portrait Mode And AI Scene Detection",
-        image: "../../public/images/redmi note 12.png",
+        image: "/src/assets/images/redmi note 12.png",
         bgColor: "bg-[#28a9c9]",
       },
       {
         title: "Mobile Ready",
         product: "Samsung Galaxy A50",
         description: "The Redmi 8A Dual Comes With AI Portrait Mode And AI Scene Detection",
-        image: "../../public/images/redmi note 12.png",
+        image: "/src/assets/images/redmi note 12.png",
         bgColor: "bg-[#b237be]",
       },
     ]);
@@ -120,7 +120,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <a href="productpage.html" class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </a>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -139,7 +139,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <a href="productpage.html" class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </a>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -158,7 +158,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <a href="productpage.html" class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </a>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -177,7 +177,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <a href="productpage.html" class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </a>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -196,7 +196,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <a href="productpage.html" class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </a>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -233,7 +233,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone" />
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone" />
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -259,7 +259,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone" />
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone" />
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -285,7 +285,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone" />
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone" />
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -311,7 +311,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone" />
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone" />
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -337,7 +337,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone" />
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone" />
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -363,7 +363,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone" />
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone" />
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -392,7 +392,7 @@ const slides = ref([
             class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2"
           >
             <div class="basis-[48%] px-3 sm:px-0">
-              <img src="../../public/images/redmi note 12.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
+              <img src="../assets/images/redmi note 12.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
             </div>
             <div class="content">
               <div class="content-head font-bold capitalize">
@@ -409,7 +409,7 @@ const slides = ref([
             class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2"
           >
             <div class="basis-[48%] px-3 sm:px-0">
-              <img src="../../public/images/dell inspiron.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
+              <img src="../assets/images/dell inspiron.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
             </div>
             <div class="content">
               <div class="content-head font-bold capitalize">
@@ -434,7 +434,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -453,7 +453,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -472,7 +472,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -491,7 +491,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">
@@ -510,7 +510,7 @@ const slides = ref([
           <div class="product-box text-center my-2 sm:my-4">
             <div class="flex justify-center items-center">
               <div class="product-image">
-                <img src="../../public/images/redmi note 12.png" alt="A mobile phone"/>
+                <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
               </div>
             </div>
             <div class="product-title text-sm font-normal sm:font-semibold">

@@ -44,7 +44,7 @@
     background: #384857;
     position: relative;
     height: fit-content;
-    width: 5rem;
+    width: 4rem;
     display: inline-block;
     line-height: 2rem;
     text-align: center;
@@ -66,9 +66,9 @@
     background: #fff;
     padding: 0.2rem;
     width: 2.5rem;
-    height: 2.2rem;
-    margin-top: -1rem;
-    transform: translate(2rem, -0.5rem);
+    height: 2rem;
+    line-height: 2rem;
+    transform: translate(2rem, -1.5rem);
     border-radius: 0.4rem;
     color: #000;
   }
