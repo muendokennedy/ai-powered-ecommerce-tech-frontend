@@ -8,14 +8,14 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
     <main class="menu-toggle">
       <section class="shopping-cart mx-auto pt-16 px-[4%] lg:max-w-[1500px]">
         <div
-        class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
+        class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
       >
         shopping<span class="text-[#68A4FE] px-2"> cart</span>
       </div>
         <div class="cart-section flex flex-col lg:flex-row justify-between w-full">
           <div class="shopping-cart-container text-[#384857] w-full lg:w-3/5">
             <div
-              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
             >
               <div class="cart-image h-full">
                 <img
@@ -77,7 +77,7 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
               </div>
             </div>
             <div
-              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
             >
               <div class="cart-image h-full">
                 <img
@@ -94,11 +94,11 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                   <div class="product-text text-sm">From redmi</div>
                   <div class="rating-box flex gap-2 items-center">
                     <div class="star-box text-sm text-[#FFCF10]">
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                     </div>
                     <div class="rating-text text-xs text-[#68A4FE]">
                       100,450 Ratings
@@ -139,7 +139,7 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
               </div>
             </div>
             <div
-              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
             >
               <div class="cart-image h-full">
                 <img
@@ -156,11 +156,11 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                   <div class="product-text text-sm">From redmi</div>
                   <div class="rating-box flex gap-2 items-center">
                     <div class="star-box text-sm text-[#FFCF10]">
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                     </div>
                     <div class="rating-text text-xs text-[#68A4FE]">
                       100,450 Ratings
@@ -201,7 +201,7 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
               </div>
             </div>
             <div
-              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+              class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
             >
               <div class="cart-image h-full">
                 <img
@@ -218,11 +218,11 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                   <div class="product-text text-sm">From redmi</div>
                   <div class="rating-box flex gap-2 items-center">
                     <div class="star-box text-sm text-[#FFCF10]">
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                     </div>
                     <div class="rating-text text-xs text-[#68A4FE]">
                       100,450 Ratings
@@ -263,9 +263,9 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
               </div>
             </div>
           </div>
-          <div class="cart-total border-2 h-52 sm:h-56 lg:h-64 xl:h-56 w-full md:w-3/5 lg:w-1/3 my-2">
+          <div class="cart-total border-2 border-gray-300  h-52 sm:h-56 lg:h-64 xl:h-56 w-full md:w-3/5 lg:w-1/3 my-2">
             <h2
-              class="cart-total-title capitalize border-b-2 border-black px-1 py-4 text-center space-x-2 sm:space-x-4 text-base sm:text-xl font-semibold text-black"
+              class="cart-total-title capitalize border-b-2 border-gray-300 px-1 py-4 text-center space-x-2 sm:space-x-4 text-base sm:text-xl font-semibold text-black"
             >
               <i class="fa-solid fa-check font-extrabold text-2xl"></i>
               <span>order items</span>
@@ -291,14 +291,14 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
       </section>
       <section class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
         <div
-        class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
+        class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
       >
         wishlist
       </div>
         <div class="cart-section">
           <div class="shopping-cart-container text-[#384857] w-full lg:w-5/6">
             <div
-            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
           >
             <div class="cart-image h-full">
               <img
@@ -315,30 +315,16 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                 <div class="product-text text-sm">From redmi</div>
                 <div class="rating-box flex gap-2 items-center">
                   <div class="star-box text-sm text-[#FFCF10]">
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                   </div>
                   <div class="rating-text text-xs text-[#68A4FE]">
                     100,450 Ratings
                   </div>
                 </div>
-              </div>
-              <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                <i
-                  class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                ></i>
-                <input
-                  type="number"
-                  name=""
-                  id=""
-                  class="p-2 border-2 rounded-md outline-none w-24"
-                />
-                <i
-                  class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                ></i>
               </div>
             </div>
             <div class="action-box h-full flex flex-col justify-between">
@@ -364,7 +350,7 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
             </div>
           </div>
           <div
-            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
           >
             <div class="cart-image h-full">
               <img
@@ -381,30 +367,16 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                 <div class="product-text text-sm">From redmi</div>
                 <div class="rating-box flex gap-2 items-center">
                   <div class="star-box text-sm text-[#FFCF10]">
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                   </div>
                   <div class="rating-text text-xs text-[#68A4FE]">
                     100,450 Ratings
                   </div>
                 </div>
-              </div>
-              <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                <i
-                  class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                ></i>
-                <input
-                  type="number"
-                  name=""
-                  id=""
-                  class="p-2 border-2 rounded-md outline-none w-24"
-                />
-                <i
-                  class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                ></i>
               </div>
             </div>
             <div class="action-box h-full flex flex-col justify-between">
@@ -430,7 +402,7 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
             </div>
           </div>
           <div
-            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 my-4"
+            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
           >
             <div class="cart-image h-full">
               <img
@@ -447,31 +419,18 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                 <div class="product-text text-sm">From redmi</div>
                 <div class="rating-box flex gap-2 items-center">
                   <div class="star-box text-sm text-[#FFCF10]">
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
-                    <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                   </div>
                   <div class="rating-text text-xs text-[#68A4FE]">
                     100,450 Ratings
                   </div>
                 </div>
               </div>
-              <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                <i
-                  class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                ></i>
-                <input
-                  type="number"
-                  name=""
-                  id=""
-                  class="p-2 border-2 rounded-md outline-none w-24"
-                />
-                <i
-                  class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                ></i>
-              </div>
+
             </div>
             <div class="action-box h-full flex flex-col justify-between">
               <div
@@ -500,7 +459,7 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
       </section>
       <section class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
         <div
-        class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
+        class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
       >
         you may also<span class="text-[#68A4FE] px-2"> like</span>
       </div>
