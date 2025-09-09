@@ -58,12 +58,12 @@
           <div class="box-heading text-white py-6 text-xl font-semibold">
             Newsletter
           </div>
-          <div class="input-box bg-white flex w-full relative h-10">
+          <div class="input-box  flex w-full relative h-10">
             <input
               type="text"
               name="newsletter-email"
               placeholder="Enter your email"
-              class="w-full h-full outline-none rounded-md px-3 text-xs pr-24"
+              class="w-full h-full bg-white outline-none rounded-md px-3 text-xs pr-24"
             />
             <button type="submit" class="absolute bg-[#68A4FE] py-2 px-3 text-xs top-1/2 -translate-y-1/2 text-white capitalize rounded-md right-[0.325rem] hover:bg-[#384857] transtion-all duration-300 ease-in-out">
               subscribe

@@ -82,7 +82,7 @@ const goToSlide = (index) => {
     <main class="menu-toggle">
         <section class="about-home pt-16 px-[4%] mx-auto lg:max-w-[1500px]">
           <div
-          class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
+          class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
         >
           About<span class="text-[#68A4FE] px-2">us</span>
         </div>
@@ -131,7 +131,7 @@ const goToSlide = (index) => {
         
         <section class="faq px-[4%] mx-auto lg:max-w-[1500px]">
           <div
-          class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
+          class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
         >
         Frequently asked questions(<span class="text-[#68A4FE] px-2">FAQ</span>)
         </div>
@@ -164,7 +164,7 @@ const goToSlide = (index) => {
         </section>
         <section class="reviews px-[4%] mx-auto lg:max-w-[800px]">
   <!-- Heading -->
-  <div class="heading text-[#384857] border-b-2 text-xl sm:text-2xl font-semibold py-4 capitalize text-center">
+  <div class="heading text-[#384857] border-b-2 border-gray-300 text-xl sm:text-2xl font-semibold py-4 capitalize text-center">
     client<span class="text-[#68A4FE] px-2">reviews</span>
   </div>
 
@@ -234,12 +234,12 @@ const goToSlide = (index) => {
 
         <section class="payment-methods px-[4%] mx-auto lg:max-w-[1500px]">
           <div
-          class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
+          class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
         >
           payment<span class="text-[#68A4FE] px-2">methods</span>
         </div>
           <div class="payment-methods-container grid gap-8 my-8">
-            <div class="payment-method-box border p-4">
+            <div class="payment-method-box border border-gray-300 p-4">
               <div
                 class="payment-method-name text-[#384857] my-2 font-semibold text-lg sm:text-xl"
               >
@@ -257,7 +257,7 @@ const goToSlide = (index) => {
                 />
               </div>
             </div>
-            <div class="payment-method-box border p-4">
+            <div class="payment-method-box border border-gray-300 p-4">
               <div
                 class="payment-method-name text-[#384857] my-2 font-semibold text-lg sm:text-xl"
               >
@@ -275,7 +275,7 @@ const goToSlide = (index) => {
                 />
               </div>
             </div>
-            <div class="payment-method-box border p-4">
+            <div class="payment-method-box border border-gray-300 p-4">
               <div
                 class="payment-method-name text-[#384857] my-2 font-semibold text-lg sm:text-xl"
               >
