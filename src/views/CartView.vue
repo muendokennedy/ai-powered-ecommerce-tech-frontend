@@ -1,6 +1,7 @@
 <script setup>
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
 </script>
 <template>
     <Header/>
@@ -31,11 +32,11 @@ import Footer from '@/components/Footer.vue'
                   <div class="product-text text-sm">From redmi</div>
                   <div class="rating-box flex gap-2 items-center">
                     <div class="star-box text-sm text-[#FFCF10]">
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
-                      <i class="fa-solid fa-star"></i>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
+                      <StarIcon class="size-4 inline"></StarIcon>
                     </div>
                     <div class="rating-text text-xs text-[#68A4FE]">
                       100,450 Ratings
@@ -43,18 +44,14 @@ import Footer from '@/components/Footer.vue'
                   </div>
                 </div>
                 <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                  <i
-                    class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <PlusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></PlusIcon>
                   <input
                     type="number"
                     name=""
                     id=""
                     class="p-2 border-2 rounded-md outline-none w-24"
                   />
-                  <i
-                    class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <MinusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></MinusIcon>
                 </div>
               </div>
               <div class="action-box h-full flex flex-col justify-between">
@@ -109,18 +106,14 @@ import Footer from '@/components/Footer.vue'
                   </div>
                 </div>
                 <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                  <i
-                    class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <PlusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></PlusIcon>
                   <input
                     type="number"
                     name=""
                     id=""
                     class="p-2 border-2 rounded-md outline-none w-24"
                   />
-                  <i
-                    class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <MinusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></MinusIcon>
                 </div>
               </div>
               <div class="action-box h-full flex flex-col justify-between">
@@ -175,18 +168,14 @@ import Footer from '@/components/Footer.vue'
                   </div>
                 </div>
                 <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                  <i
-                    class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <PlusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></PlusIcon>
                   <input
                     type="number"
                     name=""
                     id=""
                     class="p-2 border-2 rounded-md outline-none w-24"
                   />
-                  <i
-                    class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <MinusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></MinusIcon>
                 </div>
               </div>
               <div class="action-box h-full flex flex-col justify-between">
@@ -241,18 +230,14 @@ import Footer from '@/components/Footer.vue'
                   </div>
                 </div>
                 <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                  <i
-                    class="fa-solid fa-plus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <PlusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></PlusIcon>
                   <input
                     type="number"
                     name=""
                     id=""
                     class="p-2 border-2 rounded-md outline-none w-24"
                   />
-                  <i
-                    class="fa-solid fa-minus text-xl p-1 cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"
-                  ></i>
+                  <MinusIcon class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></MinusIcon>
                 </div>
               </div>
               <div class="action-box h-full flex flex-col justify-between">
