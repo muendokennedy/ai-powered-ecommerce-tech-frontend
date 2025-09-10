@@ -17,25 +17,53 @@ const showPassword = ref(false)
 const isLoading = ref(false)
 const errorMessage = ref('')
 
+// Field-specific errors
+const fieldErrors = ref({
+  email: '',
+  password: ''
+})
+
 // Methods
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
+}
+
+const validateField = (field) => {
+  // Reset field error
+  fieldErrors.value[field] = ''
+  
+  switch (field) {
+    case 'email':
+      if (!loginForm.value.email) {
+        fieldErrors.value.email = 'Email is required'
+      } else {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(loginForm.value.email)) {
+          fieldErrors.value.email = 'Please enter a valid email address'
+        }
+      }
+      break
+    case 'password':
+      if (!loginForm.value.password) {
+        fieldErrors.value.password = 'Password is required'
+      }
+      break
+  }
+}
+
+const validateAllFields = () => {
+  validateField('email')
+  validateField('password')
+  
+  return !fieldErrors.value.email && !fieldErrors.value.password
 }
 
 const handleLogin = async () => {
   // Reset error message
   errorMessage.value = ''
   
-  // Basic validation
-  if (!loginForm.value.email || !loginForm.value.password) {
-    errorMessage.value = 'Please fill in all fields'
-    return
-  }
-  
-  // Email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(loginForm.value.email)) {
-    errorMessage.value = 'Please enter a valid email address'
+  // Validate all fields
+  if (!validateAllFields()) {
     return
   }
   
@@ -59,6 +87,12 @@ const handleLogin = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const handleSocialLogin = (provider) => {
+  // Implement social login logic here
+  console.log(`Login with ${provider}`)
+  // This would typically redirect to OAuth provider or open popup
 }
 
 const goToRegister = () => {
@@ -94,10 +128,13 @@ const goToRegister = () => {
                 v-model="loginForm.email"
                 type="email"
                 placeholder="Enter your email"
-                class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe] transition-colors duration-300"
+                :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe] transition-colors duration-300', 
+                         fieldErrors.email ? 'border-red-500' : 'border-gray-300']"
                 :disabled="isLoading"
-                required
+                @blur="validateField('email')"
+                @input="clearFieldError('email')"
               />
+              <p v-if="fieldErrors.email" class="text-red-500 text-sm mt-1">{{ fieldErrors.email }}</p>
             </div>
             
             <!-- Password Field -->
@@ -111,9 +148,11 @@ const goToRegister = () => {
                   v-model="loginForm.password"
                   :type="showPassword ? 'text' : 'password'"
                   placeholder="Enter your password"
-                  class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe] transition-colors duration-300 pr-12"
+                  :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe] transition-colors duration-300 pr-12',
+                           fieldErrors.password ? 'border-red-500' : 'border-gray-300']"
                   :disabled="isLoading"
-                  required
+                  @blur="validateField('password')"
+                  @input="clearFieldError('password')"
                 />
                 <button
                   type="button"
@@ -125,6 +164,7 @@ const goToRegister = () => {
                   <EyeSlashIcon v-else class="w-5 h-5" />
                 </button>
               </div>
+              <p v-if="fieldErrors.password" class="text-red-500 text-sm mt-1">{{ fieldErrors.password }}</p>
             </div>
             
             <!-- Login Button -->
@@ -145,15 +185,40 @@ const goToRegister = () => {
             <div class="flex-1 border-t border-gray-300"></div>
           </div>
           
+          <!-- Social Login Options -->
+          <div class="social-login space-y-3 mb-6">
+            <button
+              @click="handleSocialLogin('google')"
+              class="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-300"
+            >
+              <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Continue with Google
+            </button>
+            
+            <button
+              @click="handleSocialLogin('facebook')"
+              class="w-full flex items-center justify-center py-3 px-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-300"
+            >
+              <svg class="w-5 h-5 mr-3" fill="#1877F2" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Continue with Facebook
+            </button>
+          </div>
+          
           <!-- Register Link -->
           <div class="text-center">
-            <p class="text-sm text-[#384857] mb-4">Don't have an account?</p>
-            <button
-              @click="goToRegister"
-              class="w-full py-3 px-6 border-2 border-[#68a4fe] text-[#68a4fe] hover:bg-[#68a4fe] hover:text-white font-semibold rounded-md transition-all duration-300"
-            >
-              Create Account
-            </button>
+            <p class="text-sm text-[#384857]">
+              Don't have an account? 
+              <span @click="goToRegister" class="text-[#68a4fe] cursor-pointer hover:underline font-medium">
+                Create Account
+              </span>
+            </p>
           </div>
         </div>
       </div>
