@@ -1,7 +1,25 @@
 <script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
+
+const router = useRouter()
+
+// Check if user is logged in
+const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
+
+// Method to handle proceed to checkout
+const proceedToCheckout = () => {
+  if (!isLoggedIn.value) {
+    // Redirect to login page with return URL
+    router.push({ path: '/login', query: { returnTo: '/checkout' } })
+  } else {
+    // Redirect directly to checkout
+    router.push('/checkout')
+  }
+}
 </script>
 <template>
     <Header/>
@@ -280,8 +298,9 @@ import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
                 </div>
               </div>
               <button
-                type="submit"
-                class="self-end px-4 py-2 bg-[#ffcf10] rounded-md text-white text-center"
+                @click="proceedToCheckout"
+                type="button"
+                class="self-end px-4 py-2 bg-[#ffcf10] hover:bg-[#e6ba0f] rounded-md text-white text-center transition-colors duration-300"
               >
                 Proceed to checkout
               </button>

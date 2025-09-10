@@ -2,13 +2,13 @@
 import { ref } from 'vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { CreditCardIcon, DevicePhoneMobileIcon, StarIcon } from '@heroicons/vue/24/solid'
+import { CreditCardIcon, DevicePhoneMobileIcon, StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
-const showLoginModal = ref(false)
 const showLocationModal = ref(false)
-const isLoggedIn = ref(false) // Change this to true to simulate logged in user
+const showErrorMessage = ref(false)
+const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true') // Check login status from localStorage
 const userLocation = ref({
   address: '',
   city: '',
@@ -58,17 +58,18 @@ const selectPaymentMethod = (method) => {
 }
 
 const completeOrder = () => {
-  if (!isLoggedIn.value) {
-    showLoginModal.value = true
-  } else {
-    showLocationModal.value = true
+  // Check if payment method is selected
+  if (!selectedPaymentMethod.value) {
+    showErrorMessage.value = true
+    // Auto-hide error message after 3 seconds
+    setTimeout(() => {
+      showErrorMessage.value = false
+    }, 3000)
+    return
   }
-}
-
-const handleLogin = () => {
-  // Simulate login
-  isLoggedIn.value = true
-  showLoginModal.value = false
+  
+  // Since we're on checkout page, user should already be logged in
+  // If not logged in, they wouldn't have reached this page
   showLocationModal.value = true
 }
 
@@ -79,7 +80,6 @@ const handleLocationSubmit = () => {
 }
 
 const closeModals = () => {
-  showLoginModal.value = false
   showLocationModal.value = false
 }
 </script>
@@ -154,6 +154,15 @@ const closeModals = () => {
             </div>
             
             <div class="p-4">
+              <!-- Error Message -->
+              <div 
+                v-if="showErrorMessage" 
+                class="error-message mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm animate-slide-in flex items-center"
+              >
+                <ExclamationTriangleIcon class="w-5 h-5 mr-2" />
+                Please select a payment method before completing your order.
+              </div>
+              
               <button
                 @click="completeOrder"
                 class="w-full px-6 py-3 bg-[#ffcf10] hover:bg-[#e6ba0f] rounded-md text-white font-semibold text-center transition-colors duration-300"
@@ -309,40 +318,6 @@ const closeModals = () => {
     </section>
   </main>
   
-  <!-- Login Modal -->
-  <div v-if="showLoginModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
-      <h3 class="text-xl font-semibold text-[#384857] mb-4">Login Required</h3>
-      <p class="text-[#384857] mb-6">Please login to complete your order</p>
-      <div class="space-y-4">
-        <input
-          type="email"
-          placeholder="Email"
-          class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-        />
-      </div>
-      <div class="flex gap-4 mt-6">
-        <button
-          @click="closeModals"
-          class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-md text-[#384857] hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          @click="handleLogin"
-          class="flex-1 px-4 py-2 bg-[#68a4fe] rounded-md text-white hover:bg-[#5a94fe]"
-        >
-          Login
-        </button>
-      </div>
-    </div>
-  </div>
-  
   <!-- Location Modal -->
   <div v-if="showLocationModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
@@ -407,6 +382,22 @@ const closeModals = () => {
   from {
     opacity: 0;
     transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Error message slide-in animation */
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;

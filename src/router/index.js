@@ -32,12 +32,32 @@ const router = createRouter({
     {
       path: '/checkout',
       name: 'checkout',
-      component: () => import('@/views/CheckoutView.vue')
+      component: () => import('@/views/CheckoutView.vue'),
+      beforeEnter: (to, from, next) => {
+        // Check if user is logged in
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+        if (!isLoggedIn) {
+          // Redirect to login page
+          next({ path: '/login', query: { returnTo: to.fullPath } })
+        } else {
+          next()
+        }
+      }
     },
     {
       path: '/product/page',
       name: 'product-page',
       component: () => import('@/views/ProductPageView.vue')
+    },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/components/Login.vue')
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/components/Register.vue')
     }
   ],
 })
