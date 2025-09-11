@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import HomeView from '../views/Client/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -12,27 +12,27 @@ const router = createRouter({
     {
       path: '/about',
       name: 'about',
-      component: () => import('@/views/AboutView.vue'),
+      component: () => import('@/views/Client/AboutView.vue'),
     },
     {
       path: '/products',
       name: 'products',
-      component: () => import('@/views/ProductsView.vue'),
+      component: () => import('@/views/Client/ProductsView.vue'),
     },
     {
       path: '/contact',
       name: 'contact',
-      component: () => import('@/views/ContactView.vue')
+      component: () => import('@/views/Client/ContactView.vue')
     },
     {
       path: '/cart',
       name: 'cart',
-      component: () => import('@/views/CartView.vue')
+      component: () => import('@/views/Client/CartView.vue')
     },
     {
       path: '/checkout',
       name: 'checkout',
-      component: () => import('@/views/CheckoutView.vue'),
+      component: () => import('@/views/Client/CheckoutView.vue'),
       beforeEnter: (to, from, next) => {
         // Check if user is logged in using localStorage
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
@@ -47,7 +47,7 @@ const router = createRouter({
     {
       path: '/product/page',
       name: 'product-page',
-      component: () => import('@/views/ProductPageView.vue')
+      component: () => import('@/views/Client/ProductPageView.vue')
     },
     {
       path: '/login',
@@ -62,7 +62,7 @@ const router = createRouter({
     {
       path: '/orders',
       name: 'orders',
-      component: () => import('@/views/OrdersView.vue'),
+      component: () => import('@/views/Client/OrdersView.vue'),
       beforeEnter: (to, from, next) => {
         // Check if user is logged in
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
@@ -73,6 +73,11 @@ const router = createRouter({
           next()
         }
       }
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'admin-dashboard',
+      component: () => import('@/views/Admin/DashboardView.vue')
     }
   ],
 })
