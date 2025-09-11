@@ -79,7 +79,8 @@ const handleLogin = async () => {
     localStorage.setItem('userEmail', loginForm.value.email)
     
     // Redirect to checkout or return to previous page
-    const returnTo = router.currentRoute.value.query.returnTo || '/checkout'
+    const returnTo = router.currentRoute.value.query.returnTo
+
     router.push(returnTo)
     
   } catch (error) {

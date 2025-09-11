@@ -1,8 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Bars3BottomLeftIcon, ShoppingCartIcon } from '@heroicons/vue/24/solid'
 
 const show = ref(false)
+const isLoggedIn = ref(false)
+
+// Check login status
+const checkLoginStatus = () => {
+  isLoggedIn.value = localStorage.getItem('isLoggedIn') === 'true'
+}
+
+onMounted(() => {
+  checkLoginStatus()
+  // Listen for storage changes to update login status across tabs
+  window.addEventListener('storage', checkLoginStatus)
+})
 
 </script>
 
@@ -18,6 +30,7 @@ const show = ref(false)
                 <router-link :to="{name: 'home'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Home</router-link>
                 <router-link :to="{name: 'about'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">About</router-link>
                 <router-link :to="{name: 'products'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Products</router-link>
+                <router-link v-if="isLoggedIn" :to="{name: 'orders'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">My Orders</router-link>
                 <router-link :to="{name: 'contact'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">contact</router-link>
                 <router-link :to="{name: 'cart'}" class="cart-link  flex items-center text-white capitalize ease-in-ou gap-8 px-6 mt-4">cart<span class="cart-btn p-2"><ShoppingCartIcon class="size-6"></ShoppingCartIcon><span class="count right-4 bottom-0 top-7">0</span></span></router-link>
             </div>
@@ -26,6 +39,7 @@ const show = ref(false)
           <router-link :to="{name: 'home'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Home</router-link>
           <router-link :to="{name: 'about'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">About</router-link>
           <router-link :to="{name: 'products'}" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Products</router-link>
+          <router-link v-if="isLoggedIn" :to="{name: 'orders'}" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">My Orders</router-link>
           <router-link :to="{name: 'contact'}" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">contact</router-link>
           <router-link :to="{name: 'cart'}" class="cart-link flex items-center px-0 text-white capitalize ease-in-out">cart<span class="cart-btn p-2"><ShoppingCartIcon class="size-6 cart-icon"></ShoppingCartIcon><span class="count right-4 bottom-0 top-7">0</span></span></router-link>
         </nav>

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { CreditCardIcon, DevicePhoneMobileIcon, StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
+import { StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
@@ -165,7 +165,7 @@ const closeModals = () => {
               
               <button
                 @click="completeOrder"
-                class="w-full px-6 py-3 bg-[#ffcf10] hover:bg-[#e6ba0f] rounded-md text-white font-semibold text-center transition-colors duration-300"
+                class="w-full px-6 py-3 bg-[#68a4fe] hover:bg-[#5496f8] rounded-md text-white font-semibold text-center transition-colors duration-300"
               >
                 Complete Order
               </button>

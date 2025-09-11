@@ -34,10 +34,10 @@ const router = createRouter({
       name: 'checkout',
       component: () => import('@/views/CheckoutView.vue'),
       beforeEnter: (to, from, next) => {
-        // Check if user is logged in
+        // Check if user is logged in using localStorage
         const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
         if (!isLoggedIn) {
-          // Redirect to login page
+          // Redirect to login page with return URL
           next({ path: '/login', query: { returnTo: to.fullPath } })
         } else {
           next()
@@ -58,6 +58,21 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: () => import('@/components/Register.vue')
+    },
+    {
+      path: '/orders',
+      name: 'orders',
+      component: () => import('@/views/OrdersView.vue'),
+      beforeEnter: (to, from, next) => {
+        // Check if user is logged in
+        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+        if (!isLoggedIn) {
+          // Redirect to login page with return URL
+          next({ path: '/login', query: { returnTo: to.fullPath } })
+        } else {
+          next()
+        }
+      }
     }
   ],
 })

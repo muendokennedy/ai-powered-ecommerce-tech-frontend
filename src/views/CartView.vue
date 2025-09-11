@@ -300,7 +300,7 @@ const proceedToCheckout = () => {
               <button
                 @click="proceedToCheckout"
                 type="button"
-                class="self-end px-4 py-2 bg-[#ffcf10] hover:bg-[#e6ba0f] rounded-md text-white text-center transition-colors duration-300"
+                class="self-end px-4 py-2 bg-[#68a4fe] hover:bg-[#5496f8] rounded-md text-white text-center transition-colors duration-300"
               >
                 Proceed to checkout
               </button>
