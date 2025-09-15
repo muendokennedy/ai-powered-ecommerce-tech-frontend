@@ -83,6 +83,16 @@ const router = createRouter({
       path: '/admin/analytics',
       name: 'admin-analytics',
       component: () => import('@/views/Admin/AnalyticsView.vue')
+    },
+    {
+      path: '/admin/stock',
+      name: 'admin-stock',
+      component: () => import('@/views/Admin/StockView.vue')
+    },
+    {
+      path: '/admin/add-product',
+      name: 'admin-add-product',
+      component: () => import('@/views/Admin/AddProductView.vue')
     }
   ],
 })

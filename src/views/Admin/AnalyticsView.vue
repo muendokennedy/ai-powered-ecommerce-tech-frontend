@@ -1,4 +1,6 @@
 <script setup>
+import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
+import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import { reactive, ref, onMounted, nextTick } from 'vue'
 import {
   Chart,
@@ -289,131 +291,16 @@ onMounted(() => {
 
 <template>
   <div class="flex h-screen bg-gray-50">
-    <!-- Sidebar -->
-    <div class="w-64 bg-[#042EFF] text-white flex flex-col">
-      <!-- Logo/Brand -->
-      <div class="p-6 border-b border-blue-600">
-        <h1 class="text-xl font-bold">TechStore Admin</h1>
-      </div>
-
-      <!-- Navigation Menu -->
-      <nav class="flex-1 px-4 py-6 space-y-2">
-        <button
-          v-for="item in menuItems"
-          :key="item.name"
-          @click="handleMenuClick(item.name)"
-          :class="[
-            'w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200',
-            item.active 
-              ? 'bg-blue-600 text-white' 
-              : 'text-blue-100 hover:bg-blue-600 hover:text-white'
-          ]"
-        >
-          <!-- Home Icon -->
-          <svg v-if="item.icon === 'home'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9,22 9,12 15,12 15,22"/>
-          </svg>
-          <!-- Chart Icon -->
-          <svg v-else-if="item.icon === 'chart'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-          </svg>
-          <!-- Package Icon -->
-          <svg v-else-if="item.icon === 'package'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m7.5 4.27 9 5.15M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
-          </svg>
-          <!-- Shopping Cart Icon -->
-          <svg v-else-if="item.icon === 'cart'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h1M9 19a1 1 0 102 0 1 1 0 00-2 0zm8 0a1 1 0 102 0 1 1 0 00-2 0z"/>
-          </svg>
-          <!-- Archive Icon -->
-          <svg v-else-if="item.icon === 'archive'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 8v13H3V8m18 0-2-3H5l-2 3m18 0-2-3H5l-2 3m4 5h8"/>
-          </svg>
-          <!-- Users Icon -->
-          <svg v-else-if="item.icon === 'users'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a4 4 0 11-8 0 4 4 0 018 0z"/>
-          </svg>
-          <!-- Settings Icon -->
-          <svg v-else-if="item.icon === 'settings'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          <span>{{ item.name }}</span>
-        </button>
-      </nav>
-
-      <!-- Logout -->
-      <div class="px-4 py-6 border-t border-blue-600">
-        <button class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-100 hover:bg-blue-600 hover:text-white transition-colors duration-200">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-          </svg>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-
+    <admin-sidebar></admin-sidebar>
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <!-- Top Navigation -->
-      <header class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-        <div class="flex items-center justify-between">
-          <!-- Search Bar -->
-          <div class="flex-1 max-w-md relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search analytics data..."
-              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#042EFF] focus:border-[#042EFF]"
-            />
-          </div>
-
-          <!-- Profile -->
-          <div class="flex items-center space-x-4">
-            <div class="text-right">
-              <p class="text-sm font-medium text-gray-900">Admin User</p>
-              <p class="text-xs text-gray-500">admin@techstore.com</p>
-            </div>
-            <img
-              class="h-10 w-10 rounded-full border-2 border-[#042EFF]"
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-              alt="Admin Profile"
-            />
-          </div>
-        </div>
-      </header>
-
+      <admin-header></admin-header>
       <!-- Analytics Content -->
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-7xl mx-auto">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-            <p class="text-gray-600 mt-2">Comprehensive insights into your e-commerce performance</p>
           </div>
-
-          <!-- Date Range Selector -->
-          <div class="mb-6 flex items-center justify-between">
-            <div class="flex items-center space-x-4">
-              <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#042EFF]">
-                <option>Last 30 Days</option>
-                <option>Last 90 Days</option>
-                <option>Last 6 Months</option>
-                <option>Last Year</option>
-              </select>
-              <button class="bg-[#042EFF] text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
-                Export Report
-              </button>
-            </div>
-            <div class="text-sm text-gray-500">
-              Last updated: {{ new Date().toLocaleString() }}
-            </div>
-          </div>
-
           <!-- Key Metrics Cards -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Total Revenue Card -->

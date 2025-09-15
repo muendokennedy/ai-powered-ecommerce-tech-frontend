@@ -1,44 +1,42 @@
 <script setup>
 import { ref, reactive } from 'vue'
+import { useRoute } from 'vue-router'
 
-const activeMenuItem = ref('Dashboard')
+const route = useRoute()
 
 const menuItems = reactive([
-  { name: 'Dashboard', icon: 'home', active: true },
-  { name: 'Analytics', icon: 'chart', active: false },
-  { name: 'Stock', icon: 'archive', active: false },
-  { name: 'Orders', icon: 'cart', active: false },
-  { name: 'Client Info', icon: 'users', active: false },
-  { name: 'Settings', icon: 'settings', active: false }
+  { name: 'Dashboard', icon: 'home', path: '/admin/dashboard' },
+  { name: 'Analytics', icon: 'chart', path: '/admin/analytics' },
+  { name: 'Stock', icon: 'archive', path: '/admin/stock' },
+  { name: 'Orders', icon: 'cart', path: '/admin/orders' },
+  { name: 'Client Info', icon: 'users', path: '/admin/clients' },
+  { name: 'Settings', icon: 'settings', path: '/admin/settings' }
 ])
 
-const handleMenuClick = (menuName) => {
-  activeMenuItem.value = menuName
-  menuItems.forEach(item => {
-    item.active = item.name === menuName
-  })
+// Function to check if route is active
+const isActiveRoute = (path) => {
+  return route.path === path
 }
 
 </script>
 
 <template>
       <!-- Sidebar -->
-    <div class="w-64 bg-[#042EFF] text-white flex flex-col h-screen">
+    <div class="w-64 bg-[#042EFF] text-white flex flex-col">
       <!-- Logo/Brand -->
       <div class="px-4 py-5 border-b border-blue-600 flex-shrink-0 text-center">
         <h1 class="text-2xl font-bold">MoTech</h1>
       </div>
 
       <!-- Navigation Menu -->
-      <nav class="flex-1 px-3 py-2 overflow-hidden">
-        <div class="space-y-0.5">
-        <button
+      <nav class="flex-1 px-4 py-6 space-y-2">
+        <router-link
           v-for="item in menuItems"
           :key="item.name"
-          @click="handleMenuClick(item.name)"
+          :to="item.path"
           :class="[
-            'w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg transition-colors duration-200',
-            item.active 
+            'w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200',
+            isActiveRoute(item.path)
               ? 'bg-blue-600 text-white' 
               : 'text-blue-100 hover:bg-blue-600 hover:text-white'
           ]"
@@ -70,13 +68,12 @@ const handleMenuClick = (menuName) => {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
           </svg>
           <span>{{ item.name }}</span>
-        </button>
-        </div>
+        </router-link>
       </nav>
 
       <!-- Logout -->
-      <div class="px-3 py-2 border-t border-blue-600 flex-shrink-0">
-        <button class="w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg text-blue-100 hover:bg-blue-600 hover:text-white transition-colors duration-200">
+      <div class="px-4 py-6 border-t border-blue-600">
+        <button class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-blue-100 hover:bg-blue-600 hover:text-white transition-colors duration-200">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
@@ -85,3 +82,20 @@ const handleMenuClick = (menuName) => {
       </div>
     </div>
 </template>
+
+<style scoped>
+/* Remove default router-link styling */
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* Ensure router-link-active styling */
+.router-link-active {
+  background-color: rgb(37 99 235) !important; /* bg-blue-600 */
+  color: white !important;
+}
+</style>
