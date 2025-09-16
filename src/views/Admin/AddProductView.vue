@@ -1,53 +1,140 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 
 const router = useRouter()
 
+// Existing product names for auto-suggestion
+const existingProducts = [
+  'iPhone 15 Pro Max', 'Samsung Galaxy S24 Ultra', 'MacBook Pro 14"', 'Dell XPS 13',
+  'Samsung QLED 65"', 'LG OLED 55"', 'Apple Watch Series 9', 'Samsung Galaxy Watch 6'
+]
+
 // New product form data
 const newProduct = reactive({
   name: '',
   brand: '',
   category: 'Phones',
-  price: '',
+  originalPrice: '',
+  discountedPrice: '',
   stock: '',
   lowStockThreshold: '10',
   supplier: '',
   description: '',
-  image: null
+  primaryImage: null,
+  secondaryImage: null,
+  tertiaryImage: null,
+  specifications: {}
 })
 
 const isSubmitting = ref(false)
+const showNameSuggestions = ref(false)
+const searchQuery = ref('')
+
+// Category-specific specification templates
+const specificationTemplates = {
+  Phones: {
+    storage: '',
+    color: '',
+    display: '',
+    processor: '',
+    camera: '',
+    battery: ''
+  },
+  Laptops: {
+    processor: '',
+    memory: '',
+    storage: '',
+    display: '',
+    battery: '',
+    ports: ''
+  },
+  Televisions: {
+    display: '',
+    resolution: '',
+    hdr: '',
+    smartTV: '',
+    audio: '',
+    connectivity: ''
+  },
+  Smartwatches: {
+    size: '',
+    display: '',
+    processor: '',
+    storage: '',
+    battery: '',
+    features: ''
+  }
+}
 
 const categories = ['Phones', 'Laptops', 'Televisions', 'Smartwatches']
 const brands = ['Apple', 'Samsung', 'Dell', 'LG', 'HP', 'Sony', 'Google', 'OnePlus']
 const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG Electronics', 'HP Inc.', 'Sony Corporation']
 
+// Computed properties
+const filteredProducts = computed(() => {
+  if (!searchQuery.value) return existingProducts
+  return existingProducts.filter(product => 
+    product.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+})
+
+const finalPrice = computed(() => {
+  return newProduct.discountedPrice || newProduct.originalPrice
+})
+
+// Watchers
+watch(() => newProduct.category, (newCategory) => {
+  // Reset specifications when category changes
+  newProduct.specifications = { ...specificationTemplates[newCategory] }
+})
+
+watch(() => newProduct.name, (newName) => {
+  searchQuery.value = newName
+  showNameSuggestions.value = newName.length > 0
+})
+
+// Initialize specifications for default category
+newProduct.specifications = { ...specificationTemplates[newProduct.category] }
+
+// Methods
 const resetForm = () => {
   Object.assign(newProduct, {
     name: '',
     brand: '',
     category: 'Phones',
-    price: '',
+    originalPrice: '',
+    discountedPrice: '',
     stock: '',
     lowStockThreshold: '10',
     supplier: '',
     description: '',
-    image: null
+    primaryImage: null,
+    secondaryImage: null,
+    tertiaryImage: null,
+    specifications: { ...specificationTemplates['Phones'] }
   })
+  searchQuery.value = ''
+  showNameSuggestions.value = false
 }
 
-const handleImageUpload = (event) => {
+const selectProductName = (productName) => {
+  newProduct.name = productName
+  searchQuery.value = productName
+  showNameSuggestions.value = false
+}
+
+const handleImageUpload = (event, imageType) => {
   const file = event.target.files[0]
   if (file) {
-    newProduct.image = file
+    newProduct[imageType] = file
   }
 }
 
 const addProduct = async () => {
-  if (!newProduct.name || !newProduct.brand || !newProduct.price || !newProduct.stock) {
+  if (!newProduct.name || !newProduct.brand || !newProduct.originalPrice || !newProduct.stock) {
     alert('Please fill in all required fields')
     return
   }
@@ -69,13 +156,18 @@ const addProduct = async () => {
       brand: newProduct.brand,
       category: newProduct.category,
       sku: sku,
-      price: parseFloat(newProduct.price),
+      originalPrice: parseFloat(newProduct.originalPrice),
+      discountedPrice: newProduct.discountedPrice ? parseFloat(newProduct.discountedPrice) : null,
+      finalPrice: parseFloat(finalPrice.value),
       stock: parseInt(newProduct.stock),
       lowStockThreshold: parseInt(newProduct.lowStockThreshold) || 10,
       dateAdded: new Date().toISOString().split('T')[0],
       supplier: newProduct.supplier,
       description: newProduct.description,
-      image: newProduct.image
+      primaryImage: newProduct.primaryImage,
+      secondaryImage: newProduct.secondaryImage,
+      tertiaryImage: newProduct.tertiaryImage,
+      specifications: newProduct.specifications
     })
     
     alert('Product added successfully!')
@@ -129,15 +221,30 @@ const goBack = () => {
               <div>
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
+                  <div class="relative">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
                     <input 
                       v-model="newProduct.name"
+                      @focus="showNameSuggestions = true"
+                      @blur="setTimeout(() => showNameSuggestions = false, 200)"
                       type="text" 
                       required
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
-                      placeholder="Enter product name"
+                      placeholder="Enter product name or select from existing"
                     >
+                    
+                    <!-- Auto-suggestion dropdown -->
+                    <div v-if="showNameSuggestions && filteredProducts.length > 0" 
+                         class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+                      <div 
+                        v-for="product in filteredProducts" 
+                        :key="product"
+                        @click="selectProductName(product)"
+                        class="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                      >
+                        {{ product }}
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -179,11 +286,11 @@ const goBack = () => {
               <!-- Pricing & Inventory -->
               <div>
                 <h3 class="text-lg font-semibold text-gray-900 mb-6">Pricing & Inventory</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Original Price ($) *</label>
                     <input 
-                      v-model="newProduct.price"
+                      v-model="newProduct.originalPrice"
                       type="number" 
                       min="0"
                       step="0.01"
@@ -191,6 +298,19 @@ const goBack = () => {
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="0.00"
                     >
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Discounted Price ($)</label>
+                    <input 
+                      v-model="newProduct.discountedPrice"
+                      type="number" 
+                      min="0"
+                      step="0.01"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      placeholder="Optional"
+                    >
+                    <p class="text-xs text-gray-500 mt-1">Leave empty if no discount</p>
                   </div>
 
                   <div>
@@ -218,29 +338,197 @@ const goBack = () => {
                 </div>
               </div>
 
-              <!-- Product Image -->
+              <!-- Product Images -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Product Image</h3>
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#042EFF] transition-colors">
-                  <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  <div class="mt-4">
-                    <label for="image-upload" class="cursor-pointer">
-                      <span class="mt-2 block text-sm font-medium text-gray-900">
-                        Upload a product image
-                      </span>
-                      <span class="mt-1 block text-sm text-gray-500">
-                        PNG, JPG, GIF up to 10MB
-                      </span>
-                    </label>
-                    <input 
-                      id="image-upload"
-                      @change="handleImageUpload"
-                      type="file" 
-                      accept="image/*"
-                      class="hidden"
-                    >
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Product Images</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <!-- Primary Image -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Primary Image *</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#042EFF] transition-colors">
+                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                      <div class="mt-2">
+                        <label for="primary-image" class="cursor-pointer">
+                          <span class="block text-xs font-medium text-gray-900">Upload primary image</span>
+                          <span class="block text-xs text-gray-500">Main product view</span>
+                        </label>
+                        <input 
+                          id="primary-image"
+                          @change="handleImageUpload($event, 'primaryImage')"
+                          type="file" 
+                          accept="image/*"
+                          class="hidden"
+                        >
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Secondary Image -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Image</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#042EFF] transition-colors">
+                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                      <div class="mt-2">
+                        <label for="secondary-image" class="cursor-pointer">
+                          <span class="block text-xs font-medium text-gray-900">Upload secondary image</span>
+                          <span class="block text-xs text-gray-500">Alternative view</span>
+                        </label>
+                        <input 
+                          id="secondary-image"
+                          @change="handleImageUpload($event, 'secondaryImage')"
+                          type="file" 
+                          accept="image/*"
+                          class="hidden"
+                        >
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Tertiary Image -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tertiary Image</label>
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#042EFF] transition-colors">
+                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                      <div class="mt-2">
+                        <label for="tertiary-image" class="cursor-pointer">
+                          <span class="block text-xs font-medium text-gray-900">Upload tertiary image</span>
+                          <span class="block text-xs text-gray-500">Detail view</span>
+                        </label>
+                        <input 
+                          id="tertiary-image"
+                          @change="handleImageUpload($event, 'tertiaryImage')"
+                          type="file" 
+                          accept="image/*"
+                          class="hidden"
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Specifications -->
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">Specifications</h3>
+                <div class="bg-gray-50 rounded-xl p-6">
+                  <p class="text-sm text-gray-600 mb-4">Enter specifications based on the selected product category</p>
+                  
+                  <!-- Phone Specifications -->
+                  <div v-if="newProduct.category === 'Phones'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
+                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 256GB">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                      <input v-model="newProduct.specifications.color" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Natural Titanium">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
+                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 6.7 Super Retina XDR">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
+                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., A17 Pro chip">
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Camera</label>
+                      <input v-model="newProduct.specifications.camera" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 48MP Main + 12MP Ultra Wide">
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
+                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Up to 29 hours video playback">
+                    </div>
+                  </div>
+
+                  <!-- Laptop Specifications -->
+                  <div v-if="newProduct.category === 'Laptops'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
+                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 chip">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Memory</label>
+                      <input v-model="newProduct.specifications.memory" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 16GB unified memory">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
+                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 512GB SSD">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
+                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 14.2 Liquid Retina XDR">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
+                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Up to 18 hours">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Ports</label>
+                      <input v-model="newProduct.specifications.ports" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 3x Thunderbolt 4, HDMI">
+                    </div>
+                  </div>
+
+                  <!-- Television Specifications -->
+                  <div v-if="newProduct.category === 'Televisions'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
+                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 65 4K QLED">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Resolution</label>
+                      <input v-model="newProduct.specifications.resolution" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 3840 x 2160">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">HDR</label>
+                      <input v-model="newProduct.specifications.hdr" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., HDR10+, Quantum HDR">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Smart TV</label>
+                      <input v-model="newProduct.specifications.smartTV" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Tizen OS with streaming apps">
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Audio</label>
+                      <input v-model="newProduct.specifications.audio" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Dolby Atmos, Object Tracking Sound">
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Connectivity</label>
+                      <input v-model="newProduct.specifications.connectivity" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4x HDMI, 2x USB, Wi-Fi 6">
+                    </div>
+                  </div>
+
+                  <!-- Smartwatch Specifications -->
+                  <div v-if="newProduct.category === 'Smartwatches'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                      <input v-model="newProduct.specifications.size" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 45mm case">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
+                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Always-On Retina LTPO OLED">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
+                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., S9 SiP with 4-core Neural Engine">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
+                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 64GB">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
+                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Up to 18 hours">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Features</label>
+                      <input v-model="newProduct.specifications.features" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., ECG, Blood Oxygen, Temperature sensing">
+                    </div>
                   </div>
                 </div>
               </div>
@@ -366,5 +654,61 @@ input[type="file"]:hover::before {
 
 input[type="file"]:active::before {
   background: -webkit-linear-gradient(top, #e3e3e3, #f9f9f9);
+}
+
+/* Auto-suggestion dropdown */
+.absolute.z-10 {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  animation: dropdownSlide 0.2s ease-out;
+}
+
+@keyframes dropdownSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Specifications section styling */
+.bg-gray-50 {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Category-specific form animations */
+.grid > div {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Enhanced focus states */
+input:focus, select:focus, textarea:focus {
+  transform: scale(1.01);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Price display enhancement */
+.grid input[type="number"] {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+/* Image upload areas */
+.border-dashed:hover {
+  border-color: #042EFF;
+  background-color: #f8fafc;
 }
 </style>
