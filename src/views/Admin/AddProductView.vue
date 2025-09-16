@@ -6,10 +6,146 @@ import AdminHeader from '@/components/Admin/AdminHeader.vue'
 
 const router = useRouter()
 
-// Existing product names for auto-suggestion
-const existingProducts = [
-  'iPhone 15 Pro Max', 'Samsung Galaxy S24 Ultra', 'MacBook Pro 14"', 'Dell XPS 13',
-  'Samsung QLED 65"', 'LG OLED 55"', 'Apple Watch Series 9', 'Samsung Galaxy Watch 6'
+// Existing product names for auto-suggestion with complete data
+const existingProductsDatabase = [
+  {
+    name: 'iPhone 15 Pro Max',
+    category: 'Phones',
+    brand: 'Apple',
+    originalPrice: 150000,
+    discountedPrice: 145000,
+    description: 'Latest iPhone with Pro camera system and A17 Pro chip. Features titanium design and advanced photography capabilities.',
+    specifications: {
+      storage: '256GB',
+      ram: '8GB',
+      displaySize: '6.7"',
+      camera: '48MP Pro Camera System',
+      battery: '4441mAh',
+      operatingSystem: 'iOS 17',
+      color: 'Natural Titanium'
+    }
+  },
+  {
+    name: 'Samsung Galaxy S24 Ultra',
+    category: 'Phones',
+    brand: 'Samsung',
+    originalPrice: 140000,
+    discountedPrice: 135000,
+    description: 'Premium flagship with S Pen, exceptional camera zoom, and AI features.',
+    specifications: {
+      storage: '512GB',
+      ram: '12GB',
+      displaySize: '6.8"',
+      camera: '200MP Quad Camera',
+      battery: '5000mAh',
+      operatingSystem: 'Android 14',
+      color: 'Titanium Gray'
+    }
+  },
+  {
+    name: 'MacBook Pro 14"',
+    category: 'Laptops',
+    brand: 'Apple',
+    originalPrice: 220000,
+    discountedPrice: 215000,
+    description: 'Professional laptop with M3 Pro chip, Liquid Retina XDR display, and all-day battery life.',
+    specifications: {
+      processor: 'Apple M3 Pro',
+      ram: '18GB',
+      storageType: 'SSD',
+      storageSize: '1TB',
+      graphicsCard: 'Apple M3 Pro GPU',
+      displaySize: '14.2"',
+      operatingSystem: 'macOS Sonoma',
+      batteryLife: '18 hours'
+    }
+  },
+  {
+    name: 'Dell XPS 13',
+    category: 'Laptops',
+    brand: 'Dell',
+    originalPrice: 110000,
+    discountedPrice: 105000,
+    description: 'Ultra-portable premium laptop with InfinityEdge display and exceptional build quality.',
+    specifications: {
+      processor: 'Intel Core i7-1360P',
+      ram: '16GB',
+      storageType: 'SSD',
+      storageSize: '512GB',
+      graphicsCard: 'Intel Iris Xe',
+      displaySize: '13.4"',
+      operatingSystem: 'Windows 11 Pro',
+      batteryLife: '14 hours'
+    }
+  },
+  {
+    name: 'Samsung QLED 65"',
+    category: 'Televisions',
+    brand: 'Samsung',
+    originalPrice: 120000,
+    discountedPrice: 115000,
+    description: 'Premium QLED TV with Quantum Dot technology, vibrant colors, and smart Tizen OS.',
+    specifications: {
+      screenSize: '65"',
+      resolution: '4K Ultra HD',
+      displayTechnology: 'Neo QLED',
+      smartTvOs: 'Tizen OS',
+      hdrSupport: 'HDR10+ & Dolby Vision',
+      refreshRate: '120Hz',
+      audioOutput: '60W Object Tracking Sound'
+    }
+  },
+  {
+    name: 'LG OLED 55"',
+    category: 'Televisions',
+    brand: 'LG',
+    originalPrice: 180000,
+    discountedPrice: 175000,
+    description: 'Self-lit OLED pixels deliver perfect blacks, infinite contrast, and stunning picture quality.',
+    specifications: {
+      screenSize: '55"',
+      resolution: '4K Ultra HD',
+      displayTechnology: 'OLED evo',
+      smartTvOs: 'webOS 23',
+      hdrSupport: 'Dolby Vision IQ',
+      refreshRate: '120Hz',
+      audioOutput: '40W Dolby Atmos'
+    }
+  },
+  {
+    name: 'Apple Watch Series 9',
+    category: 'Smartwatches',
+    brand: 'Apple',
+    originalPrice: 48000,
+    discountedPrice: 45000,
+    description: 'Most advanced Apple Watch with S9 chip, Double Tap gesture, and comprehensive health tracking.',
+    specifications: {
+      displayType: 'Always-On Retina LTPO OLED',
+      caseSize: '45mm',
+      operatingSystem: 'watchOS 10',
+      batteryLife: '18 hours',
+      waterResistance: '50m',
+      connectivity: 'Wi-Fi + Cellular',
+      healthSensors: 'ECG, Blood Oxygen, Temperature'
+    }
+  },
+  {
+    name: 'Samsung Galaxy Watch 6',
+    category: 'Smartwatches',
+    brand: 'Samsung',
+    originalPrice: 38000,
+    discountedPrice: 35000,
+    description: 'Feature-rich smartwatch with advanced health monitoring and long-lasting battery.',
+    specifications: {
+      displayType: 'Super AMOLED',
+      caseSize: '44mm',
+      operatingSystem: 'Wear OS 4',
+      batteryLife: '40 hours',
+      waterResistance: '5ATM + IP68',
+      connectivity: 'Bluetooth 5.3 + Wi-Fi',
+      healthSensors: 'BioActive Sensor, Sleep Tracking'
+    }
+  }
 ]
 
 // New product form data
@@ -32,6 +168,7 @@ const newProduct = reactive({
 const isSubmitting = ref(false)
 const showNameSuggestions = ref(false)
 const searchQuery = ref('')
+const autoFillNotification = ref(false)
 
 // Category-specific specification templates
 const specificationTemplates = {
@@ -75,15 +212,47 @@ const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG
 
 // Computed properties
 const filteredProducts = computed(() => {
-  if (!searchQuery.value) return existingProducts
-  return existingProducts.filter(product => 
-    product.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
+  if (!searchQuery.value) return []
+  return existingProductsDatabase.filter(product => 
+    product.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+  ).slice(0, 5)
 })
 
 const finalPrice = computed(() => {
   return newProduct.discountedPrice || newProduct.originalPrice
 })
+
+// Auto-fill function when product is selected
+const selectProduct = (product) => {
+  // Fill basic product information
+  newProduct.name = product.name
+  newProduct.brand = product.brand
+  newProduct.category = product.category
+  newProduct.originalPrice = product.originalPrice
+  newProduct.discountedPrice = product.discountedPrice
+  newProduct.description = product.description
+  
+  // Auto-fill specifications based on category
+  newProduct.specifications = { ...product.specifications }
+  
+  // Reset images and supplier (these should be unique per entry)
+  newProduct.primaryImage = null
+  newProduct.secondaryImage = null
+  newProduct.tertiaryImage = null
+  newProduct.supplier = ''
+  
+  // Hide suggestions and clear search
+  showNameSuggestions.value = false
+  searchQuery.value = product.name
+  
+  // Show auto-fill notification
+  autoFillNotification.value = true
+  setTimeout(() => {
+    autoFillNotification.value = false
+  }, 3000)
+  
+  console.log(`Auto-filled data for ${product.name}`)
+}
 
 // Watchers
 watch(() => newProduct.category, (newCategory) => {
@@ -117,12 +286,6 @@ const resetForm = () => {
     specifications: { ...specificationTemplates['Phones'] }
   })
   searchQuery.value = ''
-  showNameSuggestions.value = false
-}
-
-const selectProductName = (productName) => {
-  newProduct.name = productName
-  searchQuery.value = productName
   showNameSuggestions.value = false
 }
 
@@ -207,10 +370,32 @@ const goBack = () => {
                 class="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
               >
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
                 </svg>
                 Back to Stock
               </button>
+            </div>
+          </div>
+
+          <!-- Auto-fill Notification -->
+          <div v-if="autoFillNotification" 
+               class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center animate-fade-in">
+            <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <p class="text-green-800 font-medium">Product data auto-filled successfully!</p>
+              <p class="text-green-600 text-sm">Please review and update supplier information before submitting.</p>
+            </div>
+          <!-- Auto-fill Notification -->
+          <div v-if="autoFillNotification" 
+               class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center animate-fade-in">
+            <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <div>
+              <p class="text-green-800 font-medium">Product data auto-filled successfully!</p>
+              <p class="text-green-600 text-sm">Please review and update supplier information before submitting.</p>
             </div>
           </div>
 
@@ -238,11 +423,21 @@ const goBack = () => {
                          class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
                       <div 
                         v-for="product in filteredProducts" 
-                        :key="product"
-                        @click="selectProductName(product)"
-                        class="px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                        :key="product.name"
+                        @click="selectProduct(product)"
+                        class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                       >
-                        {{ product }}
+                        <div class="flex justify-between items-center">
+                          <div>
+                            <div class="font-medium text-gray-900">{{ product.name }}</div>
+                            <div class="text-sm text-gray-500">{{ product.brand }} · {{ product.category }}</div>
+                          </div>
+                          <div class="text-right">
+                            <div class="text-sm font-medium text-[#042EFF]">KES {{ product.discountedPrice?.toLocaleString() || product.originalPrice?.toLocaleString() }}</div>
+                            <div v-if="product.discountedPrice && product.discountedPrice !== product.originalPrice" 
+                                 class="text-xs text-gray-400 line-through">KES {{ product.originalPrice?.toLocaleString() }}</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -575,6 +770,7 @@ const goBack = () => {
             </form>
           </div>
         </div>
+      </div>
       </main>
     </div>
   </div>
@@ -710,5 +906,21 @@ input:focus, select:focus, textarea:focus {
 .border-dashed:hover {
   border-color: #042EFF;
   background-color: #f8fafc;
+}
+
+/* Auto-fill notification animation */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
