@@ -171,6 +171,17 @@ const nameSelected = ref(false)
 const searchQuery = ref('')
 const autoFillNotification = ref(false)
 const isAutoFilling = ref(false)
+// Image preview URLs & drag state
+const imagePreviews = reactive({
+  primaryImage: null,
+  secondaryImage: null,
+  tertiaryImage: null
+})
+const dragOver = reactive({
+  primaryImage: false,
+  secondaryImage: false,
+  tertiaryImage: false
+})
 
 // Category-specific specification templates
 const specificationTemplates = {
@@ -343,11 +354,42 @@ const resetForm = () => {
   showNameSuggestions.value = false
 }
 
-const handleImageUpload = (event, imageType) => {
-  const file = event.target.files[0]
-  if (file) {
-    newProduct[imageType] = file
+const handleImageUpload = (eventOrFile, imageType) => {
+  let file
+  if (eventOrFile instanceof File) {
+    file = eventOrFile
+  } else if (eventOrFile?.target?.files?.[0]) {
+    file = eventOrFile.target.files[0]
   }
+  if (!file) return
+  newProduct[imageType] = file
+  // Revoke old preview URL if exists
+  if (imagePreviews[imageType]) {
+    URL.revokeObjectURL(imagePreviews[imageType])
+  }
+  imagePreviews[imageType] = URL.createObjectURL(file)
+}
+
+const onDragOver = (e, imageType) => {
+  e.preventDefault()
+  dragOver[imageType] = true
+  console.log(imageType)
+}
+const onDragLeave = (e, imageType) => {
+  e.preventDefault()
+  dragOver[imageType] = false
+}
+const onDrop = (e, imageType) => {
+  e.preventDefault()
+  dragOver[imageType] = false
+  const file = e.dataTransfer.files && e.dataTransfer.files[0]
+  if (file && file.type.startsWith('image/')) {
+    handleImageUpload(file, imageType)
+  }
+}
+const triggerFileDialog = (id) => {
+  const el = document.getElementById(id)
+  if (el) el.click()
 }
 
 const addProduct = async () => {
@@ -573,69 +615,117 @@ const goBack = () => {
                   <!-- Primary Image -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Primary Image *</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#042EFF] transition-colors">
-                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                      <div class="mt-2">
-                        <label for="primary-image" class="cursor-pointer">
-                          <span class="block text-xs font-medium text-gray-900">Upload primary image</span>
-                          <span class="block text-xs text-gray-500">Main product view</span>
-                        </label>
-                        <input 
-                          id="primary-image"
-                          @change="handleImageUpload($event, 'primaryImage')"
-                          type="file" 
-                          accept="image/*"
-                          class="hidden"
-                        >
-                      </div>
+                    <div
+                      class="relative group border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
+                      :class="[
+                        dragOver.primaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 hover:border-[#042EFF]',
+                        imagePreviews.primaryImage ? 'p-2' : 'p-6'
+                      ]"
+                      @click="triggerFileDialog('primary-image')"
+                      @dragover="onDragOver($event, 'primaryImage')"
+                      @dragleave="onDragLeave($event, 'primaryImage')"
+                      @drop="onDrop($event, 'primaryImage')"
+                    >
+                      <template v-if="imagePreviews.primaryImage">
+                        <img :src="imagePreviews.primaryImage" alt="Primary Preview" class="mx-auto max-h-40 object-contain rounded" />
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-medium rounded transition-opacity">
+                          <span>Click or Drop to Replace</span>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div class="mt-2">
+                          <span class="block text-xs font-medium text-gray-900">Drag & Drop or Click</span>
+                          <span class="block text-xs text-gray-500">Primary image</span>
+                        </div>
+                      </template>
+                      <input
+                        id="primary-image"
+                        @change="handleImageUpload($event, 'primaryImage')"
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                      />
                     </div>
                   </div>
 
                   <!-- Secondary Image -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Image</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#042EFF] transition-colors">
-                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                      <div class="mt-2">
-                        <label for="secondary-image" class="cursor-pointer">
-                          <span class="block text-xs font-medium text-gray-900">Upload secondary image</span>
+                    <div
+                      class="relative group border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
+                      :class="[
+                        dragOver.secondaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 hover:border-[#042EFF]',
+                        imagePreviews.secondaryImage ? 'p-2' : 'p-6'
+                      ]"
+                      @click="triggerFileDialog('secondary-image')"
+                      @dragover="onDragOver($event, 'secondaryImage')"
+                      @dragleave="onDragLeave($event, 'secondaryImage')"
+                      @drop="onDrop($event, 'secondaryImage')"
+                    >
+                      <template v-if="imagePreviews.secondaryImage">
+                        <img :src="imagePreviews.secondaryImage" alt="Secondary Preview" class="mx-auto max-h-40 object-contain rounded" />
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-medium rounded transition-opacity">
+                          <span>Click or Drop to Replace</span>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div class="mt-2">
+                          <span class="block text-xs font-medium text-gray-900">Drag & Drop or Click</span>
                           <span class="block text-xs text-gray-500">Alternative view</span>
-                        </label>
-                        <input 
-                          id="secondary-image"
-                          @change="handleImageUpload($event, 'secondaryImage')"
-                          type="file" 
-                          accept="image/*"
-                          class="hidden"
-                        >
-                      </div>
+                        </div>
+                      </template>
+                      <input
+                        id="secondary-image"
+                        @change="handleImageUpload($event, 'secondaryImage')"
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                      />
                     </div>
                   </div>
 
                   <!-- Tertiary Image -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tertiary Image</label>
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#042EFF] transition-colors">
-                      <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
-                      <div class="mt-2">
-                        <label for="tertiary-image" class="cursor-pointer">
-                          <span class="block text-xs font-medium text-gray-900">Upload tertiary image</span>
+                    <div
+                      class="relative group border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
+                      :class="[
+                        dragOver.tertiaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 hover:border-[#042EFF]',
+                        imagePreviews.tertiaryImage ? 'p-2' : 'p-6'
+                      ]"
+                      @click="triggerFileDialog('tertiary-image')"
+                      @dragover="onDragOver($event, 'tertiaryImage')"
+                      @dragleave="onDragLeave($event, 'tertiaryImage')"
+                      @drop="onDrop($event, 'tertiaryImage')"
+                    >
+                      <template v-if="imagePreviews.tertiaryImage">
+                        <img :src="imagePreviews.tertiaryImage" alt="Tertiary Preview" class="mx-auto max-h-40 object-contain rounded" />
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-medium rounded transition-opacity">
+                          <span>Click or Drop to Replace</span>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <svg class="mx-auto h-8 w-8 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div class="mt-2">
+                          <span class="block text-xs font-medium text-gray-900">Drag & Drop or Click</span>
                           <span class="block text-xs text-gray-500">Detail view</span>
-                        </label>
-                        <input 
-                          id="tertiary-image"
-                          @change="handleImageUpload($event, 'tertiaryImage')"
-                          type="file" 
-                          accept="image/*"
-                          class="hidden"
-                        >
-                      </div>
+                        </div>
+                      </template>
+                      <input
+                        id="tertiary-image"
+                        @change="handleImageUpload($event, 'tertiaryImage')"
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                      />
                     </div>
                   </div>
                 </div>
