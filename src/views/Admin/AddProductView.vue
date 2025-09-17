@@ -15,6 +15,11 @@ const existingProductsDatabase = [
     originalPrice: 150000,
     discountedPrice: 145000,
     description: 'Latest iPhone with Pro camera system and A17 Pro chip. Features titanium design and advanced photography capabilities.',
+    images: [
+      'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&h=800&fit=crop&crop=center', // primary - front view
+      'https://images.unsplash.com/photo-1512499617640-c74ae3a79d37?w=800&h=800&fit=crop&crop=center', // secondary - angled
+      'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=800&h=800&fit=crop&crop=center'  // tertiary - detail
+    ],
     specifications: {
       storage: '256GB',
       ram: '8GB',
@@ -32,6 +37,11 @@ const existingProductsDatabase = [
     originalPrice: 140000,
     discountedPrice: 135000,
     description: 'Premium flagship with S Pen, exceptional camera zoom, and AI features.',
+    images: [
+      'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&h=800&fit=crop&crop=center', // primary - front
+      'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=800&h=800&fit=crop&crop=center', // secondary - stylized
+      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&h=800&fit=crop&crop=center'  // tertiary - accessory view
+    ],
     specifications: {
       storage: '512GB',
       ram: '12GB',
@@ -49,6 +59,11 @@ const existingProductsDatabase = [
     originalPrice: 220000,
     discountedPrice: 215000,
     description: 'Professional laptop with M3 Pro chip, Liquid Retina XDR display, and all-day battery life.',
+    images: [
+      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&h=800&fit=crop&crop=center', // primary - open
+      'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=800&h=800&fit=crop&crop=center', // secondary - desk context
+      'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=800&h=800&fit=crop&crop=center'  // tertiary - keyboard / detail
+    ],
     specifications: {
       processor: 'Apple M3 Pro',
       ram: '18GB',
@@ -67,6 +82,11 @@ const existingProductsDatabase = [
     originalPrice: 110000,
     discountedPrice: 105000,
     description: 'Ultra-portable premium laptop with InfinityEdge display and exceptional build quality.',
+    images: [
+      'https://images.unsplash.com/photo-1587614295999-6c1c3a7ebf67?w=800&h=800&fit=crop&crop=center', // primary - open
+      'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&h=800&fit=crop&crop=center', // secondary - side
+      'https://images.unsplash.com/photo-1587614296428-3e248f90c4b5?w=800&h=800&fit=crop&crop=center'  // tertiary - hinge/detail (fallback if missing original)
+    ],
     specifications: {
       processor: 'Intel Core i7-1360P',
       ram: '16GB',
@@ -85,6 +105,11 @@ const existingProductsDatabase = [
     originalPrice: 120000,
     discountedPrice: 115000,
     description: 'Premium QLED TV with Quantum Dot technology, vibrant colors, and smart Tizen OS.',
+    images: [
+      'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&h=800&fit=crop&crop=center', // primary - living room
+      'https://images.unsplash.com/photo-1601944179066-29786cb9d32a?w=800&h=800&fit=crop&crop=center', // secondary - ambient
+      'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=800&h=800&fit=crop&crop=center'  // tertiary - side profile
+    ],
     specifications: {
       screenSize: '65"',
       resolution: '4K Ultra HD',
@@ -102,6 +127,11 @@ const existingProductsDatabase = [
     originalPrice: 180000,
     discountedPrice: 175000,
     description: 'Self-lit OLED pixels deliver perfect blacks, infinite contrast, and stunning picture quality.',
+    images: [
+      'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800&h=800&fit=crop&crop=center', // primary - panel
+      'https://images.unsplash.com/photo-1601944179066-29786cb9d32a?w=800&h=800&fit=crop&crop=center', // secondary - ambient
+      'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=800&h=800&fit=crop&crop=center'  // tertiary - detail
+    ],
     specifications: {
       screenSize: '55"',
       resolution: '4K Ultra HD',
@@ -119,6 +149,11 @@ const existingProductsDatabase = [
     originalPrice: 48000,
     discountedPrice: 45000,
     description: 'Most advanced Apple Watch with S9 chip, Double Tap gesture, and comprehensive health tracking.',
+    images: [
+      'https://images.unsplash.com/photo-1603791452906-bb9a23f6d51a?w=800&h=800&fit=crop&crop=center', // primary - front
+      'https://images.unsplash.com/photo-1601925260368-ae2f83c97436?w=800&h=800&fit=crop&crop=center', // secondary - band focus
+      'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=800&h=800&fit=crop&crop=center'  // tertiary - lifestyle
+    ],
     specifications: {
       displayType: 'Always-On Retina LTPO OLED',
       caseSize: '45mm',
@@ -136,6 +171,11 @@ const existingProductsDatabase = [
     originalPrice: 38000,
     discountedPrice: 35000,
     description: 'Feature-rich smartwatch with advanced health monitoring and long-lasting battery.',
+    images: [
+      'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=800&h=800&fit=crop&crop=center', // primary - front alt
+      'https://images.unsplash.com/photo-1601925260368-ae2f83c97436?w=800&h=800&fit=crop&crop=center', // secondary - angle
+      'https://images.unsplash.com/photo-1603791452906-bb9a23f6d51a?w=800&h=800&fit=crop&crop=center'  // tertiary - alternate band
+    ],
     specifications: {
       displayType: 'Super AMOLED',
       caseSize: '44mm',
@@ -289,16 +329,28 @@ const selectProduct = (product) => {
     })
   }
 
-  // Reset images and supplier (unique per new entry)
-  newProduct.primaryImage = null
-  newProduct.secondaryImage = null
-  newProduct.tertiaryImage = null
+  // Images: map array indices to semantic roles (0 primary, 1 secondary, 2 tertiary)
+  const imgs = Array.isArray(product.images) ? product.images : []
+  const roleMap = [
+    { field: 'primaryImage', label: 'Primary (Hero)' },
+    { field: 'secondaryImage', label: 'Secondary (Angle)' },
+    { field: 'tertiaryImage', label: 'Tertiary (Detail)' }
+  ]
+  roleMap.forEach((r, idx) => {
+    const src = imgs[idx] || null
+    if (src) {
+      imagePreviews[r.field] = src
+      newProduct[r.field] = src
+    } else {
+      imagePreviews[r.field] = null
+      newProduct[r.field] = null
+    }
+  })
   newProduct.supplier = ''
 
   // Defer turning off auto-fill until DOM has had a tick to render bound values
   nextTick(() => {
     isAutoFilling.value = false
-    console.log('[selectProduct] completed for', product.name)
   })
 
   // Hide suggestions and set search
@@ -314,14 +366,13 @@ const selectProduct = (product) => {
 // Watchers
 watch(() => newProduct.category, (newCategory) => {
   // Only reset specifications if not auto-filling
-  console.log(isAutoFilling.value)
   if (!isAutoFilling.value) {
     newProduct.specifications = { ...specificationTemplates[newCategory] }
     console.log('Category changed to:', newCategory, '- Reset specifications')
   } else {
     console.log('Category changed to:', newCategory, '- Skipped reset (auto-filling)')
   }
-}, { immediate: true })
+})
 
 watch(() => newProduct.name, (newName) => {
 
@@ -373,7 +424,6 @@ const handleImageUpload = (eventOrFile, imageType) => {
 const onDragOver = (e, imageType) => {
   e.preventDefault()
   dragOver[imageType] = true
-  console.log(imageType)
 }
 const onDragLeave = (e, imageType) => {
   e.preventDefault()
