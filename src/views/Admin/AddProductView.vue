@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed, watch } from 'vue'
+import { reactive, ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
@@ -152,7 +152,7 @@ const existingProductsDatabase = [
 const newProduct = reactive({
   name: '',
   brand: '',
-  category: 'Phones',
+  category: '',
   originalPrice: '',
   discountedPrice: '',
   stock: '',
@@ -170,40 +170,46 @@ const showNameSuggestions = ref(false)
 const nameSelected = ref(false)
 const searchQuery = ref('')
 const autoFillNotification = ref(false)
+const isAutoFilling = ref(false)
 
 // Category-specific specification templates
 const specificationTemplates = {
   Phones: {
     storage: '',
-    color: '',
-    display: '',
-    processor: '',
+    ram: '',
+    displaySize: '',
     camera: '',
-    battery: ''
+    battery: '',
+    operatingSystem: '',
+    color: ''
   },
   Laptops: {
     processor: '',
-    memory: '',
-    storage: '',
-    display: '',
-    battery: '',
-    ports: ''
+    ram: '',
+    storageType: '',
+    storageSize: '',
+    graphicsCard: '',
+    displaySize: '',
+    operatingSystem: '',
+    batteryLife: ''
   },
   Televisions: {
-    display: '',
+    screenSize: '',
     resolution: '',
-    hdr: '',
-    smartTV: '',
-    audio: '',
-    connectivity: ''
+    displayTechnology: '',
+    smartTvOs: '',
+    hdrSupport: '',
+    refreshRate: '',
+    audioOutput: ''
   },
   Smartwatches: {
-    size: '',
-    display: '',
-    processor: '',
-    storage: '',
-    battery: '',
-    features: ''
+    displayType: '',
+    caseSize: '',
+    operatingSystem: '',
+    batteryLife: '',
+    waterResistance: '',
+    connectivity: '',
+    healthSensors: ''
   }
 }
 
@@ -225,42 +231,86 @@ const finalPrice = computed(() => {
 
 // Auto-fill function when product is selected
 const selectProduct = (product) => {
-  // Fill basic product information
+  // Guard: product must exist
+  if (!product) return
+  console.log('[selectProduct] start for', product.name)
+
+  // Signal to watcher not to wipe specs while we orchestrate updates
+  isAutoFilling.value = true
+
+  // Detect if category is changing (affects which spec template to seed)
+  const previousCategory = newProduct.category
+  const nextCategory = product.category
+  const categoryChanged = previousCategory !== nextCategory
+  console.log('[selectProduct] categoryChanged:', categoryChanged, 'prev:', previousCategory, 'next:', nextCategory)
+
+  // Assign basic fields first (except specs) so UI shows immediate context
   newProduct.name = product.name
   newProduct.brand = product.brand
-  newProduct.category = product.category
+  newProduct.category = nextCategory
   newProduct.originalPrice = product.originalPrice
   newProduct.discountedPrice = product.discountedPrice
   newProduct.description = product.description
-  
-  // Auto-fill specifications based on category
-  newProduct.specifications = { ...product.specifications }
-  
-  // Reset images and supplier (these should be unique per entry)
+
+  // Ensure we keep the same reactive object reference for specs to avoid losing bindings
+  // 1. If category changed: start from that category's blank template
+  if (categoryChanged) {
+    const template = specificationTemplates[nextCategory] || {}
+    // Replace keys in-place to keep reactivity (avoid reassigning whole object)
+    // Remove old keys not in template
+    Object.keys(newProduct.specifications).forEach(k => { 
+      if (!(k in template)){
+        delete newProduct.specifications[k]
+      }
+    })
+    // Add template keys
+    Object.keys(template).forEach(k => { 
+      if (!(k in newProduct.specifications)){
+        newProduct.specifications[k] = template[k]
+      }
+    })
+  }
+
+  // 2. Merge actual product specification values (in-place)
+  if (product.specifications) {
+    Object.entries(product.specifications).forEach(([k, v]) => {
+      newProduct.specifications[k] = v
+    })
+  }
+
+  // Reset images and supplier (unique per new entry)
   newProduct.primaryImage = null
   newProduct.secondaryImage = null
   newProduct.tertiaryImage = null
   newProduct.supplier = ''
-  
-  // Hide suggestions and clear search
+
+  // Defer turning off auto-fill until DOM has had a tick to render bound values
+  nextTick(() => {
+    isAutoFilling.value = false
+    console.log('[selectProduct] completed for', product.name)
+  })
+
+  // Hide suggestions and set search
   nameSelected.value = true
   showNameSuggestions.value = false
   searchQuery.value = product.name
-  
+
   // Show auto-fill notification
   autoFillNotification.value = true
-  setTimeout(() => {
-    autoFillNotification.value = false
-  }, 3000)
-  
-  console.log(`Auto-filled data for ${product.name}`)
+  setTimeout(() => { autoFillNotification.value = false }, 3000)
 }
 
 // Watchers
 watch(() => newProduct.category, (newCategory) => {
-  // Reset specifications when category changes
-  newProduct.specifications = { ...specificationTemplates[newCategory] }
-})
+  // Only reset specifications if not auto-filling
+  console.log(isAutoFilling.value)
+  if (!isAutoFilling.value) {
+    newProduct.specifications = { ...specificationTemplates[newCategory] }
+    console.log('Category changed to:', newCategory, '- Reset specifications')
+  } else {
+    console.log('Category changed to:', newCategory, '- Skipped reset (auto-filling)')
+  }
+}, { immediate: true })
 
 watch(() => newProduct.name, (newName) => {
 
@@ -268,20 +318,16 @@ watch(() => newProduct.name, (newName) => {
     showNameSuggestions.value = false
     return
   }
-  console.log(newName)
   searchQuery.value = newName
   showNameSuggestions.value = newName.length > 0
 })
-
-// Initialize specifications for default category
-newProduct.specifications = { ...specificationTemplates[newProduct.category] }
 
 // Methods
 const resetForm = () => {
   Object.assign(newProduct, {
     name: '',
     brand: '',
-    category: 'Phones',
+    category: '',
     originalPrice: '',
     discountedPrice: '',
     stock: '',
@@ -354,12 +400,6 @@ const addProduct = async () => {
 const goBack = () => {
   router.push('/admin/stock')
 }
-
-const handleBlur = () => {
-  setTimeout(() => {
-    showNameSuggestions.value = false
-  }, 100)
-}
 </script>
 
 <template>
@@ -388,18 +428,6 @@ const handleBlur = () => {
                 </svg>
                 Back to Stock
               </button>
-            </div>
-          </div>
-
-          <!-- Auto-fill Notification -->
-        <div v-if="autoFillNotification" 
-               class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center animate-fade-in">
-            <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div>
-              <p class="text-green-800 font-medium">Product data auto-filled successfully!</p>
-              <p class="text-green-600 text-sm">Please review and update supplier information before submitting.</p>
             </div>
           </div>
 
@@ -465,6 +493,7 @@ const handleBlur = () => {
                       required
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                     >
+                      <option value="">Select Category</option>
                       <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
                     </select>
                   </div>
@@ -625,24 +654,28 @@ const handleBlur = () => {
                       <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 256GB">
                     </div>
                     <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">RAM</label>
+                      <input v-model="newProduct.specifications.ram" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 8GB">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Size</label>
+                      <input v-model="newProduct.specifications.displaySize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 6.7">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Camera</label>
+                      <input v-model="newProduct.specifications.camera" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 48MP Pro Camera System">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
+                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4441mAh">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
+                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., iOS 17">
+                    </div>
+                    <div class="md:col-span-2">
                       <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
                       <input v-model="newProduct.specifications.color" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Natural Titanium">
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
-                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 6.7 Super Retina XDR">
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
-                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., A17 Pro chip">
-                    </div>
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Camera</label>
-                      <input v-model="newProduct.specifications.camera" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 48MP Main + 12MP Ultra Wide">
-                    </div>
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
-                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Up to 29 hours video playback">
                     </div>
                   </div>
 
@@ -650,87 +683,103 @@ const handleBlur = () => {
                   <div v-if="newProduct.category === 'Laptops'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
-                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 chip">
+                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 Pro">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Memory</label>
-                      <input v-model="newProduct.specifications.memory" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 16GB unified memory">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">RAM</label>
+                      <input v-model="newProduct.specifications.ram" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18GB">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
-                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 512GB SSD">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage Type</label>
+                      <input v-model="newProduct.specifications.storageType" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., SSD">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
-                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 14.2 Liquid Retina XDR">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage Size</label>
+                      <input v-model="newProduct.specifications.storageSize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 1TB">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
-                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Up to 18 hours">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Graphics Card</label>
+                      <input v-model="newProduct.specifications.graphicsCard" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 Pro GPU">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Ports</label>
-                      <input v-model="newProduct.specifications.ports" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 3x Thunderbolt 4, HDMI">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Size</label>
+                      <input v-model="newProduct.specifications.displaySize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 14.2">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
+                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., macOS Sonoma">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery Life</label>
+                      <input v-model="newProduct.specifications.batteryLife" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18 hours">
                     </div>
                   </div>
 
                   <!-- Television Specifications -->
                   <div v-if="newProduct.category === 'Televisions'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
-                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 65 4K QLED">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Screen Size</label>
+                      <input v-model="newProduct.specifications.screenSize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 65">
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Resolution</label>
-                      <input v-model="newProduct.specifications.resolution" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 3840 x 2160">
+                      <input v-model="newProduct.specifications.resolution" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4K Ultra HD">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">HDR</label>
-                      <input v-model="newProduct.specifications.hdr" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., HDR10+, Quantum HDR">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Technology</label>
+                      <input v-model="newProduct.specifications.displayTechnology" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Neo QLED">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Smart TV</label>
-                      <input v-model="newProduct.specifications.smartTV" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Tizen OS with streaming apps">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Smart TV OS</label>
+                      <input v-model="newProduct.specifications.smartTvOs" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Tizen OS">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">HDR Support</label>
+                      <input v-model="newProduct.specifications.hdrSupport" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., HDR10+ & Dolby Vision">
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Refresh Rate</label>
+                      <input v-model="newProduct.specifications.refreshRate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 120Hz">
                     </div>
                     <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Audio</label>
-                      <input v-model="newProduct.specifications.audio" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Dolby Atmos, Object Tracking Sound">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Audio Output</label>
+                      <input v-model="newProduct.specifications.audioOutput" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 60W Object Tracking Sound">
                     </div>
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Connectivity</label>
-                      <input v-model="newProduct.specifications.connectivity" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4x HDMI, 2x USB, Wi-Fi 6">
+                  </div>
                     </div>
                   </div>
 
                   <!-- Smartwatch Specifications -->
                   <div v-if="newProduct.category === 'Smartwatches'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Size</label>
-                      <input v-model="newProduct.specifications.size" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 45mm case">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Type</label>
+                      <input v-model="newProduct.specifications.displayType" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Always-On Retina LTPO OLED">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display</label>
-                      <input v-model="newProduct.specifications.display" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Always-On Retina LTPO OLED">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Case Size</label>
+                      <input v-model="newProduct.specifications.caseSize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 45mm">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
-                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., S9 SiP with 4-core Neural Engine">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
+                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., watchOS 10">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
-                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 64GB">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery Life</label>
+                      <input v-model="newProduct.specifications.batteryLife" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18 hours">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
-                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Up to 18 hours">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Water Resistance</label>
+                      <input v-model="newProduct.specifications.waterResistance" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 50m">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Features</label>
-                      <input v-model="newProduct.specifications.features" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., ECG, Blood Oxygen, Temperature sensing">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Connectivity</label>
+                      <input v-model="newProduct.specifications.connectivity" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Wi-Fi + Cellular">
+                    </div>
+                    <div class="md:col-span-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">Health Sensors</label>
+                      <input v-model="newProduct.specifications.healthSensors" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., ECG, Blood Oxygen, Temperature">
                     </div>
                   </div>
-                </div>
-              </div>
 
               <!-- Description -->
               <div>
@@ -773,8 +822,27 @@ const handleBlur = () => {
               </div>
             </form>
           </div>
-      </div>
+        </div>
       </main>
+    </div>
+
+    <!-- Floating Auto-fill Notification -->
+    <div v-if="autoFillNotification" 
+         class="fixed top-6 right-6 z-50 bg-white border border-green-200 rounded-lg shadow-lg p-4 flex items-center max-w-md animate-slide-in-right">
+      <div class="flex-shrink-0">
+        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+      </div>
+      <div class="ml-3 flex-1">
+        <p class="text-sm font-medium text-green-800">Auto-filled successfully!</p>
+        <p class="text-xs text-green-600 mt-1">Please review supplier information before submitting</p>
+      </div>
+      <button @click="autoFillNotification = false" class="ml-4 flex-shrink-0 text-green-400 hover:text-green-600 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -912,18 +980,30 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Auto-fill notification animation */
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+.animate-slide-in-right {
+  animation: slideInRight 0.4s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateX(100%);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
+}
+
+/* Floating notification styling */
+.fixed.top-6.right-6 {
+  backdrop-filter: blur(10px);
+  border-left: 4px solid #10b981;
+}
+
+.fixed.top-6.right-6:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease-out;
 }
 </style>
