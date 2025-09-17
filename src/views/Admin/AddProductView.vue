@@ -167,6 +167,7 @@ const newProduct = reactive({
 
 const isSubmitting = ref(false)
 const showNameSuggestions = ref(false)
+const nameSelected = ref(false)
 const searchQuery = ref('')
 const autoFillNotification = ref(false)
 
@@ -242,6 +243,7 @@ const selectProduct = (product) => {
   newProduct.supplier = ''
   
   // Hide suggestions and clear search
+  nameSelected.value = true
   showNameSuggestions.value = false
   searchQuery.value = product.name
   
@@ -261,6 +263,12 @@ watch(() => newProduct.category, (newCategory) => {
 })
 
 watch(() => newProduct.name, (newName) => {
+
+  if(nameSelected.value){
+    showNameSuggestions.value = false
+    return
+  }
+  console.log(newName)
   searchQuery.value = newName
   showNameSuggestions.value = newName.length > 0
 })
@@ -346,6 +354,12 @@ const addProduct = async () => {
 const goBack = () => {
   router.push('/admin/stock')
 }
+
+const handleBlur = () => {
+  setTimeout(() => {
+    showNameSuggestions.value = false
+  }, 100)
+}
 </script>
 
 <template>
@@ -378,17 +392,7 @@ const goBack = () => {
           </div>
 
           <!-- Auto-fill Notification -->
-          <div v-if="autoFillNotification" 
-               class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center animate-fade-in">
-            <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <div>
-              <p class="text-green-800 font-medium">Product data auto-filled successfully!</p>
-              <p class="text-green-600 text-sm">Please review and update supplier information before submitting.</p>
-            </div>
-          <!-- Auto-fill Notification -->
-          <div v-if="autoFillNotification" 
+        <div v-if="autoFillNotification" 
                class="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center animate-fade-in">
             <svg class="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -410,8 +414,8 @@ const goBack = () => {
                     <label class="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
                     <input 
                       v-model="newProduct.name"
-                      @focus="showNameSuggestions = true"
-                      @blur="setTimeout(() => showNameSuggestions = false, 200)"
+                      @focus="showNameSuggestions = true, nameSelected = false"
+                      @blur="showNameSuggestions = false"
                       type="text" 
                       required
                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
@@ -424,7 +428,7 @@ const goBack = () => {
                       <div 
                         v-for="product in filteredProducts" 
                         :key="product.name"
-                        @click="selectProduct(product)"
+                        @mousedown="selectProduct(product)"
                         class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                       >
                         <div class="flex justify-between items-center">
@@ -769,7 +773,6 @@ const goBack = () => {
               </div>
             </form>
           </div>
-        </div>
       </div>
       </main>
     </div>
