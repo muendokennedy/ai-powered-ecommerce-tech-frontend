@@ -188,7 +188,6 @@ function removeImage(slot) {
                   </div>
                   <div>
                     <label class="flex text-sm font-medium text-gray-700 mb-2 items-center">Category
-                      <span class="ml-2 inline-flex items-center text-xs px-2 py-0.5 rounded bg-gray-200 text-gray-600">Locked</span>
                     </label>
                     <div class="relative">
                       <input :value="form.category" disabled class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed" />
