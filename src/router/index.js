@@ -90,6 +90,11 @@ const router = createRouter({
       component: () => import('@/views/Admin/AnalyticsView.vue')
     },
     {
+      path: '/admin/orders',
+      name: 'admin-orders',
+      component: () => import('@/views/Admin/OrdersView.vue')
+    },
+    {
       path: '/admin/stock',
       name: 'admin-stock',
       component: () => import('@/views/Admin/StockView.vue')
