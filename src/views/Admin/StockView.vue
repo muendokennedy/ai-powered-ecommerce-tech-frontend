@@ -356,8 +356,16 @@ const goToImage = (index) => {
 }
 
 const editProduct = (product) => {
-  alert(`Editing: ${product.name}`)
+  try{
+    sessionStorage.setItem('editingProduct', JSON.stringify(product))
+  }catch(err){
+    console.log('Failed to store the product in the session')
+  }
+  showProductModal.value = false
+  
+  router.push({ name: 'admin-edit-product', params: { id: product.id  }})
 }
+
 
 const deleteProduct = (productId) => {
   if (confirm('Are you sure you want to delete this product?')) {
