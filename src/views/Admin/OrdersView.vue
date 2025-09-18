@@ -1,6 +1,6 @@
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 
@@ -10,11 +10,37 @@ const selectedOrder = ref(null)
 const orderToDelete = ref(null)
 const searchQuery = ref('')
 const statusFilter = ref('All')
+// Pending status (for unsaved change)
+const pendingStatus = ref('')
+// Saving state for status updates
+const isSavingStatus = ref(false)
+const justSavedStatus = ref(false)
 
-// Orders data
+// Global statuses (includes Cancelled for filtering, but dropdown will exclude it)
+const statuses = ['All', 'Pending', 'Processing', 'In Transit', 'Delivered', 'Cancelled']
+// Status options for update select (exclude Cancelled; cancellation via button)
+const statusOptions = ['Pending', 'Processing', 'In Transit', 'Delivered']
+
+// Notification state
+const activeNotification = ref(null) // { id, type, title, message }
+let notificationTimeout = null
+
+function showNotification({ type = 'info', title = '', message = '', duration = 5000 }) {
+  const id = Date.now()
+  activeNotification.value = { id, type, title, message }
+  if (notificationTimeout) clearTimeout(notificationTimeout)
+  notificationTimeout = setTimeout(() => {
+    if (activeNotification.value && activeNotification.value.id === id) {
+      activeNotification.value = null
+    }
+  }, duration)
+}
+
+// Orders data (clean)
 const orders = reactive([
   {
-    id: 'ORD-2024-001',    trackingNumber: 'TRK-5A8B9C2D',
+    id: 'ORD-2024-001',
+    trackingNumber: 'TRK-5A8B9C2D',
     customer: {
       id: 'CUST-001',
       name: 'John Doe',
@@ -45,7 +71,13 @@ const orders = reactive([
     shippingCost: 15.99,
     tax: 95.92,
     discount: 0,
-    notes: 'Customer requested expedited shipping'
+    paymentDetails: {
+      cardHolder: 'John Doe',
+      cardLast4: '8421',
+      cardBrand: 'Visa',
+      authCode: 'AUTH-58FD2A',
+      transactionId: 'TXN-CC-2024-0001'
+    }
   },
   {
     id: 'ORD-2024-002',
@@ -88,7 +120,11 @@ const orders = reactive([
     shippingCost: 0,
     tax: 226.24,
     discount: 50,
-    notes: 'Bundle discount applied'
+    paymentDetails: {
+      paypalPayerId: 'PAYER-8892JKL',
+      paypalTransactionId: 'TXN-PP-2024-2099',
+      paypalEmail: 'payer.jane@paypal.com'
+    }
   },
   {
     id: 'ORD-2024-003',
@@ -120,10 +156,16 @@ const orders = reactive([
     paymentStatus: 'Paid',
     orderDate: '2024-09-08',
     deliveryDate: '2024-09-18',
-    shippingCost: 12.99,
-    tax: 103.92,
+    shippingCost: 0,
+    tax: 104.0,
     discount: 0,
-    notes: ''
+    paymentDetails: {
+      cardHolder: 'Mike Johnson',
+      cardLast4: '0911',
+      cardBrand: 'Mastercard',
+      authCode: 'AUTH-AC9102',
+      transactionId: 'TXN-CC-2024-0042'
+    }
   },
   {
     id: 'ORD-2024-004',
@@ -158,108 +200,237 @@ const orders = reactive([
     shippingCost: 49.99,
     tax: 151.92,
     discount: 100,
-    notes: 'Waiting for payment confirmation'
+    paymentDetails: {
+      bankName: 'First National Bank',
+      accountName: 'Sarah Wilson',
+      reference: 'BNK-REF-554420',
+      swiftCode: 'FNBUUS33',
+      expectedClearance: '2024-09-17'
+    }
   }
 ])
 
-const statuses = ['All', 'Pending', 'Processing', 'In Transit', 'Delivered']
-
-const getStatusColor = (status) => {
+function getStatusColor(status) {
   switch (status) {
-    case 'Delivered': return 'bg-green-100 text-green-800'
-    case 'Processing': return 'bg-blue-100 text-blue-800'
-    case 'In Transit': return 'bg-purple-100 text-purple-800'
-    case 'Pending': return 'bg-yellow-100 text-yellow-800'
-    default: return 'bg-gray-100 text-gray-800'
+    case 'Delivered':
+      return 'bg-green-100 text-green-800';
+    case 'Processing':
+      return 'bg-blue-100 text-blue-800';
+    case 'In Transit':
+      return 'bg-purple-100 text-purple-800';
+    case 'Pending':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'Cancelled':
+      return 'bg-red-100 text-red-700';
+    default:
+      return 'bg-gray-100 text-gray-800';
   }
 }
 
-const filteredOrders = () => {
-  let filtered = orders
-  
+const filteredOrders = computed(() => {
+  let filtered = orders;
   if (statusFilter.value !== 'All') {
-    filtered = filtered.filter(order => order.status === statusFilter.value)
+    filtered = filtered.filter(order => order.status === statusFilter.value);
   }
-  
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(order => 
+    const query = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(order =>
       order.id.toLowerCase().includes(query) ||
       order.trackingNumber.toLowerCase().includes(query) ||
       order.customer.name.toLowerCase().includes(query) ||
       order.customer.email.toLowerCase().includes(query)
-    )
+    );
   }
-  
-  return filtered
+  return filtered;
+});
+
+function viewOrderDetails(order) {
+  selectedOrder.value = order;
+  showOrderDetailsModal.value = true;
+  // Initialize pending status
+  if (order) pendingStatus.value = order.status
 }
 
-const viewOrderDetails = (order) => {
-  selectedOrder.value = order
-  showOrderDetailsModal.value = true
+function confirmDeleteOrder(order) {
+  orderToDelete.value = order;
+  showDeleteConfirmModal.value = true;
 }
 
-const confirmDeleteOrder = (order) => {
-  orderToDelete.value = order
-  showDeleteConfirmModal.value = true
+function deleteOrder() {
+  if (!orderToDelete.value) {
+    return;
+  }
+  const index = orders.findIndex(o => o.id === orderToDelete.value.id);
+  if (index > -1) {
+    orders.splice(index, 1);
+  }
+  showDeleteConfirmModal.value = false;
+  orderToDelete.value = null;
 }
 
-const deleteOrder = () => {
-  if (orderToDelete.value) {
-    const index = orders.findIndex(o => o.id === orderToDelete.value.id)
-    if (index > -1) {
-      orders.splice(index, 1)
+function closeOrderDetailsModal() {
+  showOrderDetailsModal.value = false;
+  selectedOrder.value = null;
+  pendingStatus.value = ''
+}
+
+function closeDeleteConfirmModal() {
+  showDeleteConfirmModal.value = false;
+  orderToDelete.value = null;
+}
+
+function updateOrderStatus(newStatus) {
+  if (!selectedOrder.value) {
+    return;
+  }
+  // Just update pending status; actual mutation done on save
+  pendingStatus.value = newStatus
+}
+
+function cancelOrder() {
+  if (!selectedOrder.value) return
+  if (selectedOrder.value.status === 'Cancelled') return
+  updateOrderStatus('Cancelled')
+  // Force save immediately with notification
+  saveStatusChange(() => {
+    showNotification({
+      type: 'warning',
+      title: 'Order Cancelled',
+      message: 'Refund / reversal process will begin within 5 minutes.'
+    })
+  })
+}
+
+function generateReceipt() {
+  if (!selectedOrder.value) {
+    return;
+  }
+  alert(`Receipt generated for order ${selectedOrder.value.id}`);
+}
+
+function generateInvoice() {
+  if (!selectedOrder.value) {
+    return;
+  }
+  alert(`Invoice generated for order ${selectedOrder.value.id}`);
+}
+
+function deleteOrderFromDetails() {
+  if (!selectedOrder.value) {
+    return;
+  }
+  confirmDeleteOrder(selectedOrder.value);
+  closeOrderDetailsModal();
+}
+
+// Derived data for selected order details modal
+const selectedOrderComputed = computed(() => selectedOrder.value || null);
+
+// Track if status changed
+const hasStatusChanged = computed(() => {
+  if (!selectedOrderComputed.value) return false
+  return pendingStatus.value && pendingStatus.value !== selectedOrderComputed.value.status
+})
+
+function saveStatusChange(afterCommitCb) {
+  if (!selectedOrderComputed.value) return
+  if (!hasStatusChanged.value) return
+  if (isSavingStatus.value) return
+  isSavingStatus.value = true
+  justSavedStatus.value = false
+  const orderId = selectedOrderComputed.value.id
+  const newStatus = pendingStatus.value
+  setTimeout(() => {
+    const idx = orders.findIndex(o => o.id === orderId)
+    if (idx > -1) {
+      orders[idx].status = newStatus
+      if (selectedOrderComputed.value && selectedOrderComputed.value.id === orderId) {
+        selectedOrderComputed.value.status = newStatus
+      }
     }
-    showDeleteConfirmModal.value = false
-    orderToDelete.value = null
+    isSavingStatus.value = false
+    justSavedStatus.value = true
+    if (afterCommitCb) afterCommitCb()
+    setTimeout(() => { justSavedStatus.value = false }, 1600)
+  }, 1000)
+}
+
+const orderFinancials = computed(() => {
+  if (!selectedOrderComputed.value) {
+    return null;
   }
-}
+  const o = selectedOrderComputed.value;
+  const subtotal = o.totalAmount - o.tax - o.shippingCost + o.discount;
+  const shipping = o.shippingCost;
+  const tax = o.tax;
+  const discount = o.discount;
+  const total = o.totalAmount;
+  const avgItemPrice = o.products.length ? subtotal / o.products.length : 0;
+  const totalItems = o.products.reduce((sum, p) => sum + p.quantity, 0);
+  return { subtotal, shipping, tax, discount, total, avgItemPrice, totalItems };
+});
 
-const closeOrderDetailsModal = () => {
-  showOrderDetailsModal.value = false
-  selectedOrder.value = null
-}
-
-const closeDeleteConfirmModal = () => {
-  showDeleteConfirmModal.value = false
-  orderToDelete.value = null
-}
-
-const updateOrderStatus = (newStatus) => {
-  if (selectedOrder.value) {
-    selectedOrder.value.status = newStatus
-    const orderIndex = orders.findIndex(o => o.id === selectedOrder.value.id)
-    if (orderIndex > -1) {
-      orders[orderIndex].status = newStatus
-    }
+const statusTimeline = computed(() => {
+  if (!selectedOrderComputed.value) {
+    return [];
   }
-}
+  const statusOrder = ['Pending', 'Processing', 'In Transit', 'Delivered'];
+  const current = selectedOrderComputed.value.status;
+  return statusOrder.map(step => {
+    const index = statusOrder.indexOf(step);
+    const currentIndex = statusOrder.indexOf(current);
+    const completed = currentIndex > index || current === 'Cancelled';
+    const active = currentIndex === index && current !== 'Cancelled';
+    const cancelled = current === 'Cancelled';
+    return { step, completed, active, cancelled };
+  });
+});
 
-const cancelOrder = () => {
-  if (selectedOrder.value) {
-    updateOrderStatus('Cancelled')
-    alert('Order has been cancelled')
+const paymentBadge = computed(() => {
+  if (!selectedOrderComputed.value) return '';
+  const status = selectedOrderComputed.value.paymentStatus;
+  switch (status) {
+    case 'Paid':
+      return 'bg-green-100 text-green-700';
+    case 'Pending':
+      return 'bg-yellow-100 text-yellow-700';
+    case 'Failed':
+      return 'bg-red-100 text-red-700';
+    default:
+      return 'bg-gray-100 text-gray-700';
   }
-}
+});
 
-const generateReceipt = () => {
-  if (selectedOrder.value) {
-    alert(`Receipt generated for order ${selectedOrder.value.id}`)
-  }
-}
 
-const generateInvoice = () => {
-  if (selectedOrder.value) {
-    alert(`Invoice generated for order ${selectedOrder.value.id}`)
+// Build payment detail rows depending on method
+const paymentDetailRows = computed(() => {
+  if (!selectedOrderComputed.value) return [];
+  const { paymentMethod, paymentDetails = {} } = selectedOrderComputed.value;
+  const rows = [];
+  if (paymentMethod === 'Credit Card') {
+    if (paymentDetails.cardBrand) rows.push(['Card Brand', paymentDetails.cardBrand]);
+    if (paymentDetails.cardHolder) rows.push(['Card Holder', paymentDetails.cardHolder]);
+    if (paymentDetails.cardLast4) rows.push(['Card Last 4', '**** **** **** ' + paymentDetails.cardLast4]);
+    if (paymentDetails.authCode) rows.push(['Auth Code', paymentDetails.authCode]);
+    if (paymentDetails.transactionId) rows.push(['Transaction ID', paymentDetails.transactionId]);
+  } else if (paymentMethod === 'PayPal') {
+    if (paymentDetails.paypalEmail) rows.push(['PayPal Email', paymentDetails.paypalEmail]);
+    if (paymentDetails.paypalPayerId) rows.push(['Payer ID', paymentDetails.paypalPayerId]);
+    if (paymentDetails.paypalTransactionId) rows.push(['Transaction ID', paymentDetails.paypalTransactionId]);
+  } else if (paymentMethod === 'Bank Transfer') {
+    if (paymentDetails.bankName) rows.push(['Bank Name', paymentDetails.bankName]);
+    if (paymentDetails.accountName) rows.push(['Account Name', paymentDetails.accountName]);
+    if (paymentDetails.reference) rows.push(['Reference', paymentDetails.reference]);
+    if (paymentDetails.swiftCode) rows.push(['SWIFT Code', paymentDetails.swiftCode]);
+    if (paymentDetails.expectedClearance) rows.push(['Expected Clearance', paymentDetails.expectedClearance]);
+  } else if (paymentMethod === 'Mpesa' || paymentMethod === 'MPESA' || paymentMethod === 'M-Pesa') {
+    if (paymentDetails.mpesaNumber) rows.push(['Mpesa Number', paymentDetails.mpesaNumber]);
+    if (paymentDetails.mpesaName) rows.push(['Mpesa Name', paymentDetails.mpesaName]);
+    if (paymentDetails.mpesaCode) rows.push(['Mpesa Code', paymentDetails.mpesaCode]);
+    if (paymentDetails.transactionTime) rows.push(['Time', paymentDetails.transactionTime]);
   }
-}
-
-const deleteOrderFromDetails = () => {
-  if (selectedOrder.value) {
-    confirmDeleteOrder(selectedOrder.value)
-    closeOrderDetailsModal()
-  }
-}
+  return rows;
+});
 </script>
 
 <template>
@@ -324,7 +495,7 @@ const deleteOrderFromDetails = () => {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="order in filteredOrders()" :key="order.id" class="hover:bg-gray-50">
+                  <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900">{{ order.id }}</div>
                     </td>
@@ -334,46 +505,26 @@ const deleteOrderFromDetails = () => {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex -space-x-2 overflow-hidden">
-                        <img 
-                          v-for="(product) in order.products.slice(0, 3)" 
-                          :key="product.id"
-                          :src="product.image" 
-                          :alt="product.name"
-                          class="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover"
-                          :title="product.name"
-                        >
+                        <img v-for="(product) in order.products.slice(0, 3)" :key="product.id" :src="product.image" :alt="product.name" class="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover" :title="product.name" />
                         <div v-if="order.products.length > 3" class="flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 ring-2 ring-white text-xs font-medium text-gray-600">
                           +{{ order.products.length - 3 }}
                         </div>
                       </div>
                       <div class="text-xs text-gray-500 mt-1">{{ order.products.length }} item{{ order.products.length > 1 ? 's' : '' }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                      {{ order.trackingNumber }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      ${{ order.totalAmount.toLocaleString() }}
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{{ order.trackingNumber }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${{ order.totalAmount.toLocaleString() }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(order.status)]">
-                        {{ order.status }}
-                      </span>
+                      <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(order.status)]">{{ order.status }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ order.orderDate }}
-                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderDate }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex space-x-2">
                         <button @click="viewOrderDetails(order)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                          </svg>
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
                         <button @click="confirmDeleteOrder(order)" class="text-red-600 hover:text-red-800" title="Delete Order">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                          </svg>
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                       </div>
                     </td>
@@ -381,223 +532,256 @@ const deleteOrderFromDetails = () => {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
+          </div> <!-- end table wrapper card -->
+        </div> <!-- end max-w container -->
       </main>
-    </div>
+    </div> <!-- end flex-1 column -->
+  </div> <!-- end root flex layout -->
 
-    <!-- Order Details Modal -->
-    <div v-if="showOrderDetailsModal && selectedOrder" class="fixed backdrop-blur-2xl inset-0 z-50 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div class="absolute inset-0 bg-gray-500 opacity-75" @click="closeOrderDetailsModal"></div>
-        </div>
-
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-          <div class="bg-white px-6 py-6">
-            <!-- Header -->
-            <div class="flex items-start justify-between mb-6">
-              <div>
-                <h3 class="text-2xl leading-6 font-bold text-gray-900">Order Details</h3>
-                <p class="text-sm text-gray-500 mt-1">{{ selectedOrder.id }} • {{ selectedOrder.trackingNumber }}</p>
-              </div>
-              <button @click="closeOrderDetailsModal" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+  <!-- Order Details Modal (Enhanced) -->
+    <div v-if="showOrderDetailsModal && selectedOrderComputed" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 overflow-y-auto bg-black/50 backdrop-blur-sm">
+      <div class="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 h-[98%]">
+        <!-- Sticky Header -->
+        <div class="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+          <div>
+            <div class="flex items-center space-x-3 mb-1">
+              <h3 class="text-2xl font-bold text-gray-900 tracking-tight">Order {{ selectedOrderComputed.id }}</h3>
+              <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getStatusColor(selectedOrderComputed.status)]">{{ selectedOrderComputed.status }}</span>
+              <span :class="['px-2 py-1 rounded-full text-xs font-medium', paymentBadge]">Payment: {{ selectedOrderComputed.paymentStatus }}</span>
             </div>
-
-            <!-- Order Summary & Actions -->
-            <div class="bg-gray-50 rounded-lg p-4 mb-6">
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <p class="text-sm text-gray-600">Order Date</p>
-                  <p class="font-medium">{{ selectedOrder.orderDate }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-600">Payment Method</p>
-                  <p class="font-medium">{{ selectedOrder.paymentMethod }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-600">Total Amount</p>
-                  <p class="font-medium text-lg">${{ selectedOrder.totalAmount.toLocaleString() }}</p>
-                </div>
-              </div>
-              
-              <div class="flex space-x-3 mt-4">
-                <button @click="generateReceipt" class="bg-[#042EFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
-                  Generate Receipt
-                </button>
-                <button @click="generateInvoice" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                  Generate Invoice
-                </button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <!-- Products Section -->
-              <div class="space-y-6">
-                <div>
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Products Ordered</h4>
-                  <div class="space-y-3">
-                    <div v-for="product in selectedOrder.products" :key="product.id" class="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                      <img :src="product.image" :alt="product.name" class="h-16 w-16 rounded-lg object-cover">
-                      <div class="flex-1">
-                        <h5 class="font-medium text-gray-900">{{ product.name }}</h5>
-                        <p class="text-sm text-gray-600">SKU: {{ product.sku }}</p>
-                        <p class="text-sm text-gray-600">Quantity: {{ product.quantity }}</p>
-                      </div>
-                      <div class="text-right">
-                        <p class="font-medium text-gray-900">${{ product.price.toLocaleString() }}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Order Totals -->
-                  <div class="mt-4 p-4 bg-gray-50 rounded-lg">
-                    <div class="space-y-2">
-                      <div class="flex justify-between text-sm">
-                        <span>Subtotal:</span>
-                        <span>${{ (selectedOrder.totalAmount - selectedOrder.tax - selectedOrder.shippingCost + selectedOrder.discount).toLocaleString() }}</span>
-                      </div>
-                      <div class="flex justify-between text-sm">
-                        <span>Shipping:</span>
-                        <span>${{ selectedOrder.shippingCost.toLocaleString() }}</span>
-                      </div>
-                      <div class="flex justify-between text-sm">
-                        <span>Tax:</span>
-                        <span>${{ selectedOrder.tax.toLocaleString() }}</span>
-                      </div>
-                      <div v-if="selectedOrder.discount > 0" class="flex justify-between text-sm text-green-600">
-                        <span>Discount:</span>
-                        <span>-${{ selectedOrder.discount.toLocaleString() }}</span>
-                      </div>
-                      <div class="flex justify-between font-semibold text-lg pt-2 border-t">
-                        <span>Total:</span>
-                        <span>${{ selectedOrder.totalAmount.toLocaleString() }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Customer & Actions Section -->
-              <div class="space-y-6">
-                <!-- Customer Details -->
-                <div>
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Customer Information</h4>
-                  <div class="bg-gray-50 rounded-lg p-4">
-                    <div class="space-y-3">
-                      <div>
-                        <p class="text-sm text-gray-600">Name</p>
-                        <p class="font-medium">{{ selectedOrder.customer.name }}</p>
-                      </div>
-                      <div>
-                        <p class="text-sm text-gray-600">Email</p>
-                        <p class="font-medium">{{ selectedOrder.customer.email }}</p>
-                      </div>
-                      <div>
-                        <p class="text-sm text-gray-600">Phone</p>
-                        <p class="font-medium">{{ selectedOrder.customer.phone }}</p>
-                      </div>
-                      <div>
-                        <p class="text-sm text-gray-600">Shipping Address</p>
-                        <p class="font-medium">{{ selectedOrder.customer.address }}</p>
-                        <p class="font-medium">{{ selectedOrder.customer.city }}, {{ selectedOrder.customer.state }} {{ selectedOrder.customer.zipCode }}</p>
-                        <p class="font-medium">{{ selectedOrder.customer.country }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Order Actions -->
-                <div>
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Order Actions</h4>
-                  <div class="space-y-4">
-                    <!-- Status Update -->
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
-                      <select 
-                        :value="selectedOrder.status"
-                        @change="updateOrderStatus($event.target.value)"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Processing">Processing</option>
-                        <option value="In Transit">In Transit</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                      </select>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="flex flex-col space-y-3">
-                      <button @click="cancelOrder" class="w-full bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors">
-                        Cancel Order
-                      </button>
-                      <button @click="deleteOrderFromDetails" class="w-full bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors">
-                        Delete Order
-                      </button>
-                    </div>
-
-                    <!-- Notes -->
-                    <div v-if="selectedOrder.notes">
-                      <label class="block text-sm font-medium text-gray-700 mb-2">Order Notes</label>
-                      <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                        <p class="text-sm text-yellow-800">{{ selectedOrder.notes }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
+              <span>Tracking: {{ selectedOrderComputed.trackingNumber }}</span>
+              <span>Placed: {{ selectedOrderComputed.orderDate }}</span>
+              <span v-if="selectedOrderComputed.deliveryDate">ETA: {{ selectedOrderComputed.deliveryDate }}</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-                </svg>
-              </div>
-              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Delete Order</h3>
-                <div class="mt-2">
-                  <p class="text-sm text-gray-500">
-                    Are you sure you want to delete order <strong>{{ orderToDelete?.id }}</strong>? This action cannot be undone.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button @click="deleteOrder" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-              Delete Order
+          <div class="flex items-center space-x-2">
+            <button @click="generateReceipt" class="inline-flex items-center px-3 py-2 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Receipt
             </button>
-            <button @click="closeDeleteConfirmModal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#042EFF] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-              Cancel
+            <button @click="generateInvoice" class="inline-flex items-center px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6h13M9 7h13M5 17h.01M5 11h.01M5 7h.01"/></svg>
+              Invoice
+            </button>
+            <button @click="closeOrderDetailsModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close">
+              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
-      </div>
-    </div>
+
+        <!-- Content -->
+        <div class="p-6 space-y-8">
+          <!-- Status Timeline -->
+            <div class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-5">
+              <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase mb-4">Fulfillment Progress</h4>
+              <ol class="flex flex-col md:flex-row md:items-stretch md:space-x-6 space-y-4 md:space-y-0">
+                <li v-for="step in statusTimeline" :key="step.step" class="flex-1 relative">
+                  <div class="flex items-center md:flex-col md:items-start">
+                    <div :class="[
+                      'flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ring-2 ring-offset-2 ring-offset-white transition-colors',
+                      step.cancelled ? 'bg-red-500 text-white ring-red-200' : step.completed ? 'bg-green-500 text-white ring-green-200' : step.active ? 'bg-[#042EFF] text-white ring-blue-200' : 'bg-gray-200 text-gray-600 ring-gray-300'
+                    ]">
+                      <span v-if="!step.cancelled">{{ step.step.charAt(0) }}</span>
+                      <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+                    </div>
+                    <div class="ml-3 md:ml-0 md:mt-2">
+                      <p class="text-xs font-semibold tracking-wide uppercase text-gray-700">{{ step.step }}</p>
+                      <p v-if="step.active" class="text-[10px] text-blue-600 font-medium">Current</p>
+                      <p v-if="step.completed && !step.cancelled" class="text-[10px] text-green-600 font-medium">Completed</p>
+                      <p v-if="step.cancelled" class="text-[10px] text-red-600 font-medium">Cancelled</p>
+                    </div>
+                  </div>
+                  <div v-if="!step.cancelled && step.step !== 'Delivered'" class="hidden md:block absolute top-3 left-[3.5rem] right-0 h-0.5">
+                    <div :class="['h-full w-full', step.completed ? 'bg-green-400' : 'bg-gray-200']"></div>
+                  </div>
+                </li>
+              </ol>
+            </div>
+            <!-- Row 1: Items + Customer -->
+            <div class="grid grid-cols-3 gap-4">
+              <!-- Items -->
+                <div class="col-span-2 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Items ({{ orderFinancials?.totalItems }})</h4>
+                  <span class="text-xs text-gray-500 font-mono">Avg: ${{ orderFinancials?.avgItemPrice.toFixed(2) }}</span>
+                </div>
+                <div class="divide-y divide-gray-100">
+                  <div v-for="p in selectedOrderComputed.products" :key="p.id" class="flex items-center p-4 hover:bg-gray-50 transition-colors">
+                    <img :src="p.image" :alt="p.name" class="h-16 w-16 rounded-lg object-cover ring-1 ring-gray-200 shadow-sm" />
+                    <div class="ml-4 flex-1 min-w-0">
+                      <p class="font-medium text-gray-900 truncate">{{ p.name }}</p>
+                      <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 font-mono">
+                        <span>SKU: {{ p.sku }}</span>
+                        <span>Qty: {{ p.quantity }}</span>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm font-semibold text-gray-900">${{ p.price.toLocaleString() }}</p>
+                      <p class="text-xs text-gray-500 mt-0.5">${{ (p.price * p.quantity).toLocaleString() }} total</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bg-gradient-to-r from-gray-50 to-white px-5 py-4 space-y-2 text-sm">
+                  <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">${{ orderFinancials?.subtotal.toLocaleString() }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600">Shipping</span><span>${{ orderFinancials?.shipping.toLocaleString() }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600">Tax</span><span>${{ orderFinancials?.tax.toLocaleString() }}</span></div>
+                  <div v-if="orderFinancials && orderFinancials.discount > 0" class="flex justify-between text-green-600"><span>Discount</span><span>- ${{ orderFinancials.discount.toLocaleString() }}</span></div>
+                  <div class="flex justify-between pt-2 mt-1 border-t border-gray-200 text-base font-semibold"><span>Total</span><span>${{ orderFinancials?.total.toLocaleString() }}</span></div>
+                </div>
+              </div>
+              <!-- Customer Card -->
+                <div class="col-span-1 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Customer</h4>
+                  <span class="text-xs text-gray-400 font-mono">#{{ selectedOrderComputed.customer.id }}</span>
+                </div>
+                <div class="p-5 space-y-4 text-sm">
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Name</p>
+                    <p class="font-medium text-gray-900">{{ selectedOrderComputed.customer.name }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Contact</p>
+                    <div class="space-y-1">
+                      <p class="font-medium text-gray-900">{{ selectedOrderComputed.customer.email }}</p>
+                      <p class="font-medium text-gray-900">{{ selectedOrderComputed.customer.phone }}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Shipping Address</p>
+                    <p class="font-medium text-gray-900 leading-relaxed">{{ selectedOrderComputed.customer.address }}, {{ selectedOrderComputed.customer.city }}, {{ selectedOrderComputed.customer.state }} {{ selectedOrderComputed.customer.zipCode }}, {{ selectedOrderComputed.customer.country }}</p>
+                  </div>
+                  <div class="flex flex-wrap gap-2 pt-2">
+                    <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium">{{ selectedOrderComputed.paymentMethod }}</span>
+                    <span class="px-2 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium">{{ selectedOrderComputed.products.length }} item(s)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2: Payment + Manage -->
+            <div class="grid grid-cols-3 gap-4">
+              <div class="col-span-2 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Payment Details</h4>
+                  <span class="text-xs font-medium px-2 py-1 rounded-md bg-[#042EFF]/10 text-[#042EFF]">{{ selectedOrderComputed.paymentMethod }}</span>
+                </div>
+                <div class="p-5 space-y-4 text-sm">
+                  <div v-if="paymentDetailRows.length === 0" class="text-xs text-gray-500 italic">No additional payment metadata.</div>
+                  <dl v-else class="divide-y divide-gray-100">
+                    <div v-for="(row, idx) in paymentDetailRows" :key="idx" class="flex items-start justify-between py-2 first:pt-0 last:pb-0">
+                      <dt class="text-gray-500 font-medium w-40 pr-4 text-xs uppercase tracking-wide">{{ row[0] }}</dt>
+                      <dd class="text-gray-900 font-mono text-xs break-all flex-1">{{ row[1] }}</dd>
+                    </div>
+                  </dl>
+                  <div class="pt-2 flex flex-wrap gap-2">
+                    <span v-if="selectedOrderComputed.paymentStatus === 'Paid'" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-green-50 text-green-700 ring-1 ring-inset ring-green-200">Paid</span>
+                    <span v-else-if="selectedOrderComputed.paymentStatus === 'Pending'" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200">Pending</span>
+                    <span v-else class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200">{{ selectedOrderComputed.paymentStatus }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-span-1 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Manage Order</h4>
+                </div>
+                <div class="p-5 space-y-6">
+                  <div>
+                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2">Update Status</label>
+  <div v-if="selectedOrderComputed.status === 'Cancelled'" class="w-full px-4 py-2.5 border border-red-300 bg-red-50 text-red-600 text-sm rounded-lg flex items-center justify-between">
+    <span class="font-medium">Cancelled</span>
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
   </div>
+  <select v-else v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white text-sm">
+                      <option v-for="s in statusOptions" :key="s" :value="s">{{ s }}</option>
+                    </select>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button @click="cancelOrder" :disabled="selectedOrderComputed.status === 'Cancelled' || isSavingStatus" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors"
+              :class="selectedOrderComputed.status === 'Cancelled' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/></svg>
+                      Cancel
+                    </button>
+                    <button @click="deleteOrderFromDetails" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 shadow-sm transition-colors">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      Delete
+                    </button>
+                  </div>
+                  <button @click="saveStatusChange" :disabled="!hasStatusChanged || isSavingStatus" :class="['relative w-full mt-2 inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors select-none',
+                    isSavingStatus ? 'bg-blue-500 text-white' :
+                    justSavedStatus ? 'bg-green-500 text-white' :
+                    hasStatusChanged ? 'bg-[#042EFF] text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-500 cursor-not-allowed']">
+                    <!-- Spinner -->
+                    <svg v-if="isSavingStatus" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    <!-- Saved Icon -->
+                    <svg v-else-if="justSavedStatus" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <!-- Default Icon -->
+                    <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span v-if="isSavingStatus">Saving...</span>
+                    <span v-else-if="justSavedStatus">Saved</span>
+                    <span v-else>Save Changes</span>
+                  </button>
+                  <p class="text-[11px] leading-relaxed text-gray-500">Status updates require saving. Use Cancel to terminate fulfillment; a refund process will start shortly after.</p>
+                </div>
+              </div>
+            </div> 
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification (slide from top) -->
+    <transition name="slide-down">
+      <div v-if="activeNotification" class="fixed top-4 inset-x-0 flex justify-center z-[60] px-4">
+        <div :class="['w-full max-w-md rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
+           activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+           activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+           activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-700']">
+          <div class="flex-shrink-0 mt-0.5">
+            <svg v-if="activeNotification.type === 'warning'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
+            <svg v-else-if="activeNotification.type === 'success'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <svg v-else-if="activeNotification.type === 'error'" class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+            <svg v-else class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold leading-tight" v-if="activeNotification.title">{{ activeNotification.title }}</p>
+            <p class="text-xs leading-relaxed mt-0.5" v-if="activeNotification.message">{{ activeNotification.message }}</p>
+          </div>
+          <button @click="activeNotification=null" class="p-1 rounded-md hover:bg-black/5 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Delete Confirmation Modal (Enhanced) -->
+    <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+        <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center ring-1 ring-red-100">
+            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M4.938 19h14.124c1.054 0 1.716-1.142 1.188-2.053L13.188 5.947c-.527-.911-1.849-.911-2.376 0L3.75 16.947C3.222 17.858 3.884 19 4.938 19z"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Delete Order</h3>
+            <p class="mt-1 text-sm text-gray-600 leading-relaxed">You're about to permanently remove order <span class="font-semibold text-gray-900">{{ orderToDelete?.id }}</span>. This action cannot be undone and related analytics may be affected.</p>
+          </div>
+          <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-6 pb-6 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+          <button @click="deleteOrder" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 shadow-sm transition-colors w-full sm:w-auto">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete Order
+          </button>
+          <button @click="closeDeleteConfirmModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
+        </div>
+      </div>
+    </div>
 </template>
 
 <style scoped>
@@ -619,14 +803,22 @@ const deleteOrderFromDetails = () => {
   background: #a1a1a1;
 }
 
-/* Modal backdrop animation */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s;
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fade-in { animation: fade-in .4s cubic-bezier(.4,0,.2,1); }
+.animate-scale-in { animation: scale-in .35s cubic-bezier(.4,0,.2,1); }
 
-.fade-enter, .fade-leave-to {
-  opacity: 0;
-}
+/* Slide down transition */
+.slide-down-enter-from, .slide-down-leave-to { opacity:0; transform: translateY(-12px); }
+.slide-down-enter-active, .slide-down-leave-active { transition: all .35s cubic-bezier(.4,0,.2,1); }
+.slide-down-leave-from, .slide-down-enter-to { opacity:1; transform: translateY(0); }
 
 /* Additional custom styles */
 .bg-\[\#042EFF\] {
