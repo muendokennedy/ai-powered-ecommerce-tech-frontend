@@ -285,20 +285,28 @@ function updateOrderStatus(newStatus) {
   }
   // Just update pending status; actual mutation done on save
   pendingStatus.value = newStatus
+  // If user selects a different status than the persisted one, clear saved indicator
+  if (selectedOrder.value && newStatus !== selectedOrder.value.status) {
+    justSavedStatus.value = false
+  }
 }
 
 function cancelOrder() {
   if (!selectedOrder.value) return
-  if (selectedOrder.value.status === 'Cancelled') return
+  if (pendingStatus.value === 'Cancelled' && selectedOrder.value.status === 'Cancelled') return
   updateOrderStatus('Cancelled')
-  // Force save immediately with notification
   saveStatusChange(() => {
-    showNotification({
-      type: 'warning',
-      title: 'Order Cancelled',
-      message: 'Refund / reversal process will begin within 5 minutes.'
-    })
+    showNotification({ type: 'warning', title: 'Order Cancelled', message: 'Refund or reversal process will begin within 5 minutes if you do not change this status' })
   })
+}
+
+function attemptDeleteOrder(order) {
+  if (!order) return
+  if (order.status !== 'Cancelled') {
+    showNotification({ type: 'warning', title: 'Deletion Blocked', message: 'Cancel the order first before deleting.' })
+    return
+  }
+  confirmDeleteOrder(order)
 }
 
 function generateReceipt() {
@@ -319,8 +327,12 @@ function deleteOrderFromDetails() {
   if (!selectedOrder.value) {
     return;
   }
-  confirmDeleteOrder(selectedOrder.value);
-  closeOrderDetailsModal();
+  if (selectedOrder.value.status !== 'Cancelled') {
+    showNotification({ type: 'warning', title: 'Deletion Blocked', message: 'Cancel the order first before deleting.' })
+    return
+  }
+  confirmDeleteOrder(selectedOrder.value)
+  closeOrderDetailsModal()
 }
 
 // Derived data for selected order details modal
@@ -689,42 +701,41 @@ const paymentDetailRows = computed(() => {
                 <div class="p-5 space-y-6">
                   <div>
                     <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2">Update Status</label>
-  <div v-if="selectedOrderComputed.status === 'Cancelled'" class="w-full px-4 py-2.5 border border-red-300 bg-red-50 text-red-600 text-sm rounded-lg flex items-center justify-between">
-    <span class="font-medium">Cancelled</span>
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
-  </div>
-  <select v-else v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white text-sm">
+  <select v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white text-sm">
                       <option v-for="s in statusOptions" :key="s" :value="s">{{ s }}</option>
+                      <option value="Cancelled">Cancelled</option>
                     </select>
                   </div>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button @click="cancelOrder" :disabled="selectedOrderComputed.status === 'Cancelled' || isSavingStatus" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors"
-              :class="selectedOrderComputed.status === 'Cancelled' ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'">
-                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"/></svg>
+            <button @click="cancelOrder" :disabled="isSavingStatus || (selectedOrderComputed.status === 'Cancelled' && pendingStatus === 'Cancelled')" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors"
+              :class="(selectedOrderComputed.status === 'Cancelled' && pendingStatus === 'Cancelled') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'">
                       Cancel
                     </button>
-                    <button @click="deleteOrderFromDetails" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 shadow-sm transition-colors">
+                    <button @click="deleteOrderFromDetails" :disabled="selectedOrderComputed.status !== 'Cancelled'" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors" :class="selectedOrderComputed.status === 'Cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'">
                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                       Delete
                     </button>
                   </div>
                   <button @click="saveStatusChange" :disabled="!hasStatusChanged || isSavingStatus" :class="['relative w-full mt-2 inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors select-none',
                     isSavingStatus ? 'bg-blue-500 text-white' :
-                    justSavedStatus ? 'bg-green-500 text-white' :
-                    hasStatusChanged ? 'bg-[#042EFF] text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-500 cursor-not-allowed']">
+                    hasStatusChanged ? 'bg-[#042EFF] text-white hover:bg-blue-600' :
+                    justSavedStatus ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed']">
                     <!-- Spinner -->
                     <svg v-if="isSavingStatus" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                     </svg>
+                    <!-- Default / Unsaved Icon -->
+                    <svg v-else-if="hasStatusChanged" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     <!-- Saved Icon -->
                     <svg v-else-if="justSavedStatus" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <!-- Default Icon -->
+                    <!-- Disabled Icon -->
                     <svg v-else class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     <span v-if="isSavingStatus">Saving...</span>
+                    <span v-else-if="hasStatusChanged">Save Changes</span>
                     <span v-else-if="justSavedStatus">Saved</span>
-                    <span v-else>Save Changes</span>
+                    <span v-else>Save</span>
                   </button>
                   <p class="text-[11px] leading-relaxed text-gray-500">Status updates require saving. Use Cancel to terminate fulfillment; a refund process will start shortly after.</p>
                 </div>
@@ -734,10 +745,10 @@ const paymentDetailRows = computed(() => {
       </div>
     </div>
 
-    <!-- Notification (slide from top) -->
-    <transition name="slide-down">
-      <div v-if="activeNotification" class="fixed top-4 inset-x-0 flex justify-center z-[60] px-4">
-        <div :class="['w-full max-w-md rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
+    <!-- Notification (slide from right) -->
+    <transition name="slide-in-right">
+      <div v-if="activeNotification" class="fixed top-4 right-4 z-[60] px-4">
+        <div :class="['w-full max-w-sm rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
            activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
            activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
            activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-700']">
@@ -815,10 +826,10 @@ const paymentDetailRows = computed(() => {
 .animate-fade-in { animation: fade-in .4s cubic-bezier(.4,0,.2,1); }
 .animate-scale-in { animation: scale-in .35s cubic-bezier(.4,0,.2,1); }
 
-/* Slide down transition */
-.slide-down-enter-from, .slide-down-leave-to { opacity:0; transform: translateY(-12px); }
-.slide-down-enter-active, .slide-down-leave-active { transition: all .35s cubic-bezier(.4,0,.2,1); }
-.slide-down-leave-from, .slide-down-enter-to { opacity:1; transform: translateY(0); }
+/* Slide in from right transition */
+.slide-in-right-enter-from, .slide-in-right-leave-to { opacity:0; transform: translateX(20px); }
+.slide-in-right-enter-active, .slide-in-right-leave-active { transition: all .35s cubic-bezier(.4,0,.2,1); }
+.slide-in-right-leave-from, .slide-in-right-enter-to { opacity:1; transform: translateX(0); }
 
 /* Additional custom styles */
 .bg-\[\#042EFF\] {
