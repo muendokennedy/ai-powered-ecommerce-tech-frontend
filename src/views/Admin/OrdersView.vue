@@ -193,19 +193,18 @@ const orders = reactive([
     ],
     totalAmount: 1899,
     status: 'Pending',
-    paymentMethod: 'Bank Transfer',
-    paymentStatus: 'Pending',
+    paymentMethod: 'Mpesa',
+    paymentStatus: 'Paid',
     orderDate: '2024-09-14',
     deliveryDate: null,
     shippingCost: 49.99,
     tax: 151.92,
     discount: 100,
     paymentDetails: {
-      bankName: 'First National Bank',
-      accountName: 'Sarah Wilson',
-      reference: 'BNK-REF-554420',
-      swiftCode: 'FNBUUS33',
-      expectedClearance: '2024-09-17'
+      mpesaNumber: '0745079253',
+      mpesaName: 'KENNEDY  MUENDO',
+      mpesaCode: 'TAXI4390',
+      transactionTime: '10:50PM'
     }
   }
 ])
@@ -249,6 +248,8 @@ function viewOrderDetails(order) {
   showOrderDetailsModal.value = true;
   // Initialize pending status
   if (order) pendingStatus.value = order.status
+
+  console.log(paymentDetailRows.value)
 }
 
 function confirmDeleteOrder(order) {
@@ -443,6 +444,8 @@ const paymentDetailRows = computed(() => {
   }
   return rows;
 });
+
+
 </script>
 
 <template>
@@ -507,7 +510,7 @@ const paymentDetailRows = computed(() => {
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
+                  <tr v-for="order in filteredOrders" :key="order.id" @click.stop="viewOrderDetails(order)" class="hover:bg-gray-50 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900">{{ order.id }}</div>
                     </td>
@@ -532,7 +535,7 @@ const paymentDetailRows = computed(() => {
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderDate }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex space-x-2">
-                        <button @click="viewOrderDetails(order)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
+                        <button @click.stop="viewOrderDetails(order)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
                         <button @click="confirmDeleteOrder(order)" class="text-red-600 hover:text-red-800" title="Delete Order">
@@ -552,9 +555,9 @@ const paymentDetailRows = computed(() => {
 
   <!-- Order Details Modal (Enhanced) -->
     <div v-if="showOrderDetailsModal && selectedOrderComputed" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 overflow-y-auto bg-black/50 backdrop-blur-sm">
-      <div class="relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 h-[98%]">
+      <div class="order-details-modal relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 h-[98%]">
         <!-- Sticky Header -->
-        <div class="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+        <div class="sticky top-0 z-20 bg-white  border-b border-gray-200 px-6 py-5 flex items-start justify-between">
           <div>
             <div class="flex items-center space-x-3 mb-1">
               <h3 class="text-2xl font-bold text-gray-900 tracking-tight">Order {{ selectedOrderComputed.id }}</h3>
@@ -571,10 +574,6 @@ const paymentDetailRows = computed(() => {
             <button @click="generateReceipt" class="inline-flex items-center px-3 py-2 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               Receipt
-            </button>
-            <button @click="generateInvoice" class="inline-flex items-center px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6h13M9 7h13M5 17h.01M5 11h.01M5 7h.01"/></svg>
-              Invoice
             </button>
             <button @click="closeOrderDetailsModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close">
               <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -748,7 +747,7 @@ const paymentDetailRows = computed(() => {
     <!-- Notification (slide from right) -->
     <transition name="slide-in-right">
       <div v-if="activeNotification" class="fixed top-4 right-4 z-[60] px-4">
-        <div :class="['w-full max-w-sm rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
+        <div :class="['w-full max-w-2xl rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
            activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
            activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
            activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-700']">
@@ -812,6 +811,9 @@ const paymentDetailRows = computed(() => {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
+}
+.order-details-modal::-webkit-scrollbar{
+  width: 0;
 }
 
 /* Animations */
