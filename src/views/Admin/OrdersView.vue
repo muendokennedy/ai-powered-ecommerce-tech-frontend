@@ -458,7 +458,7 @@ const paymentDetailRows = computed(() => {
       
       <!-- Orders Content -->
       <main class="flex-1 overflow-y-auto p-6">
-        <div class="max-w-7xl mx-auto">
+        <div class="max-w-5xl mx-auto">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Orders Management</h1>
           </div>
