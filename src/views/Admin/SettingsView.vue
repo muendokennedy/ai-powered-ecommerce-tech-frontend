@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 
@@ -260,6 +260,27 @@ const formatDate = (dateString) => {
   })
 }
 
+// --- Profile Metrics & Recent Activity (Derived) ---
+const currentAdminRecord = computed(() => admins.find(a => a.id === currentAdmin.id))
+const diffInDays = (from) => {
+  const start = new Date(from)
+  const now = new Date()
+  return Math.max(0, Math.floor((now - start)/(1000*60*60*24)))
+}
+const profileMetrics = computed(() => {
+  const a = currentAdminRecord.value
+  if (!a) return []
+  const permissionsEnabled = Object.values(a.permissions || {}).filter(Boolean).length
+  return [
+    { label: 'Total Actions', value: a.totalActions?.toLocaleString?.() || '—' },
+    { label: 'Permissions Enabled', value: permissionsEnabled },
+    { label: 'Days Active', value: diffInDays(a.joinDate) },
+    { label: 'Last Login', value: a.lastLogin || '—' },
+    { label: 'Joined', value: formatDate(a.joinDate) }
+  ]
+})
+const recentActivity = computed(() => (currentAdminRecord.value?.activityLog || []).slice(0,6))
+
 const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
   showNotification({ type: 'success', title: 'Preference Saved', message: `${key.replace(/([A-Z])/g,' $1')} updated.` })
@@ -392,135 +413,98 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
             <!-- Profile Section -->
             <div class="lg:col-span-2 space-y-6">
               <!-- Current Admin Profile -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                  <h3 class="text-lg font-semibold text-gray-900">My Profile</h3>
-                  <button @click="openEditProfile" class="bg-[#042EFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
-                    Edit Profile
-                  </button>
-                </div>
-                
-                <div class="p-6">
-                  <div class="flex items-start space-x-6">
-                    <img :src="currentAdmin.avatar" :alt="currentAdmin.name" class="h-20 w-20 rounded-full object-cover">
-                    <div class="flex-1">
-                      <div class="flex items-center space-x-3 mb-2">
-                        <h2 class="text-2xl font-bold text-gray-900">{{ currentAdmin.name }}</h2>
-                        <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
-                          {{ currentAdmin.role }}
-                        </span>
-                      </div>
-                      
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div>
-                          <p class="text-sm text-gray-600">Email</p>
-                          <p class="font-medium">{{ currentAdmin.email }}</p>
-                        </div>
-                        <div>
-                          <p class="text-sm text-gray-600">Phone</p>
-                          <p class="font-medium">{{ currentAdmin.phone }}</p>
-                        </div>
-                        <div>
-                          <p class="text-sm text-gray-600">Department</p>
-                          <p class="font-medium">{{ currentAdmin.department }}</p>
-                        </div>
-                        <div>
-                          <p class="text-sm text-gray-600">Location</p>
-                          <p class="font-medium">{{ currentAdmin.location }}</p>
-                        </div>
-                        <div>
-                          <p class="text-sm text-gray-600">Join Date</p>
-                          <p class="font-medium">{{ formatDate(currentAdmin.joinDate) }}</p>
-                        </div>
-                        <div>
-                          <p class="text-sm text-gray-600">Last Login</p>
-                          <p class="font-medium">{{ currentAdmin.lastLogin }}</p>
-                        </div>
+               <div>
+                 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                   <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                     <h3 class="text-lg font-semibold text-gray-900">My Profile</h3>
+                     <button @click="openEditProfile" class="bg-[#042EFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                       Edit Profile
+                     </button>
+                   </div>
+                   
+                   <div class="p-6">
+                     <div class="flex items-start space-x-6">
+                       <img :src="currentAdmin.avatar" :alt="currentAdmin.name" class="h-20 w-20 rounded-full object-cover">
+                       <div class="flex-1">
+                         <div class="flex items-center space-x-3 mb-2">
+                           <h2 class="text-2xl font-bold text-gray-900">{{ currentAdmin.name }}</h2>
+                           <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
+                             {{ currentAdmin.role }}
+                           </span>
+                         </div>
+                         
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                           <div>
+                             <p class="text-sm text-gray-600">Email</p>
+                             <p class="font-medium">{{ currentAdmin.email }}</p>
+                           </div>
+                           <div>
+                             <p class="text-sm text-gray-600">Phone</p>
+                             <p class="font-medium">{{ currentAdmin.phone }}</p>
+                           </div>
+                           <div>
+                             <p class="text-sm text-gray-600">Department</p>
+                             <p class="font-medium">{{ currentAdmin.department }}</p>
+                           </div>
+                           <div>
+                             <p class="text-sm text-gray-600">Location</p>
+                             <p class="font-medium">{{ currentAdmin.location }}</p>
+                           </div>
+                           <div>
+                             <p class="text-sm text-gray-600">Join Date</p>
+                             <p class="font-medium">{{ formatDate(currentAdmin.joinDate) }}</p>
+                           </div>
+                           <div>
+                             <p class="text-sm text-gray-600">Last Login</p>
+                             <p class="font-medium">{{ currentAdmin.lastLogin }}</p>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+                <!-- Metrics & Recent Activity (Directly Below Profile) -->
+                <!-- Metrics Card -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 xl:col-span-2">
+                  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">My Activity Metrics</h3>
+                  </div>
+                  <div class="p-6">
+                    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      <div v-for="m in profileMetrics" :key="m.label" class="relative rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-4 shadow-sm overflow-hidden group">
+                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-[radial-gradient(circle_at_30%_30%,rgba(4,46,255,0.07),transparent)]"></div>
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ m.label }}</p>
+                        <p class="mt-1 text-2xl font-semibold text-gray-900">{{ m.value }}</p>
                       </div>
                     </div>
                   </div>
+              <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                </div>
+              </div>
+              <!-- Recent Activity Card -->
+              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
+                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
+                </div>
+                <div class="p-6">
+                  <ul class="space-y-4" v-if="recentActivity.length">
+                    <li v-for="(item,idx) in recentActivity" :key="idx" class="flex items-start space-x-3">
+                      <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#042EFF] ring-4 ring-[#042EFF]/10"></div>
+                      <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800">{{ item.action }}</p>
+                        <p class="text-xs text-gray-500">{{ item.date }}</p>
+                      </div>
+                    </li>
+                  </ul>
+                  <div v-else class="text-sm text-gray-500 italic">No recent activity recorded.</div>
                 </div>
               </div>
 
-              <!-- System Administrators Table -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-lg font-semibold text-gray-900">System Administrators</h3>
-                </div>
-                
-                <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                      <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                      <tr v-for="admin in admins" :key="admin.id" class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <div class="flex items-center">
-                            <img :src="admin.avatar" :alt="admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
-                            <div>
-                              <div class="text-sm font-medium text-gray-900">{{ admin.name }}</div>
-                              <div class="text-sm text-gray-500">{{ admin.id }}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <div class="text-sm text-gray-900">{{ admin.email }}</div>
-                          <div class="text-sm text-gray-500">{{ admin.phone }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(admin.role)]">
-                            {{ admin.role }}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {{ admin.department }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(admin.status)]">
-                            {{ admin.status }}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {{ admin.lastLogin }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div class="flex space-x-2">
-                            <button @click="viewAdminDetails(admin)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                              </svg>
-                            </button>
-                            <button 
-                              @click="confirmDeleteAdmin(admin)" 
-                              :class="[
-                                'hover:text-red-800',
-                                admin.role === 'Primary Admin' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'
-                              ]" 
-                              :disabled="admin.role === 'Primary Admin'"
-                              :title="admin.role === 'Primary Admin' ? 'Primary Admin cannot be deleted' : 'Delete Admin'"
-                            >
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+   
             </div>
+
+
 
             <!-- Preferences Section -->
             <div class="space-y-6">
@@ -636,6 +620,84 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
                 </div>
               </div>
             </div>
+            <!-- System Administrators Table -->
+              <div class="bg-white col-span-3 rounded-xl shadow-sm border border-gray-100">
+                <div class="px-6 py-4 border-b border-gray-200">
+                  <h3 class="text-lg font-semibold text-gray-900">System Administrators</h3>
+                </div>
+                
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                      <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                      <tr v-for="admin in admins" :key="admin.id" class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <div class="flex items-center">
+                            <img :src="admin.avatar" :alt="admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
+                            <div>
+                              <div class="text-sm font-medium text-gray-900">{{ admin.name }}</div>
+                              <div class="text-sm text-gray-500">{{ admin.id }}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <div class="text-sm text-gray-900">{{ admin.email }}</div>
+                          <div class="text-sm text-gray-500">{{ admin.phone }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(admin.role)]">
+                            {{ admin.role }}
+                          </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {{ admin.department }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(admin.status)]">
+                            {{ admin.status }}
+                          </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {{ admin.lastLogin }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div class="flex space-x-2">
+                            <button @click="viewAdminDetails(admin)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                              </svg>
+                            </button>
+                            <button 
+                              @click="confirmDeleteAdmin(admin)" 
+                              :class="[
+                                'hover:text-red-800',
+                                admin.role === 'Primary Admin' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'
+                              ]" 
+                              :disabled="admin.role === 'Primary Admin'"
+                              :title="admin.role === 'Primary Admin' ? 'Primary Admin cannot be deleted' : 'Delete Admin'"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
           </div>
         </div>
       </main>
