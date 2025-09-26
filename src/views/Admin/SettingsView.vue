@@ -534,254 +534,212 @@ const updatePreference = (key, value) => {
       </main>
     </div>
 
-    <!-- Edit Profile Modal -->
-    <div v-if="showEditProfileModal" class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+    <!-- Edit Profile Modal (Enhanced) -->
+    <div v-if="showEditProfileModal" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeEditProfileModal">
+      <div class="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+        <div class="flex items-start justify-between px-6 py-5 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+          <div>
+            <h3 class="text-2xl font-bold tracking-tight text-gray-900">Edit Profile</h3>
+            <p class="text-xs text-gray-500 font-mono mt-1">ID: {{ currentAdmin.id }} • Joined {{ formatDate(currentAdmin.joinDate) }}</p>
+          </div>
+          <button @click="closeEditProfileModal" class="p-2 rounded-full hover:bg-gray-100 transition-colors" title="Close">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
         </div>
-
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="w-full">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Edit Profile</h3>
-                
-                <form @submit.prevent="saveProfile" class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                    <input 
-                      v-model="editForm.name"
-                      type="text" 
-                      required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                    >
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input 
-                      v-model="editForm.email"
-                      type="email" 
-                      required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                    >
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input 
-                      v-model="editForm.phone"
-                      type="tel" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                    >
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                    <input 
-                      v-model="editForm.department"
-                      type="text" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                    >
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <input 
-                      v-model="editForm.location"
-                      type="text" 
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                    >
-                  </div>
-                </form>
+        <div class="px-6 py-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scroll">
+          <form @submit.prevent="saveProfile" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div class="space-y-1">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Full Name</label>
+                <input v-model="editForm.name" type="text" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="Enter full name" />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Email</label>
+                <input v-model="editForm.email" type="email" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="name@email.com" />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Phone</label>
+                <input v-model="editForm.phone" type="tel" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="+1 ..." />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Department</label>
+                <input v-model="editForm.department" type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="e.g. Operations" />
+              </div>
+              <div class="space-y-1 md:col-span-2">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Location</label>
+                <input v-model="editForm.location" type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="City, Country" />
               </div>
             </div>
+          </form>
+          <div class="border border-blue-100 bg-blue-50/60 rounded-lg p-4 text-[11px] text-blue-700 leading-relaxed">
+            Updating your profile helps other administrators identify responsibilities and contact preferences.
           </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button @click="saveProfile" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-[#042EFF] text-base font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#042EFF] sm:ml-3 sm:w-auto sm:text-sm">
-              Save Changes
-            </button>
-            <button @click="closeEditProfileModal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#042EFF] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-              Cancel
-            </button>
-          </div>
+        </div>
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+          <button @click="saveProfile" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium shadow-sm hover:bg-blue-600 transition-colors">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            Save Changes
+          </button>
+          <button @click="closeEditProfileModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors">Cancel</button>
         </div>
       </div>
     </div>
 
-    <!-- Admin Details Modal -->
-    <div v-if="showAdminDetailsModal && selectedAdmin" class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div class="absolute inset-0 bg-gray-500 opacity-75" @click="closeAdminDetailsModal"></div>
-        </div>
-
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-          <div class="bg-white px-6 py-6">
-            <!-- Header -->
-            <div class="flex items-start justify-between mb-6">
-              <div class="flex items-center">
-                <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4">
-                <div>
-                  <h3 class="text-2xl leading-6 font-bold text-gray-900">{{ selectedAdmin.name }}</h3>
-                  <p class="text-sm text-gray-500 mt-1">{{ selectedAdmin.id }} • {{ selectedAdmin.department }}</p>
-                  <div class="flex items-center space-x-2 mt-2">
-                    <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(selectedAdmin.role)]">
-                      {{ selectedAdmin.role }}
-                    </span>
-                    <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(selectedAdmin.status)]">
-                      {{ selectedAdmin.status }}
-                    </span>
-                  </div>
-                </div>
+    <!-- Admin Details Modal (Enhanced) -->
+    <div v-if="showAdminDetailsModal && selectedAdmin" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAdminDetailsModal">
+      <div class="admin-details-modal relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-auto animate-fade-in h-[95vh]">
+        <!-- Sticky Header -->
+        <div class="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+          <div class="flex items-center">
+            <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 shadow-sm" />
+            <div>
+              <div class="flex items-center space-x-3 mb-1">
+                <h3 class="text-2xl font-bold tracking-tight text-gray-900">{{ selectedAdmin.name }}</h3>
+                <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getRoleColor(selectedAdmin.role)]">{{ selectedAdmin.role }}</span>
+                <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusColor(selectedAdmin.status)]">{{ selectedAdmin.status }}</span>
               </div>
-              <button @click="closeAdminDetailsModal" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-              </button>
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
+                <span>ID: {{ selectedAdmin.id }}</span>
+                <span>Dept: {{ selectedAdmin.department }}</span>
+                <span>Last Login: {{ selectedAdmin.lastLogin }}</span>
+              </div>
             </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <!-- Admin Information -->
-              <div class="lg:col-span-2 space-y-6">
-                <!-- Contact Information -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p class="text-sm text-gray-600">Email Address</p>
-                      <p class="font-medium">{{ selectedAdmin.email }}</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Phone Number</p>
-                      <p class="font-medium">{{ selectedAdmin.phone }}</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Department</p>
-                      <p class="font-medium">{{ selectedAdmin.department }}</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Location</p>
-                      <p class="font-medium">{{ selectedAdmin.location }}</p>
-                    </div>
+          </div>
+          <button @click="closeAdminDetailsModal" class="p-2 rounded-full hover:bg-gray-100 transition-colors" title="Close">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <!-- Content -->
+        <div class="p-6 space-y-8">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column -->
+            <div class="lg:col-span-2 space-y-6">
+              <!-- Contact Card -->
+              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Contact</h4>
+                  <span class="text-xs text-gray-400 font-mono">Primary</span>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Email</p>
+                    <p class="font-medium text-gray-900 break-all">{{ selectedAdmin.email }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Phone</p>
+                    <p class="font-medium text-gray-900">{{ selectedAdmin.phone }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Department</p>
+                    <p class="font-medium text-gray-900">{{ selectedAdmin.department }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Location</p>
+                    <p class="font-medium text-gray-900">{{ selectedAdmin.location }}</p>
                   </div>
                 </div>
-
-                <!-- Account Information -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Account Information</h4>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p class="text-sm text-gray-600">Join Date</p>
-                      <p class="font-medium">{{ formatDate(selectedAdmin.joinDate) }}</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Last Login</p>
-                      <p class="font-medium">{{ selectedAdmin.lastLogin }}</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Total Actions</p>
-                      <p class="font-medium">{{ selectedAdmin.totalActions.toLocaleString() }}</p>
-                    </div>
-                    <div>
-                      <p class="text-sm text-gray-600">Account Status</p>
-                      <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(selectedAdmin.status)]">
-                        {{ selectedAdmin.status }}
-                      </span>
-                    </div>
+              </div>
+              <!-- Account Card -->
+              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Account</h4>
+                  <span class="text-xs text-gray-400 font-mono">Meta</span>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Join Date</p>
+                    <p class="font-medium text-gray-900">{{ formatDate(selectedAdmin.joinDate) }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Total Actions</p>
+                    <p class="font-medium text-gray-900">{{ selectedAdmin.totalActions.toLocaleString() }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Account Created</p>
+                    <p class="font-medium text-gray-900">{{ formatDate(selectedAdmin.accountCreated) }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs uppercase font-semibold text-gray-500">Status</p>
+                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', getStatusColor(selectedAdmin.status)]">{{ selectedAdmin.status }}</span>
                   </div>
                 </div>
-
-                <!-- Permissions -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">System Permissions</h4>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div v-for="(hasPermission, permission) in selectedAdmin.permissions" :key="permission" class="flex items-center justify-between">
-                      <span class="text-sm text-gray-700 capitalize">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
-                      <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', hasPermission ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
-                        {{ hasPermission ? 'Granted' : 'Denied' }}
-                      </span>
-                    </div>
+              </div>
+              <!-- Permissions Card -->
+              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Permissions</h4>
+                  <span class="text-xs text-gray-400 font-mono">{{ Object.keys(selectedAdmin.permissions).length }}</span>
+                </div>
+                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div v-for="(hasPermission, permission) in selectedAdmin.permissions" :key="permission" class="flex items-center justify-between bg-white rounded-lg px-3 py-2 ring-1 ring-gray-100 hover:ring-blue-200 transition-colors">
+                    <span class="text-xs font-medium text-gray-700">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
                   </div>
                 </div>
-
-                <!-- Recent Activity -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h4>
-                  <div class="space-y-3">
-                    <div v-for="activity in selectedAdmin.activityLog" :key="activity.date" class="flex items-center justify-between p-3 bg-white rounded-lg">
-                      <div>
-                        <p class="font-medium text-gray-900">{{ activity.action }}</p>
-                        <p class="text-sm text-gray-600">{{ activity.date }}</p>
-                      </div>
-                      <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                      </svg>
+              </div>
+              <!-- Activity Card -->
+              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Recent Activity</h4>
+                  <span class="text-xs text-gray-400 font-mono">{{ selectedAdmin.activityLog.length }} entries</span>
+                </div>
+                <div class="divide-y divide-gray-100">
+                  <div v-for="activity in selectedAdmin.activityLog" :key="activity.date" class="flex items-start p-4 hover:bg-gray-50 transition-colors">
+                    <div class="flex-1 min-w-0">
+                      <p class="text-sm font-medium text-gray-900">{{ activity.action }}</p>
+                      <p class="text-xs text-gray-500 mt-1 font-mono">{{ activity.date }}</p>
+                    </div>
+                    <div class="ml-4 flex items-center text-green-600">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                     </div>
                   </div>
                 </div>
               </div>
-
-              <!-- Statistics and Actions -->
-              <div class="space-y-6">
-                <!-- Admin Statistics -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Admin Statistics</h4>
-                  <div class="space-y-4">
-                    <div class="text-center">
-                      <p class="text-3xl font-bold text-[#042EFF]">{{ selectedAdmin.totalActions }}</p>
-                      <p class="text-sm text-gray-600">Total Actions</p>
-                    </div>
-                    <div class="text-center">
-                      <p class="text-lg font-semibold text-gray-900">{{ formatDate(selectedAdmin.accountCreated) }}</p>
-                      <p class="text-sm text-gray-600">Account Created</p>
-                    </div>
-                    <div class="text-center">
-                      <p class="text-lg font-semibold text-gray-900">{{ selectedAdmin.lastLogin }}</p>
-                      <p class="text-sm text-gray-600">Last Activity</p>
-                    </div>
+            </div>
+            <!-- Right Column -->
+            <div class="space-y-6">
+              <!-- Metrics Card -->
+              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Metrics</h4>
+                </div>
+                <div class="p-5 grid grid-cols-2 gap-4 text-center">
+                  <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
+                    <p class="text-xl font-bold text-gray-900">{{ selectedAdmin.totalActions }}</p>
+                    <p class="text-[10px] tracking-wide uppercase text-gray-600 mt-1">Actions</p>
+                  </div>
+                  <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
+                    <p class="text-sm font-semibold text-gray-900">{{ formatDate(selectedAdmin.accountCreated) }}</p>
+                    <p class="text-[10px] tracking-wide uppercase text-gray-600 mt-1">Created</p>
+                  </div>
+                  <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4 col-span-2">
+                    <p class="text-sm font-semibold text-gray-900">{{ selectedAdmin.lastLogin }}</p>
+                    <p class="text-[10px] tracking-wide uppercase text-gray-600 mt-1">Last Login</p>
                   </div>
                 </div>
-
-                <!-- Quick Actions -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <h4 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h4>
-                  <div class="space-y-3">
-                    <button class="w-full bg-[#042EFF] text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors flex items-center justify-center">
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                      </svg>
-                      Send Message
-                    </button>
-                    <button class="w-full bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center">
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                      </svg>
-                      Generate Report
-                    </button>
-                    <button class="w-full bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-700 transition-colors flex items-center justify-center">
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                      </svg>
-                      {{ selectedAdmin.status === 'Active' ? 'Suspend Account' : 'Activate Account' }}
-                    </button>
-                    <button 
-                      v-if="selectedAdmin.role !== 'Primary Admin'"
-                      @click="confirmDeleteAdmin(selectedAdmin)"
-                      class="w-full bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center"
-                    >
-                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                      </svg>
-                      Delete Admin
-                    </button>
-                  </div>
+              </div>
+              <!-- Actions Card -->
+              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 px-5 py-3">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Actions</h4>
+                </div>
+                <div class="p-5 space-y-3">
+                  <button class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    Send Message
+                  </button>
+                  <button class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Generate Report
+                  </button>
+                  <button class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-yellow-500 text-white text-sm font-medium hover:bg-yellow-600 transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    {{ selectedAdmin.status === 'Active' ? 'Suspend Account' : 'Activate Account' }}
+                  </button>
+                  <button v-if="selectedAdmin.role !== 'Primary Admin'" @click="confirmDeleteAdmin(selectedAdmin)" class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    Delete Admin
+                  </button>
                 </div>
               </div>
             </div>
@@ -790,41 +748,27 @@ const updatePreference = (key, value) => {
       </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 overflow-y-auto">
-      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+    <!-- Delete Confirmation Modal (Enhanced) -->
+    <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeDeleteConfirmModal">
+      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+        <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center ring-1 ring-red-100">
+            <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M4.938 19h14.124c1.054 0 1.716-1.142 1.188-2.053L13.188 5.947c-.527-.911-1.849-.911-2.376 0L3.75 16.947C3.222 17.858 3.884 19 4.938 19z"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Delete Administrator</h3>
+            <p class="mt-1 text-sm text-gray-600 leading-relaxed">You're about to remove <span class="font-semibold text-gray-900">{{ adminToDelete?.name }}</span>. This revokes all access and cannot be undone.</p>
+          </div>
+          <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
         </div>
-
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div class="sm:flex sm:items-start">
-              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
-                </svg>
-              </div>
-              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Delete Administrator</h3>
-                <div class="mt-2">
-                  <p class="text-sm text-gray-500">
-                    Are you sure you want to delete <strong>{{ adminToDelete?.name }}</strong>? This action cannot be undone and will revoke all administrative access and permissions.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button @click="deleteAdmin" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
-              Delete Administrator
-            </button>
-            <button @click="closeDeleteConfirmModal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#042EFF] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-              Cancel
-            </button>
-          </div>
+        <div class="px-6 pb-6 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+          <button @click="deleteAdmin" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 shadow-sm transition-colors w-full sm:w-auto">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            Delete Admin
+          </button>
+          <button @click="closeDeleteConfirmModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
         </div>
       </div>
     </div>
@@ -854,6 +798,17 @@ const updatePreference = (key, value) => {
 .peer:checked + div {
   background-color: #042EFF;
 }
+
+/* Modal animations */
+@keyframes fade-in { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform: translateY(0);} }
+@keyframes scale-in { from { opacity:0; transform: scale(.95);} to { opacity:1; transform: scale(1);} }
+.animate-fade-in { animation: fade-in .4s cubic-bezier(.4,0,.2,1); }
+.animate-scale-in { animation: scale-in .35s cubic-bezier(.4,0,.2,1); }
+
+/* Hide scrollbars inside modals where desired */
+.admin-details-modal::-webkit-scrollbar, .custom-scroll::-webkit-scrollbar { width: 6px; }
+.admin-details-modal::-webkit-scrollbar-thumb, .custom-scroll::-webkit-scrollbar-thumb { background:#c1c1c1; border-radius:3px; }
+.admin-details-modal::-webkit-scrollbar-thumb:hover, .custom-scroll::-webkit-scrollbar-thumb:hover { background:#a1a1a1; }
 
 /* Additional custom styles */
 .bg-\[\#042EFF\] {
