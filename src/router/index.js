@@ -107,7 +107,12 @@ const router = createRouter({
     {
       path: '/admin/clients',
       name: 'admin-clients',
-      component: () => import('@/views/Admin/ClientInfo.vue')
+      component: () => import('@/views/Admin/ClientInfoView.vue')
+    },
+    {
+      path: '/admin/settings',
+      name: 'admin-settings',
+      component: () => import('@/views/Admin/SettingsView.vue')
     }
   ],
 })
