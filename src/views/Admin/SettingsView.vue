@@ -8,6 +8,7 @@ const showAdminDetailsModal = ref(false)
 const showDeleteConfirmModal = ref(false)
 const selectedAdmin = ref(null)
 const adminToDelete = ref(null)
+const showSuspendConfirmModal = ref(false)
 
 // Current logged in admin (simulated)
 const currentAdmin = reactive({
@@ -199,8 +200,7 @@ const saveProfile = () => {
   currentAdmin.phone = editForm.phone
   currentAdmin.department = editForm.department
   currentAdmin.location = editForm.location
-  
-  // Also update in admins array
+
   const adminIndex = admins.findIndex(a => a.id === currentAdmin.id)
   if (adminIndex > -1) {
     Object.assign(admins[adminIndex], {
@@ -211,8 +211,8 @@ const saveProfile = () => {
       location: editForm.location
     })
   }
-  
-  alert('Profile updated successfully!')
+
+  showNotification({ type: 'success', title: 'Profile Updated', message: 'Your profile information has been saved.' })
   closeEditProfileModal()
 }
 
@@ -228,7 +228,7 @@ const closeAdminDetailsModal = () => {
 
 const confirmDeleteAdmin = (admin) => {
   if (admin.role === 'Primary Admin') {
-    alert('Primary Admin cannot be deleted!')
+    showNotification({ type: 'warning', title: 'Action Blocked', message: 'Primary Admin cannot be deleted.' })
     return
   }
   adminToDelete.value = admin
@@ -240,6 +240,7 @@ const deleteAdmin = () => {
     const index = admins.findIndex(a => a.id === adminToDelete.value.id)
     if (index > -1) {
       admins.splice(index, 1)
+      showNotification({ type: 'success', title: 'Admin Deleted', message: 'The administrator account was removed.' })
     }
     showDeleteConfirmModal.value = false
     adminToDelete.value = null
@@ -261,7 +262,7 @@ const formatDate = (dateString) => {
 
 const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
-  alert(`${key} preference updated!`)
+  showNotification({ type: 'success', title: 'Preference Saved', message: `${key.replace(/([A-Z])/g,' $1')} updated.` })
 }
 
 // --- Permission Editing State for Admin Details Modal ---
@@ -295,35 +296,84 @@ const savePermissions = () => {
     admins[idx].permissions = { ...permissionDraft.value }
   }
   isEditingPermissions.value = false
-  alert('Permissions updated successfully!')
+  showNotification({ type: 'success', title: 'Permissions Updated', message: 'Administrator permissions were saved.' })
 }
 
 // --- Suspend / Activate Account Logic ---
 const isTogglingStatus = ref(false)
+function performStatusToggle(newStatus){
+  if (!selectedAdmin.value) return
+  isTogglingStatus.value = true
+  setTimeout(() => {
+    selectedAdmin.value.status = newStatus
+    const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
+    if (idx > -1) admins[idx].status = newStatus
+    isTogglingStatus.value = false
+    showNotification({ type: 'success', title: 'Status Updated', message: `${selectedAdmin.value.name} is now ${newStatus}.` })
+  }, 600)
+}
 const toggleSuspendAdmin = () => {
   if (!selectedAdmin.value) return
   if (isTogglingStatus.value) return
-  // Prevent suspending Primary Admin
-  if (selectedAdmin.value.role === 'Primary Admin' && selectedAdmin.value.status === 'Active') {
-    alert('Primary Admin cannot be suspended.')
-    return
-  }
-  isTogglingStatus.value = true
-  // Simulate async operation
-  setTimeout(() => {
-    const newStatus = selectedAdmin.value.status === 'Active' ? 'Inactive' : 'Active'
-    selectedAdmin.value.status = newStatus
-    const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
-    if (idx > -1) {
-      admins[idx].status = newStatus
+  if (selectedAdmin.value.status === 'Active') {
+    if (selectedAdmin.value.role === 'Primary Admin') {
+      showNotification({ type: 'warning', title: 'Protected Account', message: 'Primary Admin cannot be suspended.' })
+      return
     }
-    isTogglingStatus.value = false
-  }, 600)
+    showSuspendConfirmModal.value = true
+  } else {
+    performStatusToggle('Active')
+  }
+}
+function confirmSuspend(){
+  if (!selectedAdmin.value) return
+  showSuspendConfirmModal.value = false
+  performStatusToggle('Inactive')
+}
+function cancelSuspend(){
+  showSuspendConfirmModal.value = false
+}
+
+// --- Notification (Toast) System ---
+const activeNotification = ref(null) // { id, type, title, message }
+let notificationTimeout = null
+function showNotification({ type='info', title='', message='', duration=4000 }) {
+  const id = Date.now()
+  activeNotification.value = { id, type, title, message }
+  if (notificationTimeout) clearTimeout(notificationTimeout)
+  notificationTimeout = setTimeout(() => {
+    if (activeNotification.value && activeNotification.value.id === id) {
+      activeNotification.value = null
+    }
+  }, duration)
 }
 </script>
 
 <template>
   <div class="flex h-screen bg-gray-50">
+    <!-- Toast Notification -->
+    <transition name="slide-in-right">
+      <div v-if="activeNotification" class="fixed top-4 right-4 z-[70] px-4">
+        <div :class="['w-full max-w-sm rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
+          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-700']">
+          <div class="flex-shrink-0 mt-0.5">
+            <svg v-if="activeNotification.type === 'warning'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
+            <svg v-else-if="activeNotification.type === 'success'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <svg v-else-if="activeNotification.type === 'error'" class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
+            <svg v-else class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold leading-tight" v-if="activeNotification.title">{{ activeNotification.title }}</p>
+            <p class="text-xs leading-relaxed mt-0.5" v-if="activeNotification.message">{{ activeNotification.message }}</p>
+          </div>
+          <button @click="activeNotification=null" class="p-1 rounded-md hover:bg-black/5 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </transition>
     <admin-sidebar></admin-sidebar>
     
     <!-- Main Content -->
@@ -854,6 +904,31 @@ const toggleSuspendAdmin = () => {
         </div>
       </div>
     </div>
+
+    <!-- Suspend Confirmation Modal -->
+    <div v-if="showSuspendConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="cancelSuspend">
+      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+        <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-yellow-50 flex items-center justify-center ring-1 ring-yellow-100">
+            <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Confirm Suspension</h3>
+            <p class="mt-1 text-sm text-gray-600 leading-relaxed">Suspend <span class="font-semibold text-gray-900">{{ selectedAdmin?.name }}</span>? They will lose active access until reactivated.</p>
+          </div>
+          <button @click="cancelSuspend" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-6 pb-6 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+          <button @click="confirmSuspend" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-yellow-600 text-white text-sm font-medium hover:bg-yellow-700 shadow-sm transition-colors w-full sm:w-auto">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
+            Confirm Suspension
+          </button>
+          <button @click="cancelSuspend" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -916,4 +991,9 @@ const toggleSuspendAdmin = () => {
 .focus\:border-\[\#042EFF\]:focus {
   border-color: #042EFF;
 }
+
+/* Slide-in-right for toast */
+.slide-in-right-enter-from, .slide-in-right-leave-to { opacity:0; transform: translateX(20px); }
+.slide-in-right-enter-active, .slide-in-right-leave-active { transition: all .35s cubic-bezier(.4,0,.2,1); }
+.slide-in-right-leave-from, .slide-in-right-enter-to { opacity:1; transform: translateX(0); }
 </style>
