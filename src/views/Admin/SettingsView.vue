@@ -263,6 +263,40 @@ const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
   alert(`${key} preference updated!`)
 }
+
+// --- Permission Editing State for Admin Details Modal ---
+const isEditingPermissions = ref(false)
+const permissionDraft = ref({})
+
+const startEditPermissions = () => {
+  if (!selectedAdmin.value) return
+  // Create a shallow copy of permissions to edit
+  permissionDraft.value = { ...selectedAdmin.value.permissions }
+  isEditingPermissions.value = true
+}
+
+const togglePermission = (key) => {
+  if (!isEditingPermissions.value) return
+  permissionDraft.value[key] = !permissionDraft.value[key]
+}
+
+const cancelEditPermissions = () => {
+  isEditingPermissions.value = false
+  permissionDraft.value = {}
+}
+
+const savePermissions = () => {
+  if (!selectedAdmin.value || !isEditingPermissions.value) return
+  // Persist to selectedAdmin
+  selectedAdmin.value.permissions = { ...permissionDraft.value }
+  // Persist to admins array
+  const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
+  if (idx > -1) {
+    admins[idx].permissions = { ...permissionDraft.value }
+  }
+  isEditingPermissions.value = false
+  alert('Permissions updated successfully!')
+}
 </script>
 
 <template>
@@ -668,12 +702,30 @@ const updatePreference = (key, value) => {
               <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                 <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Permissions</h4>
-                  <span class="text-xs text-gray-400 font-mono">{{ Object.keys(selectedAdmin.permissions).length }}</span>
+                  <div class="flex items-center gap-2">
+                    <button v-if="!isEditingPermissions" @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
+                      <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Edit
+                    </button>
+                    <span v-else class="inline-flex items-center gap-2">
+                      <button @click="savePermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-[#042EFF] text-white text-xs font-medium hover:bg-blue-600 shadow-sm transition-colors">
+                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        Save
+                      </button>
+                      <button @click="cancelEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">Cancel</button>
+                    </span>
+                    <span class="text-xs text-gray-400 font-mono">{{ Object.keys(selectedAdmin.permissions).length }}</span>
+                  </div>
                 </div>
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div v-for="(hasPermission, permission) in selectedAdmin.permissions" :key="permission" class="flex items-center justify-between bg-white rounded-lg px-3 py-2 ring-1 ring-gray-100 hover:ring-blue-200 transition-colors">
-                    <span class="text-xs font-medium text-gray-700">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
-                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
+                  <div v-for="(hasPermission, permission) in (isEditingPermissions ? permissionDraft : selectedAdmin.permissions)" :key="permission" class="flex items-center justify-between bg-white rounded-lg px-3 py-2 ring-1 ring-gray-100 hover:ring-blue-200 transition-colors group">
+                    <span class="text-xs font-medium text-gray-700 flex-1 pr-3">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                    <!-- View Mode Badge -->
+                    <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
+                    <!-- Edit Mode Toggle -->
+                    <button v-else @click="togglePermission(permission)" :class="[ 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2', permissionDraft[permission] ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400']" type="button">
+                      <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-gray-200 transition" :class="permissionDraft[permission] ? 'translate-x-5' : 'translate-x-1'"></span>
+                    </button>
                   </div>
                 </div>
               </div>
