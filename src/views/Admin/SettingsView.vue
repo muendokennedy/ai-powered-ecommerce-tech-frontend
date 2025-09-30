@@ -368,6 +368,36 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
     }
   }, duration)
 }
+
+// --- Messaging Modal Logic ---
+const showMessageModal = ref(false)
+const sendingMessage = ref(false)
+const messageForm = reactive({ subject: '', body: '' })
+function openMessageModal(){
+  if(!selectedAdmin.value){
+    showNotification({ type:'warning', title:'No Admin Selected', message:'Select an administrator first.' })
+    return
+  }
+  messageForm.subject = ''
+  messageForm.body = ''
+  showMessageModal.value = true
+}
+function closeMessageModal(){
+  if(sendingMessage.value) return
+  showMessageModal.value = false
+}
+function sendAdminMessage(){
+  if(!messageForm.body.trim()) {
+    showNotification({ type:'warning', title:'Message Required', message:'Please enter a message before sending.' })
+    return
+  }
+  sendingMessage.value = true
+  setTimeout(()=>{
+    sendingMessage.value = false
+    showMessageModal.value = false
+    showNotification({ type:'success', title:'Message Sent', message:`Message sent to ${selectedAdmin.value?.name}.` })
+  }, 800)
+}
 </script>
 
 <template>
@@ -406,7 +436,7 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
         <div class="max-w-7xl mx-auto">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
-            <p class="text-gray-600 mt-2">Manage your profile and system administrators</p>
+            <p class="text-gray-600 mt-2">Manage your profile</p>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -538,19 +568,6 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
                       <option value="French">French</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
-                    <select 
-                      :value="currentAdmin.preferences.timezone"
-                      @change="updatePreference('timezone', $event.target.value)"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
-                    >
-                      <option value="EST (UTC-5)">EST (UTC-5)</option>
-                      <option value="CST (UTC-6)">CST (UTC-6)</option>
-                      <option value="PST (UTC-8)">PST (UTC-8)</option>
                     </select>
                   </div>
                 </div>
@@ -911,13 +928,9 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Actions</h4>
                 </div>
                 <div class="p-5 space-y-3">
-                  <button class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
+                  <button @click="openMessageModal" class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     Send Message
-                  </button>
-                  <button class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors shadow-sm">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Generate Report
                   </button>
                   <button @click="toggleSuspendAdmin" :disabled="isTogglingStatus || (selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active')" :class="[
                       'w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm',
@@ -930,13 +943,53 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
                     <span v-if="selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active'">Protected</span>
                     <span v-else>{{ selectedAdmin.status === 'Active' ? (isTogglingStatus ? 'Suspending...' : 'Suspend Account') : (isTogglingStatus ? 'Activating...' : 'Activate Account') }}</span>
                   </button>
-                  <button v-if="selectedAdmin.role !== 'Primary Admin'" @click="confirmDeleteAdmin(selectedAdmin)" class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors shadow-sm">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                    Delete Admin
+                  <button v-if="selectedAdmin.role !== 'Primary Admin'" @click="selectedAdmin.status === 'Inactive' ? confirmDeleteAdmin(selectedAdmin) : null" :disabled="selectedAdmin.status !== 'Inactive'" :class="[
+                      'w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm',
+                      selectedAdmin.status === 'Inactive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-200 text-red-500 cursor-not-allowed'
+                    ]">
+                    <svg class="w-4 h-4 mr-2" :class="selectedAdmin.status !== 'Inactive' ? 'opacity-70' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span>{{ selectedAdmin.status === 'Inactive' ? 'Delete Admin' : 'Delete (Requires Suspension)' }}</span>
                   </button>
+                  <p v-if="selectedAdmin.role !== 'Primary Admin'" class="text-[10px] text-gray-500 leading-snug">Admin must be <span class="font-medium text-yellow-700">suspended</span> before deletion.</p>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Send Message Modal -->
+    <div v-if="showMessageModal && selectedAdmin" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeMessageModal">
+      <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+        <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center ring-1 ring-blue-100">
+            <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="flex-1 pr-4">
+            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Message {{ selectedAdmin.name }}</h3>
+            <p class="mt-1 text-xs text-gray-500">Direct message will be delivered to the admin's inbox.</p>
+          </div>
+          <button @click="closeMessageModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog" :disabled="sendingMessage">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="px-6 pb-6 space-y-5">
+          <div class="space-y-1">
+            <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Subject (Optional)</label>
+            <input v-model="messageForm.subject" type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="Subject" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Message</label>
+            <textarea v-model="messageForm.body" rows="5" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm resize-none" placeholder="Type your message..."></textarea>
+          </div>
+          <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-2">
+            <button @click="sendAdminMessage" :disabled="sendingMessage" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-600">
+              <svg v-if="!sendingMessage" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <svg v-else class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+              {{ sendingMessage ? 'Sending...' : 'Send Message' }}
+            </button>
+            <button @click="closeMessageModal" :disabled="sendingMessage" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
           </div>
         </div>
       </div>

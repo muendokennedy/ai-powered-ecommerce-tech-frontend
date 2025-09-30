@@ -623,6 +623,8 @@ const getOrderStatusColor = (status) => {
               </div>
             </div>
 
+            
+
             <!-- Preferences Card -->
             <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <div class="bg-gray-50 px-5 py-3">
