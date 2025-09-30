@@ -657,7 +657,7 @@ function sendAdminMessage(){
                       </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                      <tr v-for="admin in admins" :key="admin.id" class="hover:bg-gray-50">
+                      <tr v-for="admin in admins" :key="admin.id" @click.stop="viewAdminDetails(admin)" class="hover:bg-gray-50 cursor-pointer">
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div class="flex items-center">
                             <img :src="admin.avatar" :alt="admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
@@ -689,7 +689,7 @@ function sendAdminMessage(){
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div class="flex space-x-2">
-                            <button @click="viewAdminDetails(admin)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
+                            <button @click.stop="viewAdminDetails(admin)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
                               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -775,7 +775,7 @@ function sendAdminMessage(){
     <div v-if="showAdminDetailsModal && selectedAdmin" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAdminDetailsModal">
       <div class="admin-details-modal relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-auto animate-fade-in h-[95vh]">
         <!-- Sticky Header -->
-        <div class="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+        <div class="sticky top-0 z-20 bg-white backdrop-blur-sm border-b border-gray-200 px-6 py-5 flex items-start justify-between">
           <div class="flex items-center">
             <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 shadow-sm" />
             <div>
@@ -1072,15 +1072,23 @@ function sendAdminMessage(){
 }
 
 /* Modal animations */
-@keyframes fade-in { from { opacity:0; transform: translateY(10px);} to { opacity:1; transform: translateY(0);} }
+@keyframes fade-in {
+   from { 
+    opacity:0; 
+    transform: translateY(10px);
+  } to { 
+    opacity:1; 
+    transform: translateY(0);
+  } 
+  }
 @keyframes scale-in { from { opacity:0; transform: scale(.95);} to { opacity:1; transform: scale(1);} }
 .animate-fade-in { animation: fade-in .4s cubic-bezier(.4,0,.2,1); }
 .animate-scale-in { animation: scale-in .35s cubic-bezier(.4,0,.2,1); }
 
 /* Hide scrollbars inside modals where desired */
-.admin-details-modal::-webkit-scrollbar, .custom-scroll::-webkit-scrollbar { width: 6px; }
-.admin-details-modal::-webkit-scrollbar-thumb, .custom-scroll::-webkit-scrollbar-thumb { background:#c1c1c1; border-radius:3px; }
-.admin-details-modal::-webkit-scrollbar-thumb:hover, .custom-scroll::-webkit-scrollbar-thumb:hover { background:#a1a1a1; }
+.admin-details-modal::-webkit-scrollbar, .custom-scroll::-webkit-scrollbar {
+   width: 0; 
+  }
 
 /* Additional custom styles */
 .bg-\[\#042EFF\] {
