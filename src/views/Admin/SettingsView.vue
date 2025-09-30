@@ -48,6 +48,35 @@ const editForm = reactive({
   department: '',
   location: ''
 })
+// Departments list (could be sourced dynamically)
+const departments = ['Operations','Customer Service','Inventory','Marketing']
+
+// Avatar editing state
+const newAvatarPreview = ref('')
+const isDraggingAvatar = ref(false)
+const fileInputRef = ref(null)
+
+function triggerAvatarSelect(){
+  if(fileInputRef.value) fileInputRef.value.click()
+}
+function handleAvatarFileList(files){
+  if(!files || !files.length) return
+  const file = files[0]
+  if(!file.type.startsWith('image/')) {
+    showNotification({ type:'warning', title:'Invalid File', message:'Please select an image file.' })
+    return
+  }
+  if(newAvatarPreview.value) URL.revokeObjectURL(newAvatarPreview.value)
+  newAvatarPreview.value = URL.createObjectURL(file)
+}
+function onAvatarChange(e){ handleAvatarFileList(e.target.files) }
+function onAvatarDrop(e){
+  e.preventDefault();
+  isDraggingAvatar.value = false
+  handleAvatarFileList(e.dataTransfer.files)
+}
+function onAvatarDragOver(e){ e.preventDefault(); isDraggingAvatar.value = true }
+function onAvatarDragLeave(e){ e.preventDefault(); isDraggingAvatar.value = false }
 
 // All admins data
 const admins = reactive([
@@ -200,6 +229,9 @@ const saveProfile = () => {
   currentAdmin.phone = editForm.phone
   currentAdmin.department = editForm.department
   currentAdmin.location = editForm.location
+  if(newAvatarPreview.value) {
+    currentAdmin.avatar = newAvatarPreview.value
+  }
 
   const adminIndex = admins.findIndex(a => a.id === currentAdmin.id)
   if (adminIndex > -1) {
@@ -208,11 +240,13 @@ const saveProfile = () => {
       email: editForm.email,
       phone: editForm.phone,
       department: editForm.department,
-      location: editForm.location
+      location: editForm.location,
+      avatar: newAvatarPreview.value ? newAvatarPreview.value : admins[adminIndex].avatar
     })
   }
 
   showNotification({ type: 'success', title: 'Profile Updated', message: 'Your profile information has been saved.' })
+  newAvatarPreview.value = ''
   closeEditProfileModal()
 }
 
@@ -735,6 +769,36 @@ function sendAdminMessage(){
         <div class="px-6 py-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scroll">
           <form @submit.prevent="saveProfile" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <!-- Avatar Uploader In-Place -->
+              <div class="md:col-span-2">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Profile Picture</label>
+                <div class="mt-3 flex flex-col items-center">
+                  <div
+                    @click="triggerAvatarSelect"
+                    @dragover="onAvatarDragOver"
+                    @dragleave="onAvatarDragLeave"
+                    @drop="onAvatarDrop"
+                    :class="['relative group rounded-full overflow-hidden cursor-pointer transition-all ring-4', isDraggingAvatar ? 'ring-[#042EFF] scale-105' : 'ring-white shadow']"
+                    style="width:120px; height:120px;"
+                  >
+                    <img :src="newAvatarPreview || currentAdmin.avatar" alt="Avatar" class="w-full h-full object-cover" />
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white text-[11px] font-medium space-y-0.5">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                      <span>Change</span>
+                      <span class="text-[9px] tracking-wide opacity-70">Drag or Click</span>
+                    </div>
+                    <div v-if="newAvatarPreview" class="absolute top-2 right-2 bg-green-600 text-white rounded-full p-1 shadow">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                  </div>
+                  <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
+                  <div v-if="newAvatarPreview" class="mt-3 flex items-center gap-3">
+                    <button type="button" @click="newAvatarPreview=''; if(fileInputRef?.value) fileInputRef.value.value=''" class="text-[11px] px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600">Reset</button>
+                    <span class="text-[11px] text-green-600 font-medium">New image selected</span>
+                  </div>
+                  <p class="mt-3 text-[10px] text-gray-500">PNG/JPG up to 5MB</p>
+                </div>
+              </div>
               <div class="space-y-1">
                 <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Full Name</label>
                 <input v-model="editForm.name" type="text" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="Enter full name" />
@@ -749,7 +813,10 @@ function sendAdminMessage(){
               </div>
               <div class="space-y-1">
                 <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Department</label>
-                <input v-model="editForm.department" type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="e.g. Operations" />
+                <select v-model="editForm.department" class="w-full px-3 py-2.5 border border-gray-300 bg-white rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm">
+                  <option value="" disabled>Select department</option>
+                  <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
+                </select>
               </div>
               <div class="space-y-1 md:col-span-2">
                 <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Location</label>

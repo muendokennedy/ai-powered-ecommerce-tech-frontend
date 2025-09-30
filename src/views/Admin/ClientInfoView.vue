@@ -671,10 +671,10 @@ const getOrderStatusColor = (status) => {
                   <p class="text-2xl font-bold text-gray-900">${{ selectedClient.totalSpent.toLocaleString() }}</p>
                   <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Spent</p>
                 </div>
-                <!-- <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
+                <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
                   <p class="text-2xl font-bold text-gray-900">{{ selectedClient.loyaltyPoints }}</p>
                   <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Points</p>
-                </div> -->
+                </div>
                 <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
                   <p class="text-sm font-semibold text-gray-900">{{ formatDate(selectedClient.lastOrderDate) }}</p>
                   <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Last Order</p>
