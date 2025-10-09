@@ -89,7 +89,7 @@ const goToSlide = (index) => {
           <div class="hero-section flex flex-col md:flex-row gap-4 justify-between my-6 items-start">
             <div class="hero-image basis-[48%]">
               <img
-                src="../assets/../assets/images/logo.png"
+                src="../../assets/images/logo.png"
                 alt="The company logo"
                 class="w-full h-full object-cover"
               />
