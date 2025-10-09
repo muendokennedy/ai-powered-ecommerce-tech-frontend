@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted, watch } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 
@@ -317,7 +317,18 @@ const recentActivity = computed(() => (currentAdminRecord.value?.activityLog || 
 
 const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
-  showNotification({ type: 'success', title: 'Preference Saved', message: `${key.replace(/([A-Z])/g,' $1')} updated.` })
+
+  // Apply theme immediately; the watcher will handle the toast to avoid duplicates.
+  if (key === 'theme') {
+    applyTheme(value)
+    return
+  }
+
+  showNotification({
+    type: 'success',
+    title: 'Preference Saved',
+    message: `${key.replace(/([A-Z])/g, ' $1')} updated.`
+  })
 }
 
 // --- Permission Editing State for Admin Details Modal ---
@@ -403,46 +414,86 @@ function showNotification({ type='info', title='', message='', duration=4000 }) 
   }, duration)
 }
 
-// --- Messaging Modal Logic ---
-const showMessageModal = ref(false)
-const sendingMessage = ref(false)
-const messageForm = reactive({ subject: '', body: '' })
-function openMessageModal(){
-  if(!selectedAdmin.value){
-    showNotification({ type:'warning', title:'No Admin Selected', message:'Select an administrator first.' })
+// --- Theme Handling (Light / Dark / Auto) ---
+let systemDarkQuery = null
+
+function setDarkMode(enabled) {
+  const root = document.documentElement
+  const body = document.body
+
+  if (enabled) {
+    root.classList.add('dark')
+    body.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+  }
+}
+
+function applyTheme(theme) {
+  // Clean up previous system listener when switching away from Auto
+  if (systemDarkQuery && systemDarkQuery.removeEventListener) {
+    systemDarkQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
+  if (theme === 'Dark') {
+    setDarkMode(true)
     return
   }
-  messageForm.subject = ''
-  messageForm.body = ''
-  showMessageModal.value = true
-}
-function closeMessageModal(){
-  if(sendingMessage.value) return
-  showMessageModal.value = false
-}
-function sendAdminMessage(){
-  if(!messageForm.body.trim()) {
-    showNotification({ type:'warning', title:'Message Required', message:'Please enter a message before sending.' })
+
+  if (theme === 'Light') {
+    setDarkMode(false)
     return
   }
-  sendingMessage.value = true
-  setTimeout(()=>{
-    sendingMessage.value = false
-    showMessageModal.value = false
-    showNotification({ type:'success', title:'Message Sent', message:`Message sent to ${selectedAdmin.value?.name}.` })
-  }, 800)
+
+  // Auto: follow system preference by toggling the class based on matchMedia
+  systemDarkQuery = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')
+  if (systemDarkQuery) {
+    setDarkMode(systemDarkQuery.matches)
+    systemDarkQuery.addEventListener('change', handleSystemThemeChange)
+  } else {
+    // Fallback
+    setDarkMode(false)
+  }
 }
+
+function handleSystemThemeChange(e) {
+  if (currentAdmin.preferences.theme !== 'Auto') {
+    return
+  }
+  setDarkMode(!!e.matches)
+}
+
+onMounted(() => {
+  const initial = currentAdmin.preferences && currentAdmin.preferences.theme
+    ? currentAdmin.preferences.theme
+    : 'Light'
+  applyTheme(initial)
+})
+
+watch(
+  () => currentAdmin.preferences.theme,
+  (val) => {
+    applyTheme(val)
+    showNotification({
+      type: 'success',
+      title: 'Theme Updated',
+      message: val === 'Auto' ? 'Following system appearance.' : `Switched to ${val} theme.`
+    })
+  }
+)
+
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Toast Notification -->
     <transition name="slide-in-right">
       <div v-if="activeNotification" class="fixed top-4 right-4 z-[70] px-4">
         <div :class="['w-full max-w-sm rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
-          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
-          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
-          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-700']">
+          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-900/40 dark:text-yellow-200' :
+          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-900/40 dark:text-green-200' :
+          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-900/40 dark:text-red-200' : 'bg-white border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100']">
           <div class="flex-shrink-0 mt-0.5">
             <svg v-if="activeNotification.type === 'warning'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
             <svg v-else-if="activeNotification.type === 'success'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -469,8 +520,8 @@ function sendAdminMessage(){
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-7xl mx-auto">
           <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Settings</h1>
-            <p class="text-gray-600 mt-2">Manage your profile</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">Manage your profile</p>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -478,9 +529,9 @@ function sendAdminMessage(){
             <div class="lg:col-span-2 space-y-6">
               <!-- Current Admin Profile -->
                <div>
-                 <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                   <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                     <h3 class="text-lg font-semibold text-gray-900">My Profile</h3>
+                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                   <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">My Profile</h3>
                      <button @click="openEditProfile" class="bg-[#042EFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                        Edit Profile
                      </button>
@@ -491,7 +542,7 @@ function sendAdminMessage(){
                        <img :src="currentAdmin.avatar" :alt="currentAdmin.name" class="h-20 w-20 rounded-full object-cover">
                        <div class="flex-1">
                          <div class="flex items-center space-x-3 mb-2">
-                           <h2 class="text-2xl font-bold text-gray-900">{{ currentAdmin.name }}</h2>
+                           <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ currentAdmin.name }}</h2>
                            <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
                              {{ currentAdmin.role }}
                            </span>
@@ -499,28 +550,28 @@ function sendAdminMessage(){
                          
                          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                            <div>
-                             <p class="text-sm text-gray-600">Email</p>
-                             <p class="font-medium">{{ currentAdmin.email }}</p>
+                             <p class="text-sm text-gray-600 dark:text-gray-400">Email</p>
+                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.email }}</p>
                            </div>
                            <div>
-                             <p class="text-sm text-gray-600">Phone</p>
-                             <p class="font-medium">{{ currentAdmin.phone }}</p>
+                             <p class="text-sm text-gray-600 dark:text-gray-400">Phone</p>
+                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.phone }}</p>
                            </div>
                            <div>
-                             <p class="text-sm text-gray-600">Department</p>
-                             <p class="font-medium">{{ currentAdmin.department }}</p>
+                             <p class="text-sm text-gray-600 dark:text-gray-400">Department</p>
+                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.department }}</p>
                            </div>
                            <div>
-                             <p class="text-sm text-gray-600">Location</p>
-                             <p class="font-medium">{{ currentAdmin.location }}</p>
+                             <p class="text-sm text-gray-600 dark:text-gray-400">Location</p>
+                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.location }}</p>
                            </div>
                            <div>
-                             <p class="text-sm text-gray-600">Join Date</p>
-                             <p class="font-medium">{{ formatDate(currentAdmin.joinDate) }}</p>
+                             <p class="text-sm text-gray-600 dark:text-gray-400">Join Date</p>
+                             <p class="font-medium dark:text-gray-100">{{ formatDate(currentAdmin.joinDate) }}</p>
                            </div>
                            <div>
-                             <p class="text-sm text-gray-600">Last Login</p>
-                             <p class="font-medium">{{ currentAdmin.lastLogin }}</p>
+                             <p class="text-sm text-gray-600 dark:text-gray-400">Last Login</p>
+                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.lastLogin }}</p>
                            </div>
                          </div>
                        </div>
@@ -528,18 +579,18 @@ function sendAdminMessage(){
                    </div>
                  </div>
                </div>
-                <!-- Metrics & Recent Activity (Directly Below Profile) -->
+                
                 <!-- Metrics Card -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-100 xl:col-span-2">
-                  <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900">My Activity Metrics</h3>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 xl:col-span-2">
+                  <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">My Activity Metrics</h3>
                   </div>
                   <div class="p-6">
                     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      <div v-for="m in profileMetrics" :key="m.label" class="relative rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-4 shadow-sm overflow-hidden group">
+                      <div v-for="m in profileMetrics" :key="m.label" class="relative  rounded-xl border border-gray-200 dark:border-gray-700 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 p-4 shadow-sm overflow-hidden group">
                         <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-[radial-gradient(circle_at_30%_30%,rgba(4,46,255,0.07),transparent)]"></div>
-                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{{ m.label }}</p>
-                        <p class="mt-1 text-2xl font-semibold text-gray-900">{{ m.value }}</p>
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ m.label }}</p>
+                        <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ m.value }}</p>
                       </div>
                     </div>
                   </div>
@@ -547,16 +598,16 @@ function sendAdminMessage(){
                 </div>
               </div>
               <!-- Recent Activity Card -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                  <h3 class="text-lg font-semibold text-gray-900">Recent Activity</h3>
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Activity</h3>
                 </div>
                 <div class="p-6">
                   <ul class="space-y-4" v-if="recentActivity.length">
                     <li v-for="(item,idx) in recentActivity" :key="idx" class="flex items-start space-x-3">
                       <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#042EFF] ring-4 ring-[#042EFF]/10"></div>
                       <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-800">{{ item.action }}</p>
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ item.action }}</p>
                         <p class="text-xs text-gray-500">{{ item.date }}</p>
                       </div>
                     </li>
@@ -573,18 +624,18 @@ function sendAdminMessage(){
             <!-- Preferences Section -->
             <div class="space-y-6">
               <!-- Account Preferences -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-lg font-semibold text-gray-900">Preferences</h3>
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Preferences</h3>
                 </div>
                 
                 <div class="p-6 space-y-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Theme</label>
                     <select 
                       :value="currentAdmin.preferences.theme"
                       @change="updatePreference('theme', $event.target.value)"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                     >
                       <option value="Light">Light</option>
                       <option value="Dark">Dark</option>
@@ -593,11 +644,11 @@ function sendAdminMessage(){
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Language</label>
                     <select 
                       :value="currentAdmin.preferences.language"
                       @change="updatePreference('language', $event.target.value)"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                     >
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
@@ -608,14 +659,14 @@ function sendAdminMessage(){
               </div>
 
               <!-- Notification Preferences -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-lg font-semibold text-gray-900">Notifications</h3>
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
                 </div>
                 
                 <div class="p-6 space-y-4">
                   <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">Email Notifications</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Notifications</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -628,7 +679,7 @@ function sendAdminMessage(){
                   </div>
 
                   <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">SMS Notifications</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">SMS Notifications</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -641,7 +692,7 @@ function sendAdminMessage(){
                   </div>
 
                   <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700">Weekly Reports</span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Weekly Reports</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -656,14 +707,14 @@ function sendAdminMessage(){
               </div>
 
               <!-- Permissions Overview -->
-              <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-lg font-semibold text-gray-900">My Permissions</h3>
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">My Permissions</h3>
                 </div>
                 
                 <div class="p-6 space-y-3">
                   <div v-for="(hasPermission, permission) in currentAdmin.permissions" :key="permission" class="flex items-center justify-between">
-                    <span class="text-sm text-gray-700 capitalize">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
                     <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', hasPermission ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
                       {{ hasPermission ? 'Granted' : 'Denied' }}
                     </span>
@@ -672,37 +723,37 @@ function sendAdminMessage(){
               </div>
             </div>
             <!-- System Administrators Table -->
-              <div class="bg-white col-span-3 rounded-xl shadow-sm border border-gray-100">
-                <div class="px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-lg font-semibold text-gray-900">System Administrators</h3>
+              <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">System Administrators</h3>
                 </div>
                 
                 <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                  <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-900/40">
                       <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Admin</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Login</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                      <tr v-for="admin in admins" :key="admin.id" @click.stop="viewAdminDetails(admin)" class="hover:bg-gray-50 cursor-pointer">
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tr v-for="admin in admins" :key="admin.id" @click.stop="viewAdminDetails(admin)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div class="flex items-center">
                             <img :src="admin.avatar" :alt="admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
                             <div>
-                              <div class="text-sm font-medium text-gray-900">{{ admin.name }}</div>
+                              <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ admin.name }}</div>
                               <div class="text-sm text-gray-500">{{ admin.id }}</div>
                             </div>
                           </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                          <div class="text-sm text-gray-900">{{ admin.email }}</div>
+                          <div class="text-sm text-gray-900 dark:text-gray-100">{{ admin.email }}</div>
                           <div class="text-sm text-gray-500">{{ admin.phone }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -710,7 +761,7 @@ function sendAdminMessage(){
                             {{ admin.role }}
                           </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {{ admin.department }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -756,13 +807,13 @@ function sendAdminMessage(){
 
     <!-- Edit Profile Modal (Enhanced) -->
     <div v-if="showEditProfileModal" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeEditProfileModal">
-      <div class="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
-        <div class="flex items-start justify-between px-6 py-5 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
+      <div class="relative w-full max-w-xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-in">
+        <div class="flex items-start justify-between px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
           <div>
-            <h3 class="text-2xl font-bold tracking-tight text-gray-900">Edit Profile</h3>
+            <h3 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Edit Profile</h3>
             <p class="text-xs text-gray-500 font-mono mt-1">ID: {{ currentAdmin.id }} • Joined {{ formatDate(currentAdmin.joinDate) }}</p>
           </div>
-          <button @click="closeEditProfileModal" class="p-2 rounded-full hover:bg-gray-100 transition-colors" title="Close">
+          <button @click="closeEditProfileModal" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Close">
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -771,14 +822,14 @@ function sendAdminMessage(){
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               <!-- Avatar Uploader In-Place -->
               <div class="md:col-span-2">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Profile Picture</label>
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Profile Picture</label>
                 <div class="mt-3 flex flex-col items-center">
                   <div
                     @click="triggerAvatarSelect"
                     @dragover="onAvatarDragOver"
                     @dragleave="onAvatarDragLeave"
                     @drop="onAvatarDrop"
-                    :class="['relative group rounded-full overflow-hidden cursor-pointer transition-all ring-4', isDraggingAvatar ? 'ring-[#042EFF] scale-105' : 'ring-white shadow']"
+                    :class="['relative group rounded-full overflow-hidden cursor-pointer transition-all ring-4', isDraggingAvatar ? 'ring-[#042EFF] scale-105' : 'ring-white dark:ring-gray-700 shadow']"
                     style="width:120px; height:120px;"
                   >
                     <img :src="newAvatarPreview || currentAdmin.avatar" alt="Avatar" class="w-full h-full object-cover" />
@@ -793,72 +844,72 @@ function sendAdminMessage(){
                   </div>
                   <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
                   <div v-if="newAvatarPreview" class="mt-3 flex items-center gap-3">
-                    <button type="button" @click="newAvatarPreview=''; if(fileInputRef?.value) fileInputRef.value.value=''" class="text-[11px] px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600">Reset</button>
+                    <button type="button" @click="newAvatarPreview=''; if(fileInputRef?.value) fileInputRef.value.value=''" class="text-[11px] px-2 py-1 rounded bg-gray-100 dark:bg-gray-900 hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">Reset</button>
                     <span class="text-[11px] text-green-600 font-medium">New image selected</span>
                   </div>
                   <p class="mt-3 text-[10px] text-gray-500">PNG/JPG up to 5MB</p>
                 </div>
               </div>
               <div class="space-y-1">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Full Name</label>
-                <input v-model="editForm.name" type="text" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="Enter full name" />
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Full Name</label>
+                <input v-model="editForm.name" type="text" required class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" placeholder="Enter full name" />
               </div>
               <div class="space-y-1">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Email</label>
-                <input v-model="editForm.email" type="email" required class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="name@email.com" />
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Email</label>
+                <input v-model="editForm.email" type="email" required class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" placeholder="name@email.com" />
               </div>
               <div class="space-y-1">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Phone</label>
-                <input v-model="editForm.phone" type="tel" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="+1 ..." />
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Phone</label>
+                <input v-model="editForm.phone" type="tel" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" placeholder="+1 ..." />
               </div>
               <div class="space-y-1">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Department</label>
-                <select v-model="editForm.department" class="w-full px-3 py-2.5 border border-gray-300 bg-white rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm">
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Department</label>
+                <select v-model="editForm.department" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm text-gray-900 dark:text-gray-100">
                   <option value="" disabled>Select department</option>
                   <option v-for="dept in departments" :key="dept" :value="dept">{{ dept }}</option>
                 </select>
               </div>
               <div class="space-y-1 md:col-span-2">
-                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Location</label>
-                <input v-model="editForm.location" type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="City, Country" />
+                <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Location</label>
+                <input v-model="editForm.location" type="text" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" placeholder="City, Country" />
               </div>
             </div>
           </form>
-          <div class="border border-blue-100 bg-blue-50/60 rounded-lg p-4 text-[11px] text-blue-700 leading-relaxed">
+          <div class="border border-blue-100 dark:border-blue-900/40 bg-blue-50/60 dark:bg-blue-900/20 rounded-lg p-4 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
             Updating your profile helps other administrators identify responsibilities and contact preferences.
           </div>
         </div>
-        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
           <button @click="saveProfile" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium shadow-sm hover:bg-blue-600 transition-colors">
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
             Save Changes
           </button>
-          <button @click="closeEditProfileModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors">Cancel</button>
+          <button @click="closeEditProfileModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors">Cancel</button>
         </div>
       </div>
     </div>
 
     <!-- Admin Details Modal (Enhanced) -->
     <div v-if="showAdminDetailsModal && selectedAdmin" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAdminDetailsModal">
-      <div class="admin-details-modal relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-auto animate-fade-in h-[95vh]">
+      <div class="admin-details-modal relative w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-auto animate-fade-in h-[95vh]">
         <!-- Sticky Header -->
-        <div class="sticky top-0 z-20 bg-white backdrop-blur-sm border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+        <div class="sticky top-0 z-20 bg-white dark:bg-gray-900 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
           <div class="flex items-center">
-            <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 shadow-sm" />
+            <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm" />
             <div>
               <div class="flex items-center space-x-3 mb-1">
-                <h3 class="text-2xl font-bold tracking-tight text-gray-900">{{ selectedAdmin.name }}</h3>
+                <h3 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ selectedAdmin.name }}</h3>
                 <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getRoleColor(selectedAdmin.role)]">{{ selectedAdmin.role }}</span>
                 <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusColor(selectedAdmin.status)]">{{ selectedAdmin.status }}</span>
               </div>
-              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>ID: {{ selectedAdmin.id }}</span>
                 <span>Dept: {{ selectedAdmin.department }}</span>
                 <span>Last Login: {{ selectedAdmin.lastLogin }}</span>
               </div>
             </div>
           </div>
-          <button @click="closeAdminDetailsModal" class="p-2 rounded-full hover:bg-gray-100 transition-colors" title="Close">
+          <button @click="closeAdminDetailsModal" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Close">
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -868,48 +919,48 @@ function sendAdminMessage(){
             <!-- Left Column -->
             <div class="lg:col-span-2 space-y-6">
               <!-- Contact Card -->
-              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Contact</h4>
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Contact</h4>
                   <span class="text-xs text-gray-400 font-mono">Primary</span>
                 </div>
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Email</p>
-                    <p class="font-medium text-gray-900 break-all">{{ selectedAdmin.email }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100 break-all">{{ selectedAdmin.email }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Phone</p>
-                    <p class="font-medium text-gray-900">{{ selectedAdmin.phone }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedAdmin.phone }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Department</p>
-                    <p class="font-medium text-gray-900">{{ selectedAdmin.department }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedAdmin.department }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Location</p>
-                    <p class="font-medium text-gray-900">{{ selectedAdmin.location }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedAdmin.location }}</p>
                   </div>
                 </div>
               </div>
               <!-- Account Card -->
-              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Account</h4>
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Account</h4>
                   <span class="text-xs text-gray-400 font-mono">Meta</span>
                 </div>
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Join Date</p>
-                    <p class="font-medium text-gray-900">{{ formatDate(selectedAdmin.joinDate) }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(selectedAdmin.joinDate) }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Total Actions</p>
-                    <p class="font-medium text-gray-900">{{ selectedAdmin.totalActions.toLocaleString() }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedAdmin.totalActions.toLocaleString() }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Account Created</p>
-                    <p class="font-medium text-gray-900">{{ formatDate(selectedAdmin.accountCreated) }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(selectedAdmin.accountCreated) }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500">Status</p>
@@ -918,9 +969,9 @@ function sendAdminMessage(){
                 </div>
               </div>
               <!-- Permissions Card -->
-              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Permissions</h4>
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Permissions</h4>
                   <div class="flex items-center gap-2">
                     <button v-if="!isEditingPermissions" @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
                       <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -937,8 +988,8 @@ function sendAdminMessage(){
                   </div>
                 </div>
                 <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                  <div v-for="(hasPermission, permission) in (isEditingPermissions ? permissionDraft : selectedAdmin.permissions)" :key="permission" class="flex items-center justify-between bg-white rounded-lg px-3 py-2 ring-1 ring-gray-100 hover:ring-blue-200 transition-colors group">
-                    <span class="text-xs font-medium text-gray-700 flex-1 pr-3">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                  <div v-for="(hasPermission, permission) in (isEditingPermissions ? permissionDraft : selectedAdmin.permissions)" :key="permission" class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 ring-1 ring-gray-100 dark:ring-gray-700 hover:ring-blue-200 dark:hover:ring-blue-400/40 transition-colors group">
+                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 pr-3">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
                     <!-- View Mode Badge -->
                     <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
                     <!-- Edit Mode Toggle -->
@@ -949,15 +1000,15 @@ function sendAdminMessage(){
                 </div>
               </div>
               <!-- Activity Card -->
-              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Recent Activity</h4>
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Recent Activity</h4>
                   <span class="text-xs text-gray-400 font-mono">{{ selectedAdmin.activityLog.length }} entries</span>
                 </div>
-                <div class="divide-y divide-gray-100">
-                  <div v-for="activity in selectedAdmin.activityLog" :key="activity.date" class="flex items-start p-4 hover:bg-gray-50 transition-colors">
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                  <div v-for="activity in selectedAdmin.activityLog" :key="activity.date" class="flex items-start p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
                     <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900">{{ activity.action }}</p>
+                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
                       <p class="text-xs text-gray-500 mt-1 font-mono">{{ activity.date }}</p>
                     </div>
                     <div class="ml-4 flex items-center text-green-600">
@@ -970,29 +1021,29 @@ function sendAdminMessage(){
             <!-- Right Column -->
             <div class="space-y-6">
               <!-- Metrics Card -->
-              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Metrics</h4>
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Metrics</h4>
                 </div>
                 <div class="p-5 grid grid-cols-2 gap-4 text-center">
-                  <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
-                    <p class="text-xl font-bold text-gray-900">{{ selectedAdmin.totalActions }}</p>
-                    <p class="text-[10px] tracking-wide uppercase text-gray-600 mt-1">Actions</p>
+                  <div class="bg-white dark:bg-gray-800 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                    <p class="text-xl font-bold text-gray-900 dark:text-gray-100">{{ selectedAdmin.totalActions }}</p>
+                    <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Actions</p>
                   </div>
-                  <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
-                    <p class="text-sm font-semibold text-gray-900">{{ formatDate(selectedAdmin.accountCreated) }}</p>
-                    <p class="text-[10px] tracking-wide uppercase text-gray-600 mt-1">Created</p>
+                  <div class="bg-white dark:bg-gray-800 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatDate(selectedAdmin.accountCreated) }}</p>
+                    <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Created</p>
                   </div>
-                  <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4 col-span-2">
-                    <p class="text-sm font-semibold text-gray-900">{{ selectedAdmin.lastLogin }}</p>
-                    <p class="text-[10px] tracking-wide uppercase text-gray-600 mt-1">Last Login</p>
+                  <div class="bg-white dark:bg-gray-800 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4 col-span-2">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ selectedAdmin.lastLogin }}</p>
+                    <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Last Login</p>
                   </div>
                 </div>
               </div>
               <!-- Actions Card -->
-              <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Actions</h4>
+              <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Actions</h4>
                 </div>
                 <div class="p-5 space-y-3">
                   <button @click="openMessageModal" class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
@@ -1028,35 +1079,35 @@ function sendAdminMessage(){
 
     <!-- Send Message Modal -->
     <div v-if="showMessageModal && selectedAdmin" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeMessageModal">
-      <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+      <div class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-in">
         <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
-          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center ring-1 ring-blue-100">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center ring-1 ring-blue-100 dark:ring-blue-900/40">
             <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           </div>
           <div class="flex-1 pr-4">
-            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Message {{ selectedAdmin.name }}</h3>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Message {{ selectedAdmin.name }}</h3>
             <p class="mt-1 text-xs text-gray-500">Direct message will be delivered to the admin's inbox.</p>
           </div>
-          <button @click="closeMessageModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog" :disabled="sendingMessage">
+          <button @click="closeMessageModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close dialog" :disabled="sendingMessage">
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
         <div class="px-6 pb-6 space-y-5">
           <div class="space-y-1">
-            <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Subject (Optional)</label>
-            <input v-model="messageForm.subject" type="text" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm" placeholder="Subject" />
+            <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Subject (Optional)</label>
+            <input v-model="messageForm.subject" type="text" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" placeholder="Subject" />
           </div>
           <div class="space-y-1">
-            <label class="text-xs font-semibold uppercase tracking-wide text-gray-600">Message</label>
-            <textarea v-model="messageForm.body" rows="5" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm resize-none" placeholder="Type your message..."></textarea>
+            <label class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">Message</label>
+            <textarea v-model="messageForm.body" rows="5" class="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none" placeholder="Type your message..."></textarea>
           </div>
           <div class="flex flex-col sm:flex-row sm:justify-end gap-3 pt-2">
             <button @click="sendAdminMessage" :disabled="sendingMessage" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-600">
               <svg v-if="!sendingMessage" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              <svg v-else class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+              <svg v-else class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4  4H4z"/></svg>
               {{ sendingMessage ? 'Sending...' : 'Send Message' }}
             </button>
-            <button @click="closeMessageModal" :disabled="sendingMessage" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
+            <button @click="closeMessageModal" :disabled="sendingMessage" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed">Cancel</button>
           </div>
         </div>
       </div>
@@ -1064,16 +1115,16 @@ function sendAdminMessage(){
 
     <!-- Delete Confirmation Modal (Enhanced) -->
     <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeDeleteConfirmModal">
-      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+      <div class="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-in">
         <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
-          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center ring-1 ring-red-100">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center ring-1 ring-red-100 dark:ring-red-900/40">
             <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M4.938 19h14.124c1.054 0 1.716-1.142 1.188-2.053L13.188 5.947c-.527-.911-1.849-.911-2.376 0L3.75 16.947C3.222 17.858 3.884 19 4.938 19z"/></svg>
           </div>
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Delete Administrator</h3>
-            <p class="mt-1 text-sm text-gray-600 leading-relaxed">You're about to remove <span class="font-semibold text-gray-900">{{ adminToDelete?.name }}</span>. This revokes all access and cannot be undone.</p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Delete Administrator</h3>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">You're about to remove <span class="font-semibold text-gray-900 dark:text-gray-100">{{ adminToDelete ? adminToDelete.name : '' }}</span>. This revokes all access and cannot be undone.</p>
           </div>
-          <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog">
+          <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close dialog">
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -1082,23 +1133,23 @@ function sendAdminMessage(){
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Delete Admin
           </button>
-          <button @click="closeDeleteConfirmModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
+          <button @click="closeDeleteConfirmModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
         </div>
       </div>
     </div>
 
     <!-- Suspend Confirmation Modal -->
     <div v-if="showSuspendConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="cancelSuspend">
-      <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+      <div class="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-in">
         <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
-          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-yellow-50 flex items-center justify-center ring-1 ring-yellow-100">
+          <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-yellow-50 dark:bg-yellow-900/30 flex items-center justify-center ring-1 ring-yellow-100 dark:ring-yellow-900/40">
             <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
           </div>
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Confirm Suspension</h3>
-            <p class="mt-1 text-sm text-gray-600 leading-relaxed">Suspend <span class="font-semibold text-gray-900">{{ selectedAdmin?.name }}</span>? They will lose active access until reactivated.</p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Confirm Suspension</h3>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">Suspend <span class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedAdmin ? selectedAdmin.name : '' }}</span>? They will lose active access until reactivated.</p>
           </div>
-          <button @click="cancelSuspend" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog">
+          <button @click="cancelSuspend" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close dialog">
             <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -1107,7 +1158,7 @@ function sendAdminMessage(){
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
             Confirm Suspension
           </button>
-          <button @click="cancelSuspend" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-sm font-medium border border-gray-300 hover:bg-gray-50 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
+          <button @click="cancelSuspend" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white dark:bg-gray-800 text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
         </div>
       </div>
     </div>
