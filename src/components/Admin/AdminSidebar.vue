@@ -51,11 +51,31 @@ const groupedMenu = computed(() => {
 
 const isActiveRoute = (path) => route.path === path
 
+// Tooltip (global, to avoid clipping)
+const tooltipVisible = ref(false)
+const tooltipText = ref('')
+const tooltipPos = reactive({ top: 0, left: 0 })
+
+function onItemEnter(e, text) {
+  if (!collapsed.value) return
+  const el = e.currentTarget
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  tooltipText.value = text
+  tooltipPos.top = Math.round(r.top + r.height / 2)
+  tooltipPos.left = Math.round(r.right + 12)
+  tooltipVisible.value = true
+}
+
+function hideTooltip() {
+  tooltipVisible.value = false
+}
+
 </script>
 
 <template>
       <!-- Sidebar -->
-    <div :class="['relative flex flex-col text-gray-800 dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
+  <div :class="['relative z-[999] isolate overflow-visible flex flex-col text-gray-800 dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
       <!-- Decorative background layers for creativity -->
       <div class="absolute inset-0 -z-10 bg-gradient-to-b from-white via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-black"></div>
       <div class="absolute inset-0 -z-[9] opacity-20 dark:opacity-30" aria-hidden="true" style="background-image: radial-gradient(circle at 20% 10%, rgba(0,0,0,.06) 0, transparent 50%), radial-gradient(circle at 80% 30%, rgba(0,0,0,.05) 0, transparent 50%), radial-gradient(circle at 30% 70%, rgba(0,0,0,.04) 0, transparent 45%);"></div>
@@ -63,7 +83,7 @@ const isActiveRoute = (path) => route.path === path
       <!-- Top: Brand and collapse toggle -->
       <div class="px-3 py-4 border-b border-gray-200 dark:border-white/10 flex items-center justify-between">
         <div class="flex items-center gap-2 overflow-hidden">
-          <div class="h-9 w-9 rounded-xl bg-white/90 text-[#042EFF] grid place-items-center font-extrabold shadow-sm dark:bg-white text-sm">M</div>
+          <div class="h-10 w-9 rounded-xl bg-white/90 text-[#042EFF] grid place-items-center font-extrabold shadow-sm dark:bg-white text-sm">M</div>
           <transition name="fade">
             <h1 v-if="!collapsed" class="text-xl font-bold tracking-tight drop-shadow-sm">MoTech</h1>
           </transition>
@@ -87,6 +107,9 @@ const isActiveRoute = (path) => route.path === path
               class="group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 focus:outline-none"
               :class="[ isActiveRoute(item.path) ? 'bg-blue-50 dark:bg-white/5' : 'hover:bg-gray-100 dark:hover:bg-white/10', isActiveRoute(item.path) ? 'focus:ring-2 focus:ring-blue-200 dark:focus:ring-white/20' : 'focus:ring-2 focus:ring-blue-200 dark:focus:ring-white/20' ]"
               :aria-current="isActiveRoute(item.path) ? 'page' : undefined"
+              :title="collapsed ? item.name : undefined"
+              @mouseenter="(e) => onItemEnter(e, item.name)"
+              @mouseleave="hideTooltip"
             >
               <!-- Active indicator -->
               <span :class="['absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full transition-all', isActiveRoute(item.path) ? 'bg-[#042EFF] dark:bg-white shadow-lg' : 'bg-transparent']"></span>
@@ -120,8 +143,7 @@ const isActiveRoute = (path) => route.path === path
                 <span v-if="!collapsed" class="text-sm font-medium truncate">{{ item.name }}</span>
               </transition>
 
-              <!-- Tooltip for collapsed mode -->
-        <span v-if="collapsed" class="pointer-events-none absolute left-full ml-2 px-2 py-1 rounded-md text-xs bg-black/80 text-white opacity-0 group-hover:opacity-100 transition whitespace-nowrap shadow-lg">{{ item.name }}</span>
+              <!-- Inline tooltip removed; global Teleport used instead -->
             </router-link>
           </div>
         </div>
@@ -144,6 +166,22 @@ const isActiveRoute = (path) => route.path === path
         </button>
       </div>
     </div>
+
+    <!-- Global tooltip for collapsed sidebar (avoids clipping) -->
+    <teleport to="body">
+      <div v-if="tooltipVisible"
+           class="fixed pointer-events-none z-[10000]"
+           :style="{ top: tooltipPos.top + 'px', left: tooltipPos.left + 'px', transform: 'translateY(-50%)' }">
+        <div class="relative px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap select-none
+                    bg-white text-gray-900 ring-1 ring-gray-200 shadow-md
+                    dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-700 dark:shadow-xl">
+          <span class="absolute -left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 rotate-45
+                        bg-white ring-1 ring-gray-200
+                        dark:bg-gray-800 dark:ring-gray-700"></span>
+          {{ tooltipText }}
+        </div>
+      </div>
+    </teleport>
 </template>
 
 <style scoped>
@@ -160,5 +198,8 @@ a:hover {
 .router-link-active {
   background-color: rgb(37 99 235) !important; /* bg-blue-600 */
   color: white !important;
+}
+.custom-scroll::-webkit-scrollbar{
+  width: 0;
 }
 </style>
