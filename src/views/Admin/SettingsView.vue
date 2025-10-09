@@ -9,6 +9,10 @@ const showDeleteConfirmModal = ref(false)
 const selectedAdmin = ref(null)
 const adminToDelete = ref(null)
 const showSuspendConfirmModal = ref(false)
+// Send Message Modal state
+const showMessageModal = ref(false)
+const sendingMessage = ref(false)
+const messageForm = reactive({ subject: '', body: '' })
 
 // Current logged in admin (simulated)
 const currentAdmin = reactive({
@@ -260,6 +264,56 @@ const closeAdminDetailsModal = () => {
   selectedAdmin.value = null
 }
 
+// --- Send Message Modal Logic ---
+function openMessageModal() {
+  if (!selectedAdmin.value) {
+    showNotification({
+      type: 'warning',
+      title: 'No Admin Selected',
+      message: 'Open an administrator profile first, then try again.'
+    })
+    return
+  }
+  showMessageModal.value = true
+}
+
+function closeMessageModal() {
+  if (sendingMessage.value) {
+    return
+  }
+  showMessageModal.value = false
+  messageForm.subject = ''
+  messageForm.body = ''
+}
+
+function sendAdminMessage() {
+  if (!selectedAdmin.value) {
+    return
+  }
+  const body = (messageForm.body || '').trim()
+  if (!body) {
+    showNotification({
+      type: 'warning',
+      title: 'Message Required',
+      message: 'Please enter a message before sending.'
+    })
+    return
+  }
+
+  sendingMessage.value = true
+  setTimeout(() => {
+    sendingMessage.value = false
+    showMessageModal.value = false
+    showNotification({
+      type: 'success',
+      title: 'Message Sent',
+      message: `Your message was sent to ${selectedAdmin.value.name}.`
+    })
+    messageForm.subject = ''
+    messageForm.body = ''
+  }, 800)
+}
+
 const confirmDeleteAdmin = (admin) => {
   if (admin.role === 'Primary Admin') {
     showNotification({ type: 'warning', title: 'Action Blocked', message: 'Primary Admin cannot be deleted.' })
@@ -491,9 +545,9 @@ watch(
     <transition name="slide-in-right">
       <div v-if="activeNotification" class="fixed top-4 right-4 z-[70] px-4">
         <div :class="['w-full max-w-sm rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
-          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-900/40 dark:text-yellow-200' :
-          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-900/40 dark:text-green-200' :
-          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/30 dark:border-red-900/40 dark:text-red-200' : 'bg-white border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100']">
+          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-800 dark:text-yellow-100' :
+          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100' :
+          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900 dark:border-red-800 dark:text-red-100' : 'bg-white border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100']">
           <div class="flex-shrink-0 mt-0.5">
             <svg v-if="activeNotification.type === 'warning'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
             <svg v-else-if="activeNotification.type === 'success'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
