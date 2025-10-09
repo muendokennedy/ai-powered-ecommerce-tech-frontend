@@ -392,7 +392,7 @@ const slides = ref([
             class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2"
           >
             <div class="basis-[48%] px-3 sm:px-0">
-              <img src="../../../assets/images/redmi note 12.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
+              <img src="../../assets/images/redmi note 12.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
             </div>
             <div class="content">
               <div class="content-head font-bold capitalize">
@@ -409,7 +409,7 @@ const slides = ref([
             class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2"
           >
             <div class="basis-[48%] px-3 sm:px-0">
-              <img src="../../../assets/images/dell inspiron.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
+              <img src="../../assets/images/dell inspiron.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
             </div>
             <div class="content">
               <div class="content-head font-bold capitalize">
