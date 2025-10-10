@@ -495,7 +495,7 @@ const goBack = () => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <admin-sidebar></admin-sidebar>
     
     <!-- Main Content -->
@@ -509,11 +509,11 @@ const goBack = () => {
           <div class="mb-8">
             <div class="flex items-center justify-between">
               <div>
-                <h1 class="text-2xl font-bold text-gray-900">Add New Product</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Add New Product</h1>
               </div>
               <button 
                 @click="goBack"
-                class="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                class="flex items-center px-4 py-2 text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 transition-colors"
               >
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -524,42 +524,42 @@ const goBack = () => {
           </div>
 
           <!-- Form -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-8">
             <form @submit.prevent="addProduct" class="space-y-8">
               <!-- Basic Information -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Basic Information</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div class="relative">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name *</label>
                     <input 
                       v-model="newProduct.name"
                       @focus="showNameSuggestions = true, nameSelected = false"
                       @blur="showNameSuggestions = false"
                       type="text" 
                       required
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="Enter product name or select from existing"
                     >
                     
                     <!-- Auto-suggestion dropdown -->
                     <div v-if="showNameSuggestions && filteredProducts.length > 0" 
-                         class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+                         class="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
                       <div 
                         v-for="product in filteredProducts" 
                         :key="product.name"
                         @mousedown="selectProduct(product)"
-                        class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                        class="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors"
                       >
                         <div class="flex justify-between items-center">
                           <div>
-                            <div class="font-medium text-gray-900">{{ product.name }}</div>
-                            <div class="text-sm text-gray-500">{{ product.brand }} · {{ product.category }}</div>
+                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ product.brand }} · {{ product.category }}</div>
                           </div>
                           <div class="text-right">
                             <div class="text-sm font-medium text-[#042EFF]">KES {{ product.discountedPrice?.toLocaleString() || product.originalPrice?.toLocaleString() }}</div>
                             <div v-if="product.discountedPrice && product.discountedPrice !== product.originalPrice" 
-                                 class="text-xs text-gray-400 line-through">KES {{ product.originalPrice?.toLocaleString() }}</div>
+                                 class="text-xs text-gray-400 dark:text-gray-500 line-through">KES {{ product.originalPrice?.toLocaleString() }}</div>
                           </div>
                         </div>
                       </div>
@@ -567,11 +567,11 @@ const goBack = () => {
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Brand *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand *</label>
                     <select 
                       v-model="newProduct.brand"
                       required
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                     >
                       <option value="">Select Brand</option>
                       <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
@@ -579,11 +579,11 @@ const goBack = () => {
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
                     <select 
                       v-model="newProduct.category"
                       required
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                     >
                       <option value="">Select Category</option>
                       <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
@@ -591,10 +591,10 @@ const goBack = () => {
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Supplier</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supplier</label>
                     <select 
                       v-model="newProduct.supplier"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                     >
                       <option value="">Select Supplier</option>
                       <option v-for="supplier in suppliers" :key="supplier" :value="supplier">{{ supplier }}</option>
@@ -605,53 +605,53 @@ const goBack = () => {
 
               <!-- Pricing & Inventory -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Pricing & Inventory</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Pricing & Inventory</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Original Price ($) *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Price ($) *</label>
                     <input 
                       v-model="newProduct.originalPrice"
                       type="number" 
                       min="0"
                       step="0.01"
                       required
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="0.00"
                     >
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Discounted Price ($)</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Discounted Price ($)</label>
                     <input 
                       v-model="newProduct.discountedPrice"
                       type="number" 
                       min="0"
                       step="0.01"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="Optional"
                     >
-                    <p class="text-xs text-gray-500 mt-1">Leave empty if no discount</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty if no discount</p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Stock Quantity *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Quantity *</label>
                     <input 
                       v-model="newProduct.stock"
                       type="number" 
                       min="0"
                       required
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="0"
                     >
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Low Stock Threshold</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Low Stock Threshold</label>
                     <input 
                       v-model="newProduct.lowStockThreshold"
                       type="number" 
                       min="0"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="10"
                     >
                   </div>
@@ -660,15 +660,15 @@ const goBack = () => {
 
               <!-- Product Images -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Product Images</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Product Images</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <!-- Primary Image -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Primary Image *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Primary Image *</label>
                     <div
                       class="relative group border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
                       :class="[
-                        dragOver.primaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 hover:border-[#042EFF]',
+                        dragOver.primaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 dark:border-gray-700 hover:border-[#042EFF] dark:hover:border-[#042EFF]',
                         imagePreviews.primaryImage ? 'p-2' : 'p-6'
                       ]"
                       @click="triggerFileDialog('primary-image')"
@@ -687,8 +687,8 @@ const goBack = () => {
                           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                         <div class="mt-2">
-                          <span class="block text-xs font-medium text-gray-900">Drag & Drop or Click</span>
-                          <span class="block text-xs text-gray-500">Primary image</span>
+                          <span class="block text-xs font-medium text-gray-900 dark:text-gray-100">Drag & Drop or Click</span>
+                          <span class="block text-xs text-gray-500 dark:text-gray-400">Primary image</span>
                         </div>
                       </template>
                       <input
@@ -703,11 +703,11 @@ const goBack = () => {
 
                   <!-- Secondary Image -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Secondary Image</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Secondary Image</label>
                     <div
                       class="relative group border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
                       :class="[
-                        dragOver.secondaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 hover:border-[#042EFF]',
+                        dragOver.secondaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 dark:border-gray-700 hover:border-[#042EFF] dark:hover:border-[#042EFF]',
                         imagePreviews.secondaryImage ? 'p-2' : 'p-6'
                       ]"
                       @click="triggerFileDialog('secondary-image')"
@@ -726,8 +726,8 @@ const goBack = () => {
                           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                         <div class="mt-2">
-                          <span class="block text-xs font-medium text-gray-900">Drag & Drop or Click</span>
-                          <span class="block text-xs text-gray-500">Alternative view</span>
+                          <span class="block text-xs font-medium text-gray-900 dark:text-gray-100">Drag & Drop or Click</span>
+                          <span class="block text-xs text-gray-500 dark:text-gray-400">Alternative view</span>
                         </div>
                       </template>
                       <input
@@ -742,11 +742,11 @@ const goBack = () => {
 
                   <!-- Tertiary Image -->
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Tertiary Image</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tertiary Image</label>
                     <div
                       class="relative group border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
                       :class="[
-                        dragOver.tertiaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 hover:border-[#042EFF]',
+                        dragOver.tertiaryImage ? 'border-[#042EFF] bg-[#042EFF]/5' : 'border-gray-300 dark:border-gray-700 hover:border-[#042EFF] dark:hover:border-[#042EFF]',
                         imagePreviews.tertiaryImage ? 'p-2' : 'p-6'
                       ]"
                       @click="triggerFileDialog('tertiary-image')"
@@ -765,8 +765,8 @@ const goBack = () => {
                           <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                         <div class="mt-2">
-                          <span class="block text-xs font-medium text-gray-900">Drag & Drop or Click</span>
-                          <span class="block text-xs text-gray-500">Detail view</span>
+                          <span class="block text-xs font-medium text-gray-900 dark:text-gray-100">Drag & Drop or Click</span>
+                          <span class="block text-xs text-gray-500 dark:text-gray-400">Detail view</span>
                         </div>
                       </template>
                       <input
@@ -783,107 +783,107 @@ const goBack = () => {
 
               <!-- Specifications -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Specifications</h3>
-                <div class="bg-gray-50 rounded-xl p-6">
-                  <p class="text-sm text-gray-600 mb-4">Enter specifications based on the selected product category</p>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Specifications</h3>
+                <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
+                  <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Enter specifications based on the selected product category</p>
                   
                   <!-- Phone Specifications -->
                   <div v-if="newProduct.category === 'Phones'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage</label>
-                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 256GB">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Storage</label>
+                      <input v-model="newProduct.specifications.storage" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 256GB">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">RAM</label>
-                      <input v-model="newProduct.specifications.ram" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 8GB">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RAM</label>
+                      <input v-model="newProduct.specifications.ram" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 8GB">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Size</label>
-                      <input v-model="newProduct.specifications.displaySize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 6.7">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Size</label>
+                      <input v-model="newProduct.specifications.displaySize" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 6.7">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Camera</label>
-                      <input v-model="newProduct.specifications.camera" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 48MP Pro Camera System">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Camera</label>
+                      <input v-model="newProduct.specifications.camera" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 48MP Pro Camera System">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery</label>
-                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4441mAh">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Battery</label>
+                      <input v-model="newProduct.specifications.battery" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4441mAh">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
-                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., iOS 17">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operating System</label>
+                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., iOS 17">
                     </div>
                     <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Color</label>
-                      <input v-model="newProduct.specifications.color" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Natural Titanium">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</label>
+                      <input v-model="newProduct.specifications.color" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Natural Titanium">
                     </div>
                   </div>
 
                   <!-- Laptop Specifications -->
                   <div v-if="newProduct.category === 'Laptops'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Processor</label>
-                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 Pro">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Processor</label>
+                      <input v-model="newProduct.specifications.processor" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 Pro">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">RAM</label>
-                      <input v-model="newProduct.specifications.ram" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18GB">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">RAM</label>
+                      <input v-model="newProduct.specifications.ram" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18GB">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage Type</label>
-                      <input v-model="newProduct.specifications.storageType" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., SSD">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Storage Type</label>
+                      <input v-model="newProduct.specifications.storageType" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., SSD">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Storage Size</label>
-                      <input v-model="newProduct.specifications.storageSize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 1TB">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Storage Size</label>
+                      <input v-model="newProduct.specifications.storageSize" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 1TB">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Graphics Card</label>
-                      <input v-model="newProduct.specifications.graphicsCard" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 Pro GPU">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Graphics Card</label>
+                      <input v-model="newProduct.specifications.graphicsCard" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Apple M3 Pro GPU">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Size</label>
-                      <input v-model="newProduct.specifications.displaySize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 14.2">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Size</label>
+                      <input v-model="newProduct.specifications.displaySize" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 14.2">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
-                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., macOS Sonoma">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operating System</label>
+                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., macOS Sonoma">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery Life</label>
-                      <input v-model="newProduct.specifications.batteryLife" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18 hours">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Battery Life</label>
+                      <input v-model="newProduct.specifications.batteryLife" type="text" class="w-full px-3 py-2 border border-gray-300 dark;border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18 hours">
                     </div>
                   </div>
 
                   <!-- Television Specifications -->
                   <div v-if="newProduct.category === 'Televisions'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Screen Size</label>
-                      <input v-model="newProduct.specifications.screenSize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 65">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Screen Size</label>
+                      <input v-model="newProduct.specifications.screenSize" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 65">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Resolution</label>
-                      <input v-model="newProduct.specifications.resolution" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4K Ultra HD">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resolution</label>
+                      <input v-model="newProduct.specifications.resolution" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 4K Ultra HD">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Technology</label>
-                      <input v-model="newProduct.specifications.displayTechnology" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Neo QLED">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Technology</label>
+                      <input v-model="newProduct.specifications.displayTechnology" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Neo QLED">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Smart TV OS</label>
-                      <input v-model="newProduct.specifications.smartTvOs" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Tizen OS">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Smart TV OS</label>
+                      <input v-model="newProduct.specifications.smartTvOs" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Tizen OS">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">HDR Support</label>
-                      <input v-model="newProduct.specifications.hdrSupport" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., HDR10+ & Dolby Vision">
+                      <label class="block text.sm font-medium text-gray-700 dark:text-gray-300 mb-1">HDR Support</label>
+                      <input v-model="newProduct.specifications.hdrSupport" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., HDR10+ & Dolby Vision">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Refresh Rate</label>
-                      <input v-model="newProduct.specifications.refreshRate" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 120Hz">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Refresh Rate</label>
+                      <input v-model="newProduct.specifications.refreshRate" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 120Hz">
                     </div>
                     <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Audio Output</label>
-                      <input v-model="newProduct.specifications.audioOutput" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 60W Object Tracking Sound">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Audio Output</label>
+                      <input v-model="newProduct.specifications.audioOutput" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 60W Object Tracking Sound">
                     </div>
                   </div>
                     </div>
@@ -892,59 +892,59 @@ const goBack = () => {
                   <!-- Smartwatch Specifications -->
                   <div v-if="newProduct.category === 'Smartwatches'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Display Type</label>
-                      <input v-model="newProduct.specifications.displayType" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Always-On Retina LTPO OLED">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Type</label>
+                      <input v-model="newProduct.specifications.displayType" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Always-On Retina LTPO OLED">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Case Size</label>
-                      <input v-model="newProduct.specifications.caseSize" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 45mm">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Case Size</label>
+                      <input v-model="newProduct.specifications.caseSize" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 45mm">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Operating System</label>
-                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., watchOS 10">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Operating System</label>
+                      <input v-model="newProduct.specifications.operatingSystem" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., watchOS 10">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Battery Life</label>
-                      <input v-model="newProduct.specifications.batteryLife" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 18 hours">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Battery Life</label>
+                      <input v-model="newProduct.specifications.batteryLife" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus;border-[#042EFF]" placeholder="e.g., 18 hours">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Water Resistance</label>
-                      <input v-model="newProduct.specifications.waterResistance" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., 50m">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Water Resistance</label>
+                      <input v-model="newProduct.specifications.waterResistance" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus;border-[#042EFF]" placeholder="e.g., 50m">
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Connectivity</label>
-                      <input v-model="newProduct.specifications.connectivity" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., Wi-Fi + Cellular">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Connectivity</label>
+                      <input v-model="newProduct.specifications.connectivity" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus;border-[#042EFF]" placeholder="e.g., Wi-Fi + Cellular">
                     </div>
                     <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Health Sensors</label>
-                      <input v-model="newProduct.specifications.healthSensors" type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]" placeholder="e.g., ECG, Blood Oxygen, Temperature">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Health Sensors</label>
+                      <input v-model="newProduct.specifications.healthSensors" type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-md focus:ring-[#042EFF] focus;border-[#042EFF]" placeholder="e.g., ECG, Blood Oxygen, Temperature">
                     </div>
                   </div>
 
               <!-- Description -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-6">Description</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Description</h3>
                 <textarea 
                   v-model="newProduct.description"
                   rows="4"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                   placeholder="Enter product description (optional)"
                 ></textarea>
               </div>
 
               <!-- Form Actions -->
-              <div class="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200">
+              <div class="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button 
                   @click="resetForm"
                   type="button"
-                  class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                  class="px-6 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
                 >
                   Reset Form
                 </button>
                 <button 
                   @click="goBack"
                   type="button"
-                  class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                  class="px-6 py-3 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
                 >
                   Cancel
                 </button>
@@ -968,17 +968,17 @@ const goBack = () => {
 
     <!-- Floating Auto-fill Notification -->
     <div v-if="autoFillNotification" 
-         class="fixed top-6 right-6 z-50 bg-white border border-green-200 rounded-lg shadow-lg p-4 flex items-center max-w-md animate-slide-in-right">
+         class="fixed top-6 right-6 z-50 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 rounded-lg shadow-lg p-4 flex items-center max-w-md animate-slide-in-right">
       <div class="flex-shrink-0">
         <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
       </div>
       <div class="ml-3 flex-1">
-        <p class="text-sm font-medium text-green-800">Auto-filled successfully!</p>
-        <p class="text-xs text-green-600 mt-1">Please review supplier information before submitting</p>
+        <p class="text-sm font-medium text-green-800 dark:text-green-300">Auto-filled successfully!</p>
+        <p class="text-xs text-green-600 dark:text-green-400 mt-1">Please review supplier information before submitting</p>
       </div>
-      <button @click="autoFillNotification = false" class="ml-4 flex-shrink-0 text-green-400 hover:text-green-600 transition-colors">
+      <button @click="autoFillNotification = false" class="ml-4 flex-shrink-0 text-green-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
@@ -1080,10 +1080,8 @@ input[type="file"]:active::before {
   }
 }
 
-/* Specifications section styling */
-.bg-gray-50 {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-}
+/* Specifications section styling (light only; dark handled via classes) */
+/* Removed overriding gradient to let Tailwind dark classes control background */
 
 /* Category-specific form animations */
 .grid > div {
@@ -1116,7 +1114,11 @@ input:focus, select:focus, textarea:focus {
 /* Image upload areas */
 .border-dashed:hover {
   border-color: #042EFF;
-  background-color: #f8fafc;
+}
+
+/* Dark-mode hover background for dashed areas */
+:global(.dark) .border-dashed:hover {
+  background-color: rgba(4, 46, 255, 0.05);
 }
 
 /* Auto-fill notification animation */

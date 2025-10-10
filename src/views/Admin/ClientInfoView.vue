@@ -317,16 +317,16 @@ const getOrderStatusColor = (status) => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Top-right Notification -->
     <transition name="slide-in-right">
       <div v-if="activeNotification" class="fixed top-4 right-4 z-[60] w-80">
         <div :class="[
           'rounded-md shadow-lg border p-4 flex items-start space-x-3',
-          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
-          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
-          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
-          'bg-blue-50 border-blue-200 text-blue-800'
+          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100' :
+          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-800 dark:text-yellow-100' :
+          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900 dark:border-red-800 dark:text-red-100' :
+          'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900 dark:border-blue-800 dark:text-blue-100'
         ]">
           <div class="mt-0.5">
             <svg v-if="activeNotification.type === 'success'" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,8 +343,8 @@ const getOrderStatusColor = (status) => {
             </svg>
           </div>
           <div class="flex-1">
-            <p class="font-semibold">{{ activeNotification.title }}</p>
-            <p class="text-sm">{{ activeNotification.message }}</p>
+            <p class="font-semibold dark:text-gray-100">{{ activeNotification.title }}</p>
+            <p class="text-sm dark:text-gray-200">{{ activeNotification.message }}</p>
           </div>
           <button class="text-current/80 hover:text-current" @click="activeNotification = null">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -364,13 +364,13 @@ const getOrderStatusColor = (status) => {
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-5xl mx-auto">
           <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Client Information</h1>
-            <p class="text-gray-600 mt-2">Manage and view detailed information about your clients</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Client Information</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">Manage and view detailed information about your clients</p>
           </div>
 
           <!-- Client Statistics Cards -->
           <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-[#042EFF] bg-opacity-10 rounded-lg">
                   <svg class="h-6 w-6 text-[#042EFF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -378,13 +378,13 @@ const getOrderStatusColor = (status) => {
                   </svg>
                 </div>
                 <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-600">Total Clients</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ clients.length }}</p>
+                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Clients</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ clients.length }}</p>
                 </div>
               </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-green-100 rounded-lg">
                   <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,13 +392,13 @@ const getOrderStatusColor = (status) => {
                   </svg>
                 </div>
                 <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-600">Active Clients</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ clients.filter(c => c.status === 'Active').length }}</p>
+                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Clients</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ clients.filter(c => c.status === 'Active').length }}</p>
                 </div>
               </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-purple-100 rounded-lg">
                   <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,13 +406,13 @@ const getOrderStatusColor = (status) => {
                   </svg>
                 </div>
                 <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-600">Premium Clients</p>
-                  <p class="text-2xl font-bold text-gray-900">{{ clients.filter(c => c.accountType === 'Premium').length }}</p>
+                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Premium Clients</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ clients.filter(c => c.accountType === 'Premium').length }}</p>
                 </div>
               </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-yellow-100 rounded-lg">
                   <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,18 +420,18 @@ const getOrderStatusColor = (status) => {
                   </svg>
                 </div>
                 <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p class="text-2xl font-bold text-gray-900">${{ clients.reduce((sum, c) => sum + c.totalSpent, 0).toLocaleString() }}</p>
+                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">${{ clients.reduce((sum, c) => sum + c.totalSpent, 0).toLocaleString() }}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Clients Table -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="px-6 py-4 border-b border-gray-200">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">All Clients</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">All Clients</h3>
                 
                 <!-- Search and Filter -->
                 <div class="flex items-center space-x-4">
@@ -443,13 +443,13 @@ const getOrderStatusColor = (status) => {
                       v-model="searchQuery"
                       type="text"
                       placeholder="Search clients..."
-                      class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"
+                      class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     >
                   </div>
                   
                   <select 
                     v-model="statusFilter"
-                    class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"
+                    class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   >
                     <option v-for="status in statusOptions" :key="status" :value="status">
                       {{ status }}
@@ -460,39 +460,39 @@ const getOrderStatusColor = (status) => {
             </div>
             
             <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Spent</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Spent</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Join Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="client in filteredClients" :key="client.id" @click.stop="viewClientDetails(client)" class="hover:bg-gray-50 cursor-pointer">
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="client in filteredClients" :key="client.id" @click.stop="viewClientDetails(client)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <img :src="client.avatar" :alt="client.name" class="h-10 w-10 rounded-full object-cover mr-4">
                         <div>
-                          <div class="text-sm font-medium text-gray-900">{{ client.name }}</div>
+                          <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.name }}</div>
                           <div class="text-sm text-gray-500">{{ client.id }}</div>
                         </div>
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm text-gray-900">{{ client.email }}</div>
+                      <div class="text-sm text-gray-900 dark:text-gray-100">{{ client.email }}</div>
                       <div class="text-sm text-gray-500">{{ client.phone || 'No phone' }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900">{{ client.totalOrders }}</div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.totalOrders }}</div>
                       <div class="text-sm text-gray-500">{{ formatDate(client.lastOrderDate) }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                       ${{ client.totalSpent.toLocaleString() }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -539,26 +539,26 @@ const getOrderStatusColor = (status) => {
       class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 overflow-y-auto bg-black/50 backdrop-blur-sm"
       @click.self="closeClientDetailsModal"
     >
-      <div class="client-details relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 h-[98%]">
+      <div class="client-details relative w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 dark:border-gray-700 h-[98%]">
         <!-- Sticky Header -->
-        <div class="sticky top-0 z-20 bg-white  border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+        <div class="sticky top-0 z-20 bg-white dark:bg-gray-900 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
           <div class="flex items-center">
-            <img :src="selectedClient.avatar" :alt="selectedClient.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 shadow-sm">
+            <img :src="selectedClient.avatar" :alt="selectedClient.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm">
             <div>
               <div class="flex items-center space-x-3 mb-1">
-                <h3 class="text-2xl font-bold text-gray-900 tracking-tight">{{ selectedClient.name }}</h3>
+                <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{{ selectedClient.name }}</h3>
                 <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getStatusColor(selectedClient.status)]">{{ selectedClient.status }}</span>
                 <span :class="['px-2 py-1 rounded-full text-xs font-medium', getAccountTypeColor(selectedClient.accountType)]">{{ selectedClient.accountType }}</span>
               </div>
-              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>ID: {{ selectedClient.id }}</span>
                 <span>Member since: {{ formatDate(selectedClient.joinDate) }}</span>
                 <span v-if="selectedClient.lastOrderDate">Last Order: {{ formatDate(selectedClient.lastOrderDate) }}</span>
               </div>
             </div>
           </div>
-          <button @click="closeClientDetailsModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close">
-            <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <button @click="closeClientDetailsModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close">
+            <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
 
@@ -567,85 +567,85 @@ const getOrderStatusColor = (status) => {
           <!-- Left: Details -->
           <div class="lg:col-span-2 space-y-6">
             <!-- Contact Card -->
-            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Contact</h4>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Contact</h4>
                 <span class="text-xs text-gray-400 font-mono">Primary</span>
               </div>
               <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p class="text-xs uppercase font-semibold text-gray-500">Email</p>
-                  <p class="font-medium text-gray-900 break-all">{{ selectedClient.email }}</p>
+                  <p class="font-medium text-gray-900 dark:text-gray-100 break-all">{{ selectedClient.email }}</p>
                 </div>
                 <div>
                   <p class="text-xs uppercase font-semibold text-gray-500">Phone</p>
-                  <p class="font-medium text-gray-900">{{ selectedClient.phone || 'Not provided' }}</p>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedClient.phone || 'Not provided' }}</p>
                 </div>
               </div>
             </div>
 
             <!-- Address Card -->
-            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Address</h4>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Address</h4>
                 <span class="text-xs text-gray-400 font-mono">Shipping</span>
               </div>
               <div class="p-5 space-y-2 text-sm">
-                <p class="font-medium text-gray-900">{{ selectedClient.address.street }}</p>
-                <p class="text-gray-600">{{ selectedClient.address.city }}, {{ selectedClient.address.state }} {{ selectedClient.address.zipCode }}</p>
-                <p class="text-gray-600">{{ selectedClient.address.country }}</p>
+                <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedClient.address.street }}</p>
+                <p class="text-gray-600 dark:text-gray-400">{{ selectedClient.address.city }}, {{ selectedClient.address.state }} {{ selectedClient.address.zipCode }}</p>
+                <p class="text-gray-600 dark:text-gray-400">{{ selectedClient.address.country }}</p>
               </div>
             </div>
 
             <!-- Order History Card -->
-            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Recent Orders</h4>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Recent Orders</h4>
                 <span class="text-xs text-gray-400 font-mono">{{ selectedClient.orderHistory.length }} entr{{ selectedClient.orderHistory.length === 1 ? 'y' : 'ies' }}</span>
               </div>
-              <div v-if="selectedClient.orderHistory.length > 0" class="divide-y divide-gray-100">
-                <div v-for="order in selectedClient.orderHistory" :key="order.orderId" class="flex items-center p-4 hover:bg-gray-50 transition-colors">
+              <div v-if="selectedClient.orderHistory.length > 0" class="divide-y divide-gray-100 dark:divide-gray-700">
+                <div v-for="order in selectedClient.orderHistory" :key="order.orderId" class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
                   <div class="flex-1 min-w-0">
-                    <p class="font-medium text-gray-900 font-mono truncate">{{ order.orderId }}</p>
-                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500">
+                    <p class="font-medium text-gray-900 dark:text-gray-100 font-mono truncate">{{ order.orderId }}</p>
+                    <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
                       <span>Date: {{ formatDate(order.date) }}</span>
                     </div>
                   </div>
                   <div class="text-right">
-                    <p class="text-sm font-semibold text-gray-900">${{ order.amount.toLocaleString() }}</p>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">${{ order.amount.toLocaleString() }}</p>
                     <span :class="['items-center px-2 py-1 rounded-full text-[10px] font-semibold', getOrderStatusColor(order.status)]">{{ order.status }}</span>
                   </div>
                 </div>
               </div>
               <div v-else class="p-8 text-center">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                <p class="text-gray-500 mt-2 text-sm">No orders placed yet</p>
+                <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">No orders placed yet</p>
               </div>
             </div>
 
             
 
             <!-- Preferences Card -->
-            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 px-5 py-3">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Communication Preferences</h4>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
+                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Communication Preferences</h4>
               </div>
               <div class="p-5 text-sm">
-                <dl class="divide-y divide-gray-100">
+                <dl class="divide-y divide-gray-100 dark:divide-gray-700">
                   <div class="flex items-center justify-between py-2 first:pt-0 last:pb-0">
-                    <dt class="text-xs uppercase tracking-wide text-gray-500 font-semibold">Newsletter</dt>
+                    <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Newsletter</dt>
                     <dd>
                       <span :class="['px-2 py-1 rounded-md text-[10px] font-semibold', selectedClient.preferences.newsletter ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ selectedClient.preferences.newsletter ? 'Enabled' : 'Disabled' }}</span>
                     </dd>
                   </div>
                   <div class="flex items-center justify-between py-2">
-                    <dt class="text-xs uppercase tracking-wide text-gray-500 font-semibold">SMS Notifications</dt>
+                    <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">SMS Notifications</dt>
                     <dd>
                       <span :class="['px-2 py-1 rounded-md text-[10px] font-semibold', selectedClient.preferences.smsNotifications ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ selectedClient.preferences.smsNotifications ? 'Enabled' : 'Disabled' }}</span>
                     </dd>
                   </div>
                   <div class="flex items-center justify-between py-2 last:pb-0">
-                    <dt class="text-xs uppercase tracking-wide text-gray-500 font-semibold">Email Notifications</dt>
+                    <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Email Notifications</dt>
                     <dd>
                       <span :class="['px-2 py-1 rounded-md text-[10px] font-semibold', selectedClient.preferences.emailNotifications ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ selectedClient.preferences.emailNotifications ? 'Enabled' : 'Disabled' }}</span>
                     </dd>
@@ -658,34 +658,34 @@ const getOrderStatusColor = (status) => {
           <!-- Right: Stats & Actions -->
           <div class="space-y-6">
             <!-- Stats Card -->
-            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 px-5 py-3">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Client Metrics</h4>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
+                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Client Metrics</h4>
               </div>
               <div class="p-5 grid grid-cols-2 gap-4 text-center">
-                <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
-                  <p class="text-2xl font-bold text-gray-900">{{ selectedClient.totalOrders }}</p>
-                  <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Orders</p>
+                <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ selectedClient.totalOrders }}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Orders</p>
                 </div>
-                <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
-                  <p class="text-2xl font-bold text-gray-900">${{ selectedClient.totalSpent.toLocaleString() }}</p>
-                  <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Spent</p>
+                <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">${{ selectedClient.totalSpent.toLocaleString() }}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Spent</p>
                 </div>
-                <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
-                  <p class="text-2xl font-bold text-gray-900">{{ selectedClient.loyaltyPoints }}</p>
-                  <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Points</p>
+                <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ selectedClient.loyaltyPoints }}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Points</p>
                 </div>
-                <div class="bg-white rounded-lg ring-1 ring-gray-200 p-4">
-                  <p class="text-sm font-semibold text-gray-900">{{ formatDate(selectedClient.lastOrderDate) }}</p>
-                  <p class="text-xs text-gray-600 uppercase tracking-wide mt-1">Last Order</p>
+                <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatDate(selectedClient.lastOrderDate) }}</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Last Order</p>
                 </div>
               </div>
             </div>
 
             <!-- Actions Card -->
-            <div class="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 px-5 py-3">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Actions</h4>
+            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
+                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Actions</h4>
               </div>
               <div class="p-5 space-y-3">
                 <button @click="openSendMessageModal" class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#042EFF] text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-sm">
@@ -709,18 +709,18 @@ const getOrderStatusColor = (status) => {
       class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       @click.self="closeSendMessageModal"
     >
-      <div class="relative w-full max-w-lg bg-white rounded-2xl text-left overflow-hidden shadow-2xl animate-fade-in border border-gray-100">
-        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+      <div class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl animate-fade-in border border-gray-100 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-900 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
           <div class="sm:flex sm:items-start">
             <div class="w-full">
-              <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Send Message to {{ selectedClient?.name }}</h3>
+              <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">Send Message to {{ selectedClient?.name }}</h3>
 
               <form @submit.prevent="sendMessage" class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Priority Level</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority Level</label>
                   <select
                     v-model="messageForm.priority"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   >
                     <option value="Low">Low</option>
                     <option value="Normal">Normal</option>
@@ -730,23 +730,23 @@ const getOrderStatusColor = (status) => {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject *</label>
                   <input
                     v-model="messageForm.subject"
                     type="text"
                     required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     placeholder="Enter message subject"
                   >
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Message *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message *</label>
                   <textarea
                     v-model="messageForm.message"
                     required
                     rows="6"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF]"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     placeholder="Type your message here..."
                   ></textarea>
                 </div>
@@ -754,7 +754,7 @@ const getOrderStatusColor = (status) => {
             </div>
           </div>
         </div>
-        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+        <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-100 dark:border-gray-700">
           <button
             @click="sendMessage"
             :disabled="isSendingMessage"
@@ -778,8 +778,8 @@ const getOrderStatusColor = (status) => {
 
     <!-- Delete Confirmation Modal (match OrdersView backdrop) -->
     <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="relative w-full max-w-lg bg-white rounded-2xl text-left overflow-hidden shadow-2xl animate-fade-in border border-gray-100">
-          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+      <div class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl text-left overflow-hidden shadow-2xl animate-fade-in border border-gray-100 dark:border-gray-700">
+          <div class="bg-white dark:bg-gray-900 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div class="sm:flex sm:items-start">
               <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                 <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -787,20 +787,20 @@ const getOrderStatusColor = (status) => {
                 </svg>
               </div>
               <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Delete Client</h3>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Delete Client</h3>
                 <div class="mt-2">
-                  <p class="text-sm text-gray-500">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
                     Are you sure you want to delete <strong>{{ clientToDelete?.name }}</strong>? This action cannot be undone and will remove all associated data including order history and personal information.
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <div class="bg-gray-50 dark:bg-gray-900 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-100 dark:border-gray-700">
             <button @click="deleteClient" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
               Delete Client
             </button>
-            <button @click="closeDeleteConfirmModal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#042EFF] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+            <button @click="closeDeleteConfirmModal" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 dark:border-gray-700 shadow-sm px-4 py-2 bg-white dark:bg-gray-800 text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#042EFF] sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
               Cancel
             </button>
           </div>

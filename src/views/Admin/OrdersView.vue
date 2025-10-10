@@ -449,7 +449,7 @@ const paymentDetailRows = computed(() => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <admin-sidebar></admin-sidebar>
     
     <!-- Main Content -->
@@ -460,14 +460,14 @@ const paymentDetailRows = computed(() => {
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-5xl mx-auto">
           <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Orders Management</h1>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Orders Management</h1>
           </div>
 
           <!-- Orders Table -->
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="px-6 py-4 border-b border-gray-200">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">All Orders</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">All Orders</h3>
                 
                 <!-- Search and Filter -->
                 <div class="flex items-center space-x-4">
@@ -479,13 +479,13 @@ const paymentDetailRows = computed(() => {
                       v-model="searchQuery"
                       type="text"
                       placeholder="Search orders..."
-                      class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"
+                      class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     >
                   </div>
                   
                   <select 
                     v-model="statusFilter"
-                    class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"
+                    class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   >
                     <option v-for="status in statuses" :key="status" :value="status">
                       {{ status }}
@@ -496,43 +496,43 @@ const paymentDetailRows = computed(() => {
             </div>
             
             <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Products</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Products</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tracking</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr v-for="order in filteredOrders" :key="order.id" @click.stop="viewOrderDetails(order)" class="hover:bg-gray-50 cursor-pointer">
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="order in filteredOrders" :key="order.id" @click.stop="viewOrderDetails(order)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900">{{ order.id }}</div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.id }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900">{{ order.customer.name }}</div>
-                      <div class="text-sm text-gray-500">{{ order.customer.email }}</div>
+                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.customer.name }}</div>
+                      <div class="text-sm text-gray-500 dark:text-gray-400">{{ order.customer.email }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex -space-x-2 overflow-hidden">
-                        <img v-for="(product) in order.products.slice(0, 3)" :key="product.id" :src="product.image" :alt="product.name" class="inline-block h-8 w-8 rounded-full ring-2 ring-white object-cover" :title="product.name" />
-                        <div v-if="order.products.length > 3" class="flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 ring-2 ring-white text-xs font-medium text-gray-600">
+                        <img v-for="(product) in order.products.slice(0, 3)" :key="product.id" :src="product.image" :alt="product.name" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-gray-800 object-cover" :title="product.name" />
+                        <div v-if="order.products.length > 3" class="flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 text-xs font-medium text-gray-600 dark:text-gray-300">
                           +{{ order.products.length - 3 }}
                         </div>
                       </div>
-                      <div class="text-xs text-gray-500 mt-1">{{ order.products.length }} item{{ order.products.length > 1 ? 's' : '' }}</div>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ order.products.length }} item{{ order.products.length > 1 ? 's' : '' }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">{{ order.trackingNumber }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${{ order.totalAmount.toLocaleString() }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">{{ order.trackingNumber }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">${{ order.totalAmount.toLocaleString() }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(order.status)]">{{ order.status }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ order.orderDate }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ order.orderDate }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex space-x-2">
                         <button @click.stop="viewOrderDetails(order)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
@@ -555,16 +555,16 @@ const paymentDetailRows = computed(() => {
 
   <!-- Order Details Modal (Enhanced) -->
     <div v-if="showOrderDetailsModal && selectedOrderComputed" class="fixed inset-0 z-50 flex items-start md:items-center justify-center p-4 overflow-y-auto bg-black/50 backdrop-blur-sm">
-      <div class="order-details-modal relative w-full max-w-6xl bg-white rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 h-[98%]">
+      <div class="order-details-modal relative w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-auto animate-fade-in border border-gray-100 dark:border-gray-700 h-[98%]">
         <!-- Sticky Header -->
-        <div class="sticky top-0 z-20 bg-white  border-b border-gray-200 px-6 py-5 flex items-start justify-between">
+        <div class="sticky top-0 z-20 bg-white dark:bg-gray-900  border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
           <div>
             <div class="flex items-center space-x-3 mb-1">
-              <h3 class="text-2xl font-bold text-gray-900 tracking-tight">Order {{ selectedOrderComputed.id }}</h3>
+              <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Order {{ selectedOrderComputed.id }}</h3>
               <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getStatusColor(selectedOrderComputed.status)]">{{ selectedOrderComputed.status }}</span>
               <span :class="['px-2 py-1 rounded-full text-xs font-medium', paymentBadge]">Payment: {{ selectedOrderComputed.paymentStatus }}</span>
             </div>
-            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 font-mono">
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
               <span>Tracking: {{ selectedOrderComputed.trackingNumber }}</span>
               <span>Placed: {{ selectedOrderComputed.orderDate }}</span>
               <span v-if="selectedOrderComputed.deliveryDate">ETA: {{ selectedOrderComputed.deliveryDate }}</span>
@@ -575,8 +575,8 @@ const paymentDetailRows = computed(() => {
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l2 2 4-4m5 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
               Receipt
             </button>
-            <button @click="closeOrderDetailsModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close">
-              <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            <button @click="closeOrderDetailsModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close">
+              <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
           </div>
         </div>
@@ -584,8 +584,8 @@ const paymentDetailRows = computed(() => {
         <!-- Content -->
         <div class="p-6 space-y-8">
           <!-- Status Timeline -->
-            <div class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-5">
-              <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase mb-4">Fulfillment Progress</h4>
+            <div class="bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+              <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase mb-4">Fulfillment Progress</h4>
               <ol class="flex flex-col md:flex-row md:items-stretch md:space-x-6 space-y-4 md:space-y-0">
                 <li v-for="step in statusTimeline" :key="step.step" class="flex-1 relative">
                   <div class="flex items-center md:flex-col md:items-start">
@@ -597,14 +597,14 @@ const paymentDetailRows = computed(() => {
                       <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
                     </div>
                     <div class="ml-3 md:ml-0 md:mt-2">
-                      <p class="text-xs font-semibold tracking-wide uppercase text-gray-700">{{ step.step }}</p>
+                      <p class="text-xs font-semibold tracking-wide uppercase text-gray-700 dark:text-gray-300">{{ step.step }}</p>
                       <p v-if="step.active" class="text-[10px] text-blue-600 font-medium">Current</p>
                       <p v-if="step.completed && !step.cancelled" class="text-[10px] text-green-600 font-medium">Completed</p>
                       <p v-if="step.cancelled" class="text-[10px] text-red-600 font-medium">Cancelled</p>
                     </div>
                   </div>
                   <div v-if="!step.cancelled && step.step !== 'Delivered'" class="hidden md:block absolute top-3 left-[3.5rem] right-0 h-0.5">
-                    <div :class="['h-full w-full', step.completed ? 'bg-green-400' : 'bg-gray-200']"></div>
+                    <div :class="['h-full w-full', step.completed ? 'bg-green-400' : 'bg-gray-200 dark:bg-gray-700']"></div>
                   </div>
                 </li>
               </ol>
@@ -612,56 +612,56 @@ const paymentDetailRows = computed(() => {
             <!-- Row 1: Items + Customer -->
             <div class="grid grid-cols-3 gap-4">
               <!-- Items -->
-                <div class="col-span-2 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Items ({{ orderFinancials?.totalItems }})</h4>
-                  <span class="text-xs text-gray-500 font-mono">Avg: ${{ orderFinancials?.avgItemPrice.toFixed(2) }}</span>
+                <div class="col-span-2 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Items ({{ orderFinancials?.totalItems }})</h4>
+                  <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">Avg: ${{ orderFinancials?.avgItemPrice.toFixed(2) }}</span>
                 </div>
-                <div class="divide-y divide-gray-100">
-                  <div v-for="p in selectedOrderComputed.products" :key="p.id" class="flex items-center p-4 hover:bg-gray-50 transition-colors">
-                    <img :src="p.image" :alt="p.name" class="h-16 w-16 rounded-lg object-cover ring-1 ring-gray-200 shadow-sm" />
+                <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                  <div v-for="p in selectedOrderComputed.products" :key="p.id" class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
+                    <img :src="p.image" :alt="p.name" class="h-16 w-16 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm" />
                     <div class="ml-4 flex-1 min-w-0">
-                      <p class="font-medium text-gray-900 truncate">{{ p.name }}</p>
-                      <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 font-mono">
+                      <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.name }}</p>
+                      <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
                         <span>SKU: {{ p.sku }}</span>
                         <span>Qty: {{ p.quantity }}</span>
                       </div>
                     </div>
                     <div class="text-right">
-                      <p class="text-sm font-semibold text-gray-900">${{ p.price.toLocaleString() }}</p>
-                      <p class="text-xs text-gray-500 mt-0.5">${{ (p.price * p.quantity).toLocaleString() }} total</p>
+                      <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">${{ p.price.toLocaleString() }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${{ (p.price * p.quantity).toLocaleString() }} total</p>
                     </div>
                   </div>
                 </div>
-                <div class="bg-gradient-to-r from-gray-50 to-white px-5 py-4 space-y-2 text-sm">
-                  <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">${{ orderFinancials?.subtotal.toLocaleString() }}</span></div>
-                  <div class="flex justify-between"><span class="text-gray-600">Shipping</span><span>${{ orderFinancials?.shipping.toLocaleString() }}</span></div>
-                  <div class="flex justify-between"><span class="text-gray-600">Tax</span><span>${{ orderFinancials?.tax.toLocaleString() }}</span></div>
+                <div class="bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 px-5 py-4 space-y-2 text-sm">
+                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Subtotal</span><span class="font-medium text-gray-900 dark:text-gray-100">${{ orderFinancials?.subtotal.toLocaleString() }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Shipping</span><span class="text-gray-900 dark:text-gray-100">${{ orderFinancials?.shipping.toLocaleString() }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Tax</span><span class="text-gray-900 dark:text-gray-100">${{ orderFinancials?.tax.toLocaleString() }}</span></div>
                   <div v-if="orderFinancials && orderFinancials.discount > 0" class="flex justify-between text-green-600"><span>Discount</span><span>- ${{ orderFinancials.discount.toLocaleString() }}</span></div>
-                  <div class="flex justify-between pt-2 mt-1 border-t border-gray-200 text-base font-semibold"><span>Total</span><span>${{ orderFinancials?.total.toLocaleString() }}</span></div>
+                  <div class="flex justify-between pt-2 mt-1 border-t border-gray-200 dark:border-gray-700 text-base font-semibold"><span class="text-gray-900 dark:text-gray-100">Total</span><span class="text-gray-900 dark:text-gray-100">${{ orderFinancials?.total.toLocaleString() }}</span></div>
                 </div>
               </div>
               <!-- Customer Card -->
-                <div class="col-span-1 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Customer</h4>
+                <div class="col-span-1 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Customer</h4>
                   <span class="text-xs text-gray-400 font-mono">#{{ selectedOrderComputed.customer.id }}</span>
                 </div>
                 <div class="p-5 space-y-4 text-sm">
                   <div>
-                    <p class="text-xs uppercase font-semibold text-gray-500">Name</p>
-                    <p class="font-medium text-gray-900">{{ selectedOrderComputed.customer.name }}</p>
+                    <p class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Name</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.customer.name }}</p>
                   </div>
                   <div>
-                    <p class="text-xs uppercase font-semibold text-gray-500">Contact</p>
+                    <p class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Contact</p>
                     <div class="space-y-1">
-                      <p class="font-medium text-gray-900">{{ selectedOrderComputed.customer.email }}</p>
-                      <p class="font-medium text-gray-900">{{ selectedOrderComputed.customer.phone }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.customer.email }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.customer.phone }}</p>
                     </div>
                   </div>
                   <div>
-                    <p class="text-xs uppercase font-semibold text-gray-500">Shipping Address</p>
-                    <p class="font-medium text-gray-900 leading-relaxed">{{ selectedOrderComputed.customer.address }}, {{ selectedOrderComputed.customer.city }}, {{ selectedOrderComputed.customer.state }} {{ selectedOrderComputed.customer.zipCode }}, {{ selectedOrderComputed.customer.country }}</p>
+                    <p class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Shipping Address</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100 leading-relaxed">{{ selectedOrderComputed.customer.address }}, {{ selectedOrderComputed.customer.city }}, {{ selectedOrderComputed.customer.state }} {{ selectedOrderComputed.customer.zipCode }}, {{ selectedOrderComputed.customer.country }}</p>
                   </div>
                   <div class="flex flex-wrap gap-2 pt-2">
                     <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium">{{ selectedOrderComputed.paymentMethod }}</span>
@@ -673,17 +673,17 @@ const paymentDetailRows = computed(() => {
 
             <!-- Row 2: Payment + Manage -->
             <div class="grid grid-cols-3 gap-4">
-              <div class="col-span-2 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Payment Details</h4>
+              <div class="col-span-2 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Payment Details</h4>
                   <span class="text-xs font-medium px-2 py-1 rounded-md bg-[#042EFF]/10 text-[#042EFF]">{{ selectedOrderComputed.paymentMethod }}</span>
                 </div>
                 <div class="p-5 space-y-4 text-sm">
-                  <div v-if="paymentDetailRows.length === 0" class="text-xs text-gray-500 italic">No additional payment metadata.</div>
-                  <dl v-else class="divide-y divide-gray-100">
+                  <div v-if="paymentDetailRows.length === 0" class="text-xs text-gray-500 dark:text-gray-400 italic">No additional payment metadata.</div>
+                  <dl v-else class="divide-y divide-gray-100 dark:divide-gray-700">
                     <div v-for="(row, idx) in paymentDetailRows" :key="idx" class="flex items-start justify-between py-2 first:pt-0 last:pb-0">
-                      <dt class="text-gray-500 font-medium w-40 pr-4 text-xs uppercase tracking-wide">{{ row[0] }}</dt>
-                      <dd class="text-gray-900 font-mono text-xs break-all flex-1">{{ row[1] }}</dd>
+                      <dt class="text-gray-500 dark:text-gray-400 font-medium w-40 pr-4 text-xs uppercase tracking-wide">{{ row[0] }}</dt>
+                      <dd class="text-gray-900 dark:text-gray-100 font-mono text-xs break-all flex-1">{{ row[1] }}</dd>
                     </div>
                   </dl>
                   <div class="pt-2 flex flex-wrap gap-2">
@@ -693,14 +693,14 @@ const paymentDetailRows = computed(() => {
                   </div>
                 </div>
               </div>
-              <div class="col-span-1 border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div class="bg-gray-50 px-5 py-3">
-                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 uppercase">Manage Order</h4>
+              <div class="col-span-1 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+                <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
+                  <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Manage Order</h4>
                 </div>
                 <div class="p-5 space-y-6">
                   <div>
-                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 mb-2">Update Status</label>
-  <select v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white text-sm">
+                    <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 mb-2">Update Status</label>
+  <select v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
                       <option v-for="s in statusOptions" :key="s" :value="s">{{ s }}</option>
                       <option value="Cancelled">Cancelled</option>
                     </select>
@@ -736,7 +736,7 @@ const paymentDetailRows = computed(() => {
                     <span v-else-if="justSavedStatus">Saved</span>
                     <span v-else>Save</span>
                   </button>
-                  <p class="text-[11px] leading-relaxed text-gray-500">Status updates require saving. Use Cancel to terminate fulfillment; a refund process will start shortly after.</p>
+                  <p class="text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">Status updates require saving. Use Cancel to terminate fulfillment; a refund process will start shortly after.</p>
                 </div>
               </div>
             </div> 
@@ -748,9 +748,9 @@ const paymentDetailRows = computed(() => {
     <transition name="slide-in-right">
       <div v-if="activeNotification" class="fixed top-4 right-4 z-[60] px-4">
         <div :class="['w-full max-w-2xl rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
-           activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
-           activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
-           activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-white border-gray-200 text-gray-700']">
+           activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-800 dark:text-yellow-100' :
+           activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100' :
+           activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900 dark:border-red-800 dark:text-red-100' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900 dark:border-blue-800 dark:text-blue-100']">
           <div class="flex-shrink-0 mt-0.5">
             <svg v-if="activeNotification.type === 'warning'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
             <svg v-else-if="activeNotification.type === 'success'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -758,10 +758,10 @@ const paymentDetailRows = computed(() => {
             <svg v-else class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
           </div>
           <div class="flex-1">
-            <p class="text-sm font-semibold leading-tight" v-if="activeNotification.title">{{ activeNotification.title }}</p>
-            <p class="text-xs leading-relaxed mt-0.5" v-if="activeNotification.message">{{ activeNotification.message }}</p>
+            <p class="text-sm font-semibold leading-tight dark:text-gray-100" v-if="activeNotification.title">{{ activeNotification.title }}</p>
+            <p class="text-xs leading-relaxed mt-0.5 dark:text-gray-200" v-if="activeNotification.message">{{ activeNotification.message }}</p>
           </div>
-          <button @click="activeNotification=null" class="p-1 rounded-md hover:bg-black/5 transition-colors">
+          <button @click="activeNotification=null" class="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
@@ -770,17 +770,17 @@ const paymentDetailRows = computed(() => {
 
     <!-- Delete Confirmation Modal (Enhanced) -->
     <div v-if="showDeleteConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-scale-in">
+      <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-in">
         <div class="px-6 pt-6 pb-4 flex items-start space-x-4">
           <div class="flex-shrink-0 h-12 w-12 rounded-xl bg-red-50 flex items-center justify-center ring-1 ring-red-100">
             <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M4.938 19h14.124c1.054 0 1.716-1.142 1.188-2.053L13.188 5.947c-.527-.911-1.849-.911-2.376 0L3.75 16.947C3.222 17.858 3.884 19 4.938 19z"/></svg>
           </div>
           <div class="flex-1">
-            <h3 class="text-lg font-semibold text-gray-900 tracking-tight">Delete Order</h3>
-            <p class="mt-1 text-sm text-gray-600 leading-relaxed">You're about to permanently remove order <span class="font-semibold text-gray-900">{{ orderToDelete?.id }}</span>. This action cannot be undone and related analytics may be affected.</p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Delete Order</h3>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">You're about to permanently remove order <span class="font-semibold text-gray-900 dark:text-gray-100">{{ orderToDelete?.id }}</span>. This action cannot be undone and related analytics may be affected.</p>
           </div>
-          <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Close dialog">
-            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close dialog">
+            <svg class="w-5 h-5 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
         <div class="px-6 pb-6 pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-4">
@@ -788,7 +788,7 @@ const paymentDetailRows = computed(() => {
             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             Delete Order
           </button>
-          <button @click="closeDeleteConfirmModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
+          <button @click="closeDeleteConfirmModal" class="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors w-full sm:w-auto">Cancel</button>
         </div>
       </div>
     </div>
