@@ -289,10 +289,10 @@ const categories = ['All', 'Phones', 'Laptops', 'Televisions', 'Smartwatches']
 
 const getStatusColor = (status) => {
   switch (status) {
-    case 'In Stock': return 'bg-green-100 text-green-800'
-    case 'Low Stock': return 'bg-yellow-100 text-yellow-800'
-    case 'Out of Stock': return 'bg-red-100 text-red-800'
-    default: return 'bg-gray-100 text-gray-800'
+    case 'In Stock': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+    case 'Low Stock': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+    case 'Out of Stock': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100'
   }
 }
 
@@ -379,7 +379,7 @@ const deleteProduct = (productId) => {
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <admin-sidebar></admin-sidebar>
     
     <!-- Main Content -->
@@ -391,7 +391,7 @@ const deleteProduct = (productId) => {
         <div class="max-w-5xl mx-auto">
           <div class="mb-8">
             <div class="flex items-center justify-between">
-              <h1 class="text-3xl font-bold text-gray-900">Stock Management</h1>
+              <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Stock Management</h1>
               <button 
                 @click="navigateToAddProduct"
                 class="bg-[#042EFF] text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center"
@@ -409,7 +409,7 @@ const deleteProduct = (productId) => {
             <div 
               v-for="overview in stockOverview" 
               :key="overview.category"
-              class="bg-white rounded-xl shadow-sm p-6 border border-gray-100"
+              class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700"
             >
               <div class="flex items-center justify-between mb-4">
                 <div :class="[overview.color, 'p-3 rounded-lg']">
@@ -418,38 +418,38 @@ const deleteProduct = (productId) => {
                   </svg>
                 </div>
                 <div class="text-right">
-                  <p class="text-2xl font-bold text-gray-900">{{ overview.totalProducts }}</p>
-                  <p class="text-sm text-gray-600">Products</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ overview.totalProducts }}</p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">Products</p>
                 </div>
               </div>
               
-              <h3 class="text-lg font-semibold text-gray-900 mb-3">{{ overview.category }}</h3>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">{{ overview.category }}</h3>
               
               <div class="space-y-2">
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Total Stock:</span>
+                  <span class="text-gray-600 dark:text-gray-400">Total Stock:</span>
                   <span class="font-medium text-green-600">{{ overview.inStock }}</span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Low Stock:</span>
+                  <span class="text-gray-600 dark:text-gray-400">Low Stock:</span>
                   <span class="font-medium text-yellow-600">{{ overview.lowStock }}</span>
                 </div>
                 <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Out of Stock:</span>
+                  <span class="text-gray-600 dark:text-gray-400">Out of Stock:</span>
                   <span class="font-medium text-red-600">{{ overview.outOfStock }}</span>
                 </div>
-                <div class="flex items-center justify-between text-sm pt-2 border-t">
-                  <span class="text-gray-600">Total Value:</span>
-                  <span class="font-medium text-gray-900">${{ overview.totalValue.toLocaleString() }}</span>
+                <div class="flex items-center justify-between text-sm pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <span class="text-gray-600 dark:text-gray-400">Total Value:</span>
+                  <span class="font-medium text-gray-900 dark:text-gray-100">${{ overview.totalValue.toLocaleString() }}</span>
                 </div>
               </div>
             </div>
           </div>
           <!-- Products Table -->
-          <div v-if="filteredProducts().length" class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div class="px-6 py-4 border-b border-gray-200">
+          <div v-if="filteredProducts().length" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900">Product Inventory</h3>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Product Inventory</h3>
                 
                 <!-- Search and Filter -->
                 <div class="flex items-center space-x-4">
@@ -461,13 +461,13 @@ const deleteProduct = (productId) => {
                       v-model="searchQuery"
                       type="text"
                       placeholder="Search products..."
-                      class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"
+                      class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     >
                   </div>
                   
                   <select 
                     v-model="selectedCategory"
-                    class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"
+                    class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   >
                     <option v-for="category in categories" :key="category" :value="category">
                       {{ category }}
@@ -478,39 +478,39 @@ const deleteProduct = (productId) => {
             </div>
             
             <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Brand</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">SKU</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                  <tr  v-for="product in filteredProducts()" :key="product.id" @click.stop="viewProduct(product)" class="hover:bg-gray-50 cursor-pointer">
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr  v-for="product in filteredProducts()" :key="product.id" @click.stop="viewProduct(product)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <img :src="product.image" :alt="product.name" class="h-12 w-12 rounded-lg object-cover mr-4">
                         <div>
-                          <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                          <div class="text-sm text-gray-500">ID: {{ product.id }}</div>
+                          <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
+                          <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ product.id }}</div>
                         </div>
                       </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ product.brand }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ product.brand }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
                         {{ product.category }}
                       </span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ product.sku }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{ product.price.toLocaleString() }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ product.stock }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ product.sku }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${{ product.price.toLocaleString() }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ product.stock }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(product.status)]">
                         {{ product.status }}
@@ -541,8 +541,8 @@ const deleteProduct = (productId) => {
               </table>
             </div>
           </div>
-          <div v-else class="bg-white rounded-xl shadow-sm border border-gray-100">
-            <p class="px-6 py-4 border-b  border-gray-200 text-center">There are no products in the store</p>
+          <div v-else class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+            <p class="px-6 py-4 border-b  border-gray-200 dark:border-gray-700 text-center text-gray-700 dark:text-gray-300">There are no products in the store</p>
           </div>
         </div>
       </main>
@@ -550,18 +550,18 @@ const deleteProduct = (productId) => {
 
     <!-- Product Details Modal -->
     <div v-if="showProductModal && selectedProduct" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="bg-white product-overlay  rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+      <div class="bg-white dark:bg-gray-800 product-overlay  rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-gray-700">
         <!-- Modal Header -->
-        <div class="sticky z-10 top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+        <div class="sticky z-10 top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <div>
-            <h2 class="text-2xl font-bold text-gray-900">{{ selectedProduct.name }}</h2>
-            <p class="text-sm text-gray-500 mt-1">{{ selectedProduct.brand }} • {{ selectedProduct.category }}</p>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ selectedProduct.name }}</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ selectedProduct.brand }} • {{ selectedProduct.category }}</p>
           </div>
           <button 
             @click="closeProductModal"
-            class="p-2 cursor-pointer hover:bg-gray-100 rounded-full transition-colors"
+            class="p-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           >
-            <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
             </svg>
           </button>
@@ -571,7 +571,7 @@ const deleteProduct = (productId) => {
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <!-- Image Carousel -->
             <div class="space-y-4">
-              <div class="relative bg-gray-100 rounded-xl overflow-hidden aspect-square">
+              <div class="relative bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden aspect-square">
                 <img 
                   :src="selectedProduct.images[currentImageIndex]" 
                   :alt="selectedProduct.name"
@@ -619,10 +619,10 @@ const deleteProduct = (productId) => {
                   @click="goToImage(index)"
                   :class="[
                     'flex-1 aspect-square rounded-lg overflow-hidden border-2 transition-all',
-                    currentImageIndex === index ? 'border-[#042EFF] ring-2 ring-[#042EFF]/20' : 'border-gray-200 hover:border-gray-300'
+                    currentImageIndex === index ? 'border-[#042EFF] ring-2 ring-[#042EFF]/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   ]"
                 >
-                  <img :src="image" :alt="`${selectedProduct.name} view ${index + 1}`" class="w-full h-full object-contain bg-gray-50">
+                  <img :src="image" :alt="`${selectedProduct.name} view ${index + 1}`" class="w-full h-full object-contain bg-gray-50 dark:bg-gray-900">
                 </button>
               </div>
             </div>
@@ -630,11 +630,11 @@ const deleteProduct = (productId) => {
             <!-- Product Details -->
             <div class="space-y-6">
               <!-- Price and Stock Info -->
-              <div class="bg-gray-50 rounded-xl p-6">
+              <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
                 <div class="flex items-center justify-between mb-4">
                   <div>
-                    <p class="text-3xl font-bold text-gray-900">${{ selectedProduct.price.toLocaleString() }}</p>
-                    <p class="text-sm text-gray-500">SKU: {{ selectedProduct.sku }}</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">${{ selectedProduct.price.toLocaleString() }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">SKU: {{ selectedProduct.sku }}</p>
                   </div>
                   <span 
                     :class="[
@@ -648,43 +648,43 @@ const deleteProduct = (productId) => {
                 
                 <div class="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p class="text-gray-500">Current Stock</p>
-                    <p class="font-semibold text-lg">{{ selectedProduct.stock }} units</p>
+                    <p class="text-gray-500 dark:text-gray-400">Current Stock</p>
+                    <p class="font-semibold text-lg text-gray-900 dark:text-gray-100">{{ selectedProduct.stock }} units</p>
                   </div>
                   <div>
-                    <p class="text-gray-500">Low Stock Alert</p>
-                    <p class="font-semibold text-lg">{{ selectedProduct.lowStockThreshold }} units</p>
+                    <p class="text-gray-500 dark:text-gray-400">Low Stock Alert</p>
+                    <p class="font-semibold text-lg text-gray-900 dark:text-gray-100">{{ selectedProduct.lowStockThreshold }} units</p>
                   </div>
                   <div>
-                    <p class="text-gray-500">Date Added</p>
-                    <p class="font-semibold">{{ new Date(selectedProduct.dateAdded).toLocaleDateString() }}</p>
+                    <p class="text-gray-500 dark:text-gray-400">Date Added</p>
+                    <p class="font-semibold text-gray-900 dark:text-gray-100">{{ new Date(selectedProduct.dateAdded).toLocaleDateString() }}</p>
                   </div>
                   <div>
-                    <p class="text-gray-500">Supplier</p>
-                    <p class="font-semibold">{{ selectedProduct.supplier }}</p>
+                    <p class="text-gray-500 dark:text-gray-400">Supplier</p>
+                    <p class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedProduct.supplier }}</p>
                   </div>
                 </div>
               </div>
 
               <!-- Description -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Description</h3>
-                <p class="text-gray-700 leading-relaxed">{{ selectedProduct.description }}</p>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Description</h3>
+                <p class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ selectedProduct.description }}</p>
               </div>
 
               <!-- Specifications -->
               <div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Specifications</h3>
-                <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Specifications</h3>
+                <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                   <div 
                     v-for="(value, key) in selectedProduct.specifications" 
                     :key="key"
-                    class="flex border-b border-gray-100 last:border-b-0"
+                    class="flex border-b border-gray-100 dark:border-gray-700 last:border-b-0"
                   >
-                    <div class="w-1/3 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 capitalize">
+                    <div class="w-1/3 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 capitalize">
                       {{ key.replace(/([A-Z])/g, ' $1').trim() }}
                     </div>
-                    <div class="flex-1 px-4 py-3 text-sm text-gray-900">{{ value }}</div>
+                    <div class="flex-1 px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{{ value }}</div>
                   </div>
                 </div>
               </div>
@@ -702,7 +702,7 @@ const deleteProduct = (productId) => {
                 </button>
                 <button 
                   @click="deleteProduct(selectedProduct.id)"
-                  class="px-4 py-3 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium flex items-center justify-center"
+                  class="px-4 py-3 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium flex items-center justify-center"
                 >
                   <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -737,10 +737,7 @@ const deleteProduct = (productId) => {
   background: #a1a1a1;
 }
 
-/* Table row hover effect */
-.hover\:bg-gray-50:hover {
-  background-color: #f9fafb;
-}
+/* Note: hover styles handled via Tailwind utilities in template for light/dark */
 
 /* Modal backdrop animation */
 .fixed.inset-0 {
@@ -852,10 +849,7 @@ button {
   transition: all 0.2s ease-in-out;
 }
 
-/* Specification table styling */
-.bg-gray-50 {
-  background: linear-gradient(to right, #f9fafb, #f3f4f6);
-}
+/* Specification table base style handled via Tailwind classes (light/dark) */
 
 /* Action button hover effects */
 button:hover {

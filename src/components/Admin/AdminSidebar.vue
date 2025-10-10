@@ -77,18 +77,19 @@ function hideTooltip() {
       <!-- Sidebar -->
   <div :class="['relative z-20 isolate overflow-visible flex flex-col text-white dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
     <!-- Background: solid brand blue in light, keep dark gradient in dark -->
-    <div class="absolute inset-0 -z-10 bg-[#042EFF] dark:bg-gradient-to-b dark:from-gray-900 dark:via-gray-900 dark:to-black"></div>
-    <div class="absolute inset-0 -z-[9] opacity-20 dark:opacity-30" aria-hidden="true" style="background-image: radial-gradient(circle at 20% 10%, rgba(255,255,255,.15) 0, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,.12) 0, transparent 50%), radial-gradient(circle at 30% 70%, rgba(255,255,255,.1) 0, transparent 45%);"></div>
+  <div class="absolute inset-0 -z-10 bg-[#042EFF] dark:bg-black"></div>
+  <!-- Subtle texture only in light mode to avoid light patches in dark -->
+  <div class="absolute inset-0 -z-[9] opacity-20 dark:hidden" aria-hidden="true" style="background-image: radial-gradient(circle at 20% 10%, rgba(255,255,255,.15) 0, transparent 50%), radial-gradient(circle at 80% 30%, rgba(255,255,255,.12) 0, transparent 50%), radial-gradient(circle at 30% 70%, rgba(255,255,255,.1) 0, transparent 45%);"></div>
 
       <!-- Top: Brand and collapse toggle -->
       <div class="px-3 py-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between">
         <div class="flex items-center gap-2 overflow-hidden">
-          <div class="h-10 w-9 rounded-xl bg-white/90 text-[#042EFF] grid place-items-center font-extrabold shadow-sm dark:bg-white text-sm">M</div>
+          <div class="h-10 w-9 rounded-xl bg-white/90 text-[#042EFF] grid place-items-center font-extrabold shadow-sm dark:bg-white/10 dark:text-white text-sm">M</div>
           <transition name="fade">
             <h1 v-if="!collapsed" class="text-xl font-bold tracking-tight drop-shadow-sm">MoTech</h1>
           </transition>
         </div>
-        <button @click="toggleCollapsed" class="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-white/10 transition-colors" :title="collapsed ? 'Expand (Ctrl+B)' : 'Collapse (Ctrl+B)'"><svg :class="['w-5 h-5 transition-transform', collapsed ? '' : 'rotate-180']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path class="text-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7"/></svg></button>
+  <button @click="toggleCollapsed" class="p-2 rounded-lg hover:bg-white/10 dark:hover:bg-gray-800 transition-colors" :title="collapsed ? 'Expand (Ctrl+B)' : 'Collapse (Ctrl+B)'"><svg :class="['w-5 h-5 transition-transform', collapsed ? '' : 'rotate-180']" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path class="text-current" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7"/></svg></button>
       </div>
 
       <!-- Navigation Menu -->
@@ -107,8 +108,8 @@ function hideTooltip() {
               class="group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-200 focus:outline-none text-white dark:text-gray-100"
               :class="[
                 isActiveRoute(item.path)
-                  ? 'bg-white text-[#042EFF] dark:bg-white/5 dark:text-white focus:ring-2 focus:ring-white/50 dark:focus:ring-white/20'
-                  : 'hover:bg-white/10 dark:hover:bg-white/10 focus:ring-2 focus:ring-white/30 dark:focus:ring-white/20'
+                  ? 'bg-white text-[#042EFF] dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-white/50 dark:focus:ring-white/20'
+                  : 'hover:bg-white/10 dark:hover:bg-gray-800/60 focus:ring-2 focus:ring-white/30 dark:focus:ring-white/20'
               ]"
               :aria-current="isActiveRoute(item.path) ? 'page' : undefined"
               :title="collapsed ? item.name : undefined"
@@ -116,10 +117,10 @@ function hideTooltip() {
               @mouseleave="hideTooltip"
             >
               <!-- Active indicator -->
-              <span :class="['absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full transition-all', isActiveRoute(item.path) ? 'bg-white dark:bg-white shadow-lg' : 'bg-transparent']"></span>
+              <span :class="['absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full transition-all', isActiveRoute(item.path) ? 'bg-white dark:bg-[#042EFF] shadow-lg' : 'bg-transparent']"></span>
 
               <!-- Icon -->
-              <div :class="['grid place-items-center rounded-md p-1.5 transition-colors', isActiveRoute(item.path) ? 'bg-white text-[#042EFF] dark:bg-white dark:text-[#042EFF]' : 'bg-white/10 text-white dark:bg-white/10 dark:text-white']">
+              <div :class="['grid place-items-center rounded-md p-1.5 transition-colors', isActiveRoute(item.path) ? 'bg-white text-[#042EFF] dark:bg-[#042EFF] dark:text-white' : 'bg-white/10 text-white dark:bg-white/10 dark:text-white']">
                 <svg v-if="item.icon === 'home'" class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                   <polyline points="9,22 9,12 15,12 15,22"/>
@@ -164,7 +165,7 @@ function hideTooltip() {
             </div>
           </transition>
         </div>
-    <button class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white transition-colors">
+  <button class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white dark:text-white/80 dark:hover:bg-gray-800 dark:hover:text-white transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           <span v-if="!collapsed">Logout</span>
         </button>
