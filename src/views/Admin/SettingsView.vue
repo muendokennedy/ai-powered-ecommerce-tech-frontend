@@ -9,6 +9,8 @@ const showDeleteConfirmModal = ref(false)
 const selectedAdmin = ref(null)
 const adminToDelete = ref(null)
 const showSuspendConfirmModal = ref(false)
+// Local storage key for theme persistence
+const THEME_KEY = 'theme'
 // Send Message Modal state
 const showMessageModal = ref(false)
 const sendingMessage = ref(false)
@@ -374,6 +376,9 @@ const updatePreference = (key, value) => {
 
   // Apply theme immediately; the watcher will handle the toast to avoid duplicates.
   if (key === 'theme') {
+    try {
+      localStorage.setItem(THEME_KEY, String(value))
+    } catch {}
     applyTheme(value)
     return
   }
@@ -519,9 +524,22 @@ function handleSystemThemeChange(e) {
 }
 
 onMounted(() => {
-  const initial = currentAdmin.preferences && currentAdmin.preferences.theme
-    ? currentAdmin.preferences.theme
-    : 'Light'
+  let initial = 'Light'
+  try {
+    const saved = localStorage.getItem(THEME_KEY)
+    if (saved) {
+      initial = saved
+      if (currentAdmin.preferences && currentAdmin.preferences.theme !== saved) {
+        currentAdmin.preferences.theme = saved
+      }
+    } else if (currentAdmin.preferences && currentAdmin.preferences.theme) {
+      initial = currentAdmin.preferences.theme
+    }
+  } catch {
+    if (currentAdmin.preferences && currentAdmin.preferences.theme) {
+      initial = currentAdmin.preferences.theme
+    }
+  }
   applyTheme(initial)
 })
 

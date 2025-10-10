@@ -75,7 +75,7 @@ function hideTooltip() {
 
 <template>
       <!-- Sidebar -->
-  <div :class="['relative z-[999] isolate overflow-visible flex flex-col text-gray-800 dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
+  <div :class="['relative z-20 isolate overflow-visible flex flex-col text-gray-800 dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
       <!-- Decorative background layers for creativity -->
       <div class="absolute inset-0 -z-10 bg-gradient-to-b from-white via-white to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-black"></div>
       <div class="absolute inset-0 -z-[9] opacity-20 dark:opacity-30" aria-hidden="true" style="background-image: radial-gradient(circle at 20% 10%, rgba(0,0,0,.06) 0, transparent 50%), radial-gradient(circle at 80% 30%, rgba(0,0,0,.05) 0, transparent 50%), radial-gradient(circle at 30% 70%, rgba(0,0,0,.04) 0, transparent 45%);"></div>
@@ -170,13 +170,13 @@ function hideTooltip() {
     <!-- Global tooltip for collapsed sidebar (avoids clipping) -->
     <teleport to="body">
       <div v-if="tooltipVisible"
-           class="fixed pointer-events-none z-[10000]"
+           class="fixed pointer-events-none z-30"
            :style="{ top: tooltipPos.top + 'px', left: tooltipPos.left + 'px', transform: 'translateY(-50%)' }">
         <div class="relative px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap select-none
                     bg-white text-gray-900 ring-1 ring-gray-200 shadow-md
                     dark:bg-gray-800 dark:text-gray-100 dark:ring-gray-700 dark:shadow-xl">
-          <span class="absolute -left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 rotate-45
-                        bg-white ring-1 ring-gray-200
+          <span class="absolute -left-1.5 top-1/2  -translate-y-1/2 h-3 w-3 rotate-45
+                        bg-white border-b border-b-gray-200 dark:border-b-gray-700 border-l border-l-gray-200 dark:border-l-gray-700 
                         dark:bg-gray-800 dark:ring-gray-700"></span>
           {{ tooltipText }}
         </div>
