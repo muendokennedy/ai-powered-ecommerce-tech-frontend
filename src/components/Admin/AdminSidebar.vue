@@ -75,7 +75,7 @@ function hideTooltip() {
 
 <template>
       <!-- Sidebar -->
-  <div :class="['relative z-20 isolate overflow-visible flex flex-col text-white dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
+  <div :class="['relative z-20 isolate overflow-visible flex flex-col shrink-0 text-white dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
     <!-- Background: solid brand blue in light, keep dark gradient in dark -->
   <div class="absolute inset-0 -z-10 bg-[#042EFF] dark:bg-black"></div>
   <!-- Subtle texture only in light mode to avoid light patches in dark -->

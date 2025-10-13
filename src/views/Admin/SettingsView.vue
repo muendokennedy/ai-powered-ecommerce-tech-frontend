@@ -2,6 +2,7 @@
 import { reactive, ref, computed, onMounted, watch } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
+import AdminToast from '@/components/Admin/AdminToast.vue'
 
 const showEditProfileModal = ref(false)
 const showAdminDetailsModal = ref(false)
@@ -560,28 +561,14 @@ watch(
 <template>
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Toast Notification -->
-    <transition name="slide-in-right">
-      <div v-if="activeNotification" class="fixed top-4 right-4 z-[70] px-4">
-        <div :class="['w-full max-w-sm rounded-xl shadow-lg border flex gap-3 p-4 items-start animate-fade-in',
-          activeNotification.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:border-yellow-800 dark:text-yellow-100' :
-          activeNotification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900 dark:border-green-800 dark:text-green-100' :
-          activeNotification.type === 'error' ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900 dark:border-red-800 dark:text-red-100' : 'bg-white border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100']">
-          <div class="flex-shrink-0 mt-0.5">
-            <svg v-if="activeNotification.type === 'warning'" class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.93 19h14.14c1.09 0 1.77-1.18 1.23-2.12L13.24 4.88c-.54-.94-1.9-.94-2.44 0L3.7 16.88C3.16 17.82 3.84 19 4.93 19z"/></svg>
-            <svg v-else-if="activeNotification.type === 'success'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-            <svg v-else-if="activeNotification.type === 'error'" class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"/></svg>
-            <svg v-else class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
-          </div>
-          <div class="flex-1">
-            <p class="text-sm font-semibold leading-tight" v-if="activeNotification.title">{{ activeNotification.title }}</p>
-            <p class="text-xs leading-relaxed mt-0.5" v-if="activeNotification.message">{{ activeNotification.message }}</p>
-          </div>
-          <button @click="activeNotification=null" class="p-1 rounded-md hover:bg-black/5 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-      </div>
-    </transition>
+    <AdminToast
+      v-if="activeNotification"
+      :type="activeNotification.type"
+      :title="activeNotification.title"
+      :message="activeNotification.message"
+      :zIndex="70"
+      @close="activeNotification = null"
+    />
     <admin-sidebar></admin-sidebar>
     
     <!-- Main Content -->
