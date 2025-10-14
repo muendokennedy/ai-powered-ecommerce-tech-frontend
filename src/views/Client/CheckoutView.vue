@@ -345,6 +345,88 @@ const mpesaDetails = ref({
   phoneNumber: ''
 })
 
+// Payment validation error state
+const paymentErrors = ref({
+  cardNumber: '',
+  cardholderName: '',
+  expiryDate: '',
+  cvv: '',
+  paypalEmail: '',
+  paypalPassword: '',
+  mpesaPhone: ''
+})
+
+function clearPaymentError(field) {
+  if (paymentErrors.value[field]) paymentErrors.value[field] = ''
+}
+
+function luhnCheck(number) {
+  const digits = number.replace(/\D/g, '')
+  let sum = 0, shouldDouble = false
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let d = parseInt(digits.charAt(i), 10)
+    if (shouldDouble) {
+      d *= 2
+      if (d > 9) d -= 9
+    }
+    sum += d
+    shouldDouble = !shouldDouble
+  }
+  return (sum % 10) === 0
+}
+
+function validatePaymentDetails() {
+  // Reset only relevant fields each run
+  const errs = paymentErrors.value
+  // Don't blank unrelated method errors here; instead clear per validation run
+  if (selectedPaymentMethod.value === 'card') {
+    errs.cardNumber = errs.cardholderName = errs.expiryDate = errs.cvv = ''
+    const raw = cardDetails.value.cardNumber.replace(/\s+/g, '')
+    if (!raw) errs.cardNumber = 'Card number is required'
+    else if (!/^\d{13,19}$/.test(raw)) errs.cardNumber = 'Card number must be 13–19 digits'
+    else if (!luhnCheck(raw)) errs.cardNumber = 'Invalid card number'
+    const name = cardDetails.value.cardholderName.trim()
+    if (!name) errs.cardholderName = 'Cardholder name is required'
+    else if (name.length < 2) errs.cardholderName = 'Name too short'
+    const exp = cardDetails.value.expiryDate.trim()
+    if (!exp) errs.expiryDate = 'Expiry date is required'
+    else if (!/^\d{2}\/\d{2}$/.test(exp)) errs.expiryDate = 'Use MM/YY format'
+    else {
+      const [mm, yy] = exp.split('/').map(x => parseInt(x, 10))
+      if (mm < 1 || mm > 12) errs.expiryDate = 'Invalid month'
+      else {
+        const now = new Date()
+        const year = 2000 + yy
+        const expDate = new Date(year, mm)
+        if (expDate <= now) errs.expiryDate = 'Card expired'
+      }
+    }
+    const cvv = cardDetails.value.cvv.trim()
+    if (!cvv) errs.cvv = 'CVV is required'
+    else if (!/^\d{3,4}$/.test(cvv)) errs.cvv = 'CVV must be 3 or 4 digits'
+    return !(errs.cardNumber || errs.cardholderName || errs.expiryDate || errs.cvv)
+  }
+  if (selectedPaymentMethod.value === 'paypal') {
+    errs.paypalEmail = errs.paypalPassword = ''
+    const email = paypalDetails.value.email.trim()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+    if (!email) errs.paypalEmail = 'Email is required'
+    else if (!emailRegex.test(email)) errs.paypalEmail = 'Enter a valid email'
+    const pw = paypalDetails.value.password
+    if (!pw) errs.paypalPassword = 'Password is required'
+    else if (pw.length < 6) errs.paypalPassword = 'Minimum 6 characters'
+    return !(errs.paypalEmail || errs.paypalPassword)
+  }
+  if (selectedPaymentMethod.value === 'mpesa') {
+    errs.mpesaPhone = ''
+    const phone = mpesaDetails.value.phoneNumber.trim()
+    if (!phone) errs.mpesaPhone = 'Phone number is required'
+    else if (!/^(\+?254|0)?7\d{8}$/.test(phone)) errs.mpesaPhone = 'Enter valid Safaricom number'
+    return !errs.mpesaPhone
+  }
+  return true
+}
+
 // Order items (you can replace this with props or store data)
 const orderItems = ref([
   {
@@ -371,33 +453,35 @@ const selectPaymentMethod = (method) => {
 }
 
 const completeOrder = () => {
-  // Check if payment method is selected
+  // Ensure a payment method is selected (still early exit because no specific inputs to validate yet)
   if (!selectedPaymentMethod.value) {
     showErrorMessage.value = true
-    // Auto-hide error message after 3 seconds
-    setTimeout(() => {
-      showErrorMessage.value = false
-    }, 3000)
+    setTimeout(() => { showErrorMessage.value = false }, 3000)
+    // Still run location + personal validations so user sees all issues
+  }
+
+  // Run all validations without short‑circuiting so every section shows its errors together
+  const personalOk = validatePersonalInfo()
+  const paymentOk = selectedPaymentMethod.value ? validatePaymentDetails() : false
+  const locationOk = validateLocation()
+
+  if (personalOk && paymentOk && locationOk && selectedPaymentMethod.value) {
+    showLocationModal.value = true
     return
   }
-  // Validate personal info first
-  if (!validatePersonalInfo()) {
-    // scroll to personal info section (top of page) if errors
+
+  // Scroll to the first section that has errors (priority: personal -> payment -> location)
+  if (!personalOk) {
     window.scrollTo({ top: 0, behavior: 'smooth' })
     return
   }
-  // Validate required delivery location fields
-  if (!validateLocation()) {
-    // Scroll to the delivery location section for visibility
-    if (deliverySectionEl.value) {
-      deliverySectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+  if (!paymentOk) {
+    if (paymentSectionEl.value) paymentSectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
     return
   }
-  
-  // Since we're on checkout page, user should already be logged in
-  // If not logged in, they wouldn't have reached this page
-  showLocationModal.value = true
+  if (!locationOk) {
+    if (deliverySectionEl.value) deliverySectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 }
 
 const handleLocationSubmit = () => {
@@ -727,7 +811,7 @@ function getInternationalPhone() {
         </div>
         
         <!-- Payment Methods Section (Now on the right) -->
-        <div class="payment-section w-full lg:w-3/5 order-1 lg:order-2">
+        <div class="payment-section w-full lg:w-3/5 order-1 lg:order-2" ref="paymentSectionEl">
           <div class="payment-methods bg-white border-2 border-gray-300 rounded-lg p-6">
             <h2 class="text-[#384857] text-lg sm:text-xl font-semibold mb-6 capitalize">
               payment method
@@ -759,34 +843,50 @@ function getInternationalPhone() {
                 <!-- Card Details Form (Expandable) -->
                 <div v-if="selectedPaymentMethod === 'card'" class="card-form mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
                   <div class="grid grid-cols-1 gap-4">
-                    <input
-                      v-model="cardDetails.cardNumber"
-                      type="text"
-                      placeholder="Card number (e.g., 1234 1234 1234 1234)"
-                      class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                      maxlength="19"
-                    />
-                    <input
-                      v-model="cardDetails.cardholderName"
-                      type="text"
-                      placeholder="Cardholder name (e.g., John Doe)"
-                      class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                    />
+                    <div>
+                      <input
+                        v-model="cardDetails.cardNumber"
+                        @input="clearPaymentError('cardNumber')"
+                        type="text"
+                        placeholder="Card number (e.g., 1234 1234 1234 1234)"
+                        :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.cardNumber ? 'border-red-400' : 'border-gray-300']"
+                        maxlength="19"
+                      />
+                      <p v-if="paymentErrors.cardNumber" class="mt-1 text-xs text-red-600">{{ paymentErrors.cardNumber }}</p>
+                    </div>
+                    <div>
+                      <input
+                        v-model="cardDetails.cardholderName"
+                        @input="clearPaymentError('cardholderName')"
+                        type="text"
+                        placeholder="Cardholder name (e.g., John Doe)"
+                        :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.cardholderName ? 'border-red-400' : 'border-gray-300']"
+                      />
+                      <p v-if="paymentErrors.cardholderName" class="mt-1 text-xs text-red-600">{{ paymentErrors.cardholderName }}</p>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
-                      <input
-                        v-model="cardDetails.expiryDate"
-                        type="text"
-                        placeholder="Expiry (e.g., 09/27)"
-                        class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                        maxlength="5"
-                      />
-                      <input
-                        v-model="cardDetails.cvv"
-                        type="text"
-                        placeholder="CVV (e.g., 123)"
-                        class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                        maxlength="4"
-                      />
+                      <div>
+                        <input
+                          v-model="cardDetails.expiryDate"
+                          @input="clearPaymentError('expiryDate')"
+                          type="text"
+                          placeholder="Expiry (e.g., 09/27)"
+                          :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.expiryDate ? 'border-red-400' : 'border-gray-300']"
+                          maxlength="5"
+                        />
+                        <p v-if="paymentErrors.expiryDate" class="mt-1 text-xs text-red-600">{{ paymentErrors.expiryDate }}</p>
+                      </div>
+                      <div>
+                        <input
+                          v-model="cardDetails.cvv"
+                          @input="clearPaymentError('cvv')"
+                          type="text"
+                          placeholder="CVV (e.g., 123)"
+                          :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.cvv ? 'border-red-400' : 'border-gray-300']"
+                          maxlength="4"
+                        />
+                        <p v-if="paymentErrors.cvv" class="mt-1 text-xs text-red-600">{{ paymentErrors.cvv }}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -814,18 +914,26 @@ function getInternationalPhone() {
                 
                 <!-- PayPal Details Form (Expandable) -->
                 <div v-if="selectedPaymentMethod === 'paypal'" class="paypal-form mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
-                  <input
-                    v-model="paypalDetails.email"
-                    type="email"
-                    placeholder="PayPal email (e.g., john.doe@example.com)"
-                    class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                  />
-                  <input
-                    v-model="paypalDetails.password"
-                    type="password"
-                    placeholder="PayPal password (enter your password)"
-                    class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                  />
+                  <div>
+                    <input
+                      v-model="paypalDetails.email"
+                      @input="clearPaymentError('paypalEmail')"
+                      type="email"
+                      placeholder="PayPal email (e.g., john.doe@example.com)"
+                      :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.paypalEmail ? 'border-red-400' : 'border-gray-300']"
+                    />
+                    <p v-if="paymentErrors.paypalEmail" class="mt-1 text-xs text-red-600">{{ paymentErrors.paypalEmail }}</p>
+                  </div>
+                  <div>
+                    <input
+                      v-model="paypalDetails.password"
+                      @input="clearPaymentError('paypalPassword')"
+                      type="password"
+                      placeholder="PayPal password (enter your password)"
+                      :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.paypalPassword ? 'border-red-400' : 'border-gray-300']"
+                    />
+                    <p v-if="paymentErrors.paypalPassword" class="mt-1 text-xs text-red-600">{{ paymentErrors.paypalPassword }}</p>
+                  </div>
                 </div>
               </div>
               
@@ -851,12 +959,16 @@ function getInternationalPhone() {
                 
                 <!-- M-Pesa Details Form (Expandable) -->
                 <div v-if="selectedPaymentMethod === 'mpesa'" class="mpesa-form mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
-                  <input
-                    v-model="mpesaDetails.phoneNumber"
-                    type="tel"
-                    placeholder="Phone number (e.g., +254712345678)"
-                    class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-                  />
+                  <div>
+                    <input
+                      v-model="mpesaDetails.phoneNumber"
+                      @input="clearPaymentError('mpesaPhone')"
+                      type="tel"
+                      placeholder="Phone number (e.g., 0712345678 or +254712345678)"
+                      :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.mpesaPhone ? 'border-red-400' : 'border-gray-300']"
+                    />
+                    <p v-if="paymentErrors.mpesaPhone" class="mt-1 text-xs text-red-600">{{ paymentErrors.mpesaPhone }}</p>
+                  </div>
                   <div class="text-sm text-gray-600">
                     <p>You will receive an M-Pesa prompt on your phone to complete the payment.</p>
                   </div>
