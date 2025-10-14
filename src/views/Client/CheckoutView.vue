@@ -23,6 +23,11 @@ const personalInfo = ref({
   email: '',
   phone: ''
 })
+const personalInfoErrors = ref({
+  name: '',
+  email: '',
+  phone: ''
+})
 const countryOptions = ref([
   { code: 'KE', name: 'Kenya', dial: '+254', flag: '🇰🇪' },
   { code: 'UG', name: 'Uganda', dial: '+256', flag: '🇺🇬' },
@@ -375,6 +380,12 @@ const completeOrder = () => {
     }, 3000)
     return
   }
+  // Validate personal info first
+  if (!validatePersonalInfo()) {
+    // scroll to personal info section (top of page) if errors
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    return
+  }
   // Validate required delivery location fields
   if (!validateLocation()) {
     // Scroll to the delivery location section for visibility
@@ -436,6 +447,28 @@ function validateLocation() {
   return ok
 }
 
+function validatePersonalInfo() {
+  const errs = { name: '', email: '', phone: '' }
+  let ok = true
+  const n = personalInfo.value.name.trim()
+  if (!n) { errs.name = 'Full name is required'; ok = false }
+  else if (n.length < 2) { errs.name = 'Name must be at least 2 characters'; ok = false }
+  const e = personalInfo.value.email.trim()
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+  if (!e) { errs.email = 'Email is required'; ok = false }
+  else if (!emailRegex.test(e)) { errs.email = 'Enter a valid email address'; ok = false }
+  const p = personalInfo.value.phone.trim()
+  const digits = p.replace(/[^0-9+]/g, '')
+  if (!digits) { errs.phone = 'Phone number is required'; ok = false }
+  else if (!/^\+?[0-9]{7,15}$/.test(digits)) { errs.phone = 'Phone must be 7–15 digits (may start with +)'; ok = false }
+  personalInfoErrors.value = errs
+  return ok
+}
+
+function clearPersonalError(field) {
+  if (personalInfoErrors.value[field]) personalInfoErrors.value[field] = ''
+}
+
 function clearLocationError(field) {
   if (locationErrors.value[field]) {
     locationErrors.value[field] = ''
@@ -467,36 +500,76 @@ function getInternationalPhone() {
         </h2>
         <div class="p-4 space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
+            <!-- Full Name -->
             <div class="min-w-0">
-              <input v-model="personalInfo.name" type="text" placeholder="Full name (e.g., John Doe)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe] min-w-0" />
-            </div>
-            <div class="min-w-0">
-              <input v-model="personalInfo.email" type="email" placeholder="Email address (e.g., john.doe@example.com)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe] min-w-0" />
-            </div>
-            <div class="flex w-full items-stretch min-w-0">
-              <div ref="countryDropdownEl" class="relative flex-none">
-                <button type="button"
-                  @click="toggleCountryDropdown"
-                  class="px-2 h-full border-2 border-r-0 border-gray-300 rounded-l-md bg-white text-[#384857] outline-none focus:border-[#68a4fe] flex items-center gap-1 min-w-[56px]">
-                  <img :src="getFlagUrl(selectedCountry.code)" alt="flag" class="w-5 h-3.5 object-cover rounded-sm"/>
-                  <span class="text-xs">{{ selectedCountry.dial }}</span>
-                  <svg class="w-3 h-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
-                </button>
-                <ul v-if="showCountryDropdown" class="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-64 overflow-auto">
-                  <li v-for="c in countryOptions" :key="c.code" @click="selectCountry(c)"
-                    class="px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50">
-                    <img :src="getFlagUrl(c.code)" alt="flag" class="w-5 h-3.5 object-cover rounded-sm"/>
-                    <span class="ml-2 text-sm">{{ c.dial }}</span>
-                    <span class="ml-2 text-[10px] text-gray-500 truncate">{{ c.name }}</span>
-                  </li>
-                </ul>
-              </div>
-              <input 
-                v-model="personalInfo.phone" 
-                type="tel" 
-                placeholder="Phone number (e.g., 712345678)"
-                class="flex-1 min-w-0 p-3 border-2 border-gray-300 rounded-r-md outline-none focus:border-[#68a4fe] border-l-0"
+              <input
+                v-model="personalInfo.name"
+                @input="clearPersonalError('name')"
+                type="text"
+                placeholder="Full name (e.g., John Doe)"
+                :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe] min-w-0', personalInfoErrors.name ? 'border-red-400' : 'border-gray-300']"
+                :aria-invalid="!!personalInfoErrors.name"
+                aria-describedby="pi-name-error"
               />
+              <p v-if="personalInfoErrors.name" id="pi-name-error" class="mt-1 text-xs text-red-600">{{ personalInfoErrors.name }}</p>
+            </div>
+            <!-- Email Address -->
+            <div class="min-w-0">
+              <input
+                v-model="personalInfo.email"
+                @input="clearPersonalError('email')"
+                type="email"
+                placeholder="Email address (e.g., john.doe@example.com)"
+                :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe] min-w-0', personalInfoErrors.email ? 'border-red-400' : 'border-gray-300']"
+                :aria-invalid="!!personalInfoErrors.email"
+                aria-describedby="pi-email-error"
+              />
+              <p v-if="personalInfoErrors.email" id="pi-email-error" class="mt-1 text-xs text-red-600">{{ personalInfoErrors.email }}</p>
+            </div>
+            <!-- Phone (Country + Number) -->
+            <div class="min-w-0">
+              <div class="flex w-full items-stretch min-w-0" :aria-invalid="!!personalInfoErrors.phone">
+                <div ref="countryDropdownEl" class="relative flex-none">
+                  <button
+                    type="button"
+                    @click="toggleCountryDropdown"
+                    :class="['px-2 h-full border-2 border-r-0 rounded-l-md bg-white text-[#384857] outline-none focus:border-[#68a4fe] flex items-center gap-1 min-w-[56px]', personalInfoErrors.phone ? 'border-red-400' : 'border-gray-300']"
+                    aria-haspopup="listbox"
+                    :aria-expanded="showCountryDropdown"
+                  >
+                    <img :src="getFlagUrl(selectedCountry.code)" alt="flag" class="w-5 h-3.5 object-cover rounded-sm"/>
+                    <span class="text-xs">{{ selectedCountry.dial }}</span>
+                    <svg class="w-3 h-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+                  </button>
+                  <ul
+                    v-if="showCountryDropdown"
+                    class="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-64 overflow-auto"
+                    role="listbox"
+                  >
+                    <li
+                      v-for="c in countryOptions"
+                      :key="c.code"
+                      @click="selectCountry(c)"
+                      class="px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50"
+                      role="option"
+                      :aria-selected="selectedCountry.code === c.code"
+                    >
+                      <img :src="getFlagUrl(c.code)" alt="flag" class="w-5 h-3.5 object-cover rounded-sm"/>
+                      <span class="ml-2 text-sm">{{ c.dial }}</span>
+                      <span class="ml-2 text-[10px] text-gray-500 truncate">{{ c.name }}</span>
+                    </li>
+                  </ul>
+                </div>
+                <input
+                  v-model="personalInfo.phone"
+                  @input="clearPersonalError('phone')"
+                  type="tel"
+                  placeholder="Phone number (e.g., 712345678)"
+                  :class="['flex-1 min-w-0 p-3 border-2 rounded-r-md outline-none focus:border-[#68a4fe] border-l-0', personalInfoErrors.phone ? 'border-red-400' : 'border-gray-300']"
+                  aria-describedby="pi-phone-error"
+                />
+              </div>
+              <p v-if="personalInfoErrors.phone" id="pi-phone-error" class="mt-1 text-xs text-red-600">{{ personalInfoErrors.phone }}</p>
             </div>
           </div>
         </div>
