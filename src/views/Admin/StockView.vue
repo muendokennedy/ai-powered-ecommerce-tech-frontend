@@ -387,7 +387,7 @@ const deleteProduct = (productId) => {
       <admin-header ></admin-header>
       
       <!-- Stock Management Content -->
-      <main class="flex-1 overflow-y-auto p-6">
+      <main class="flex-1 overflow-auto p-6">
         <div class="max-w-5xl mx-auto">
           <div class="mb-8">
             <div class="flex items-center justify-between">
