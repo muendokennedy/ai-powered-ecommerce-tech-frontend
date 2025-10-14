@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
@@ -18,6 +18,50 @@ const userLocation = ref({
   postalCode: '',
   country: ''
 })
+const personalInfo = ref({
+  name: '',
+  email: '',
+  phone: ''
+})
+const countryOptions = ref([
+  { code: 'KE', name: 'Kenya', dial: '+254', flag: '🇰🇪' },
+  { code: 'UG', name: 'Uganda', dial: '+256', flag: '🇺🇬' },
+  { code: 'TZ', name: 'Tanzania', dial: '+255', flag: '🇹🇿' },
+  { code: 'RW', name: 'Rwanda', dial: '+250', flag: '🇷🇼' },
+  { code: 'ZA', name: 'South Africa', dial: '+27', flag: '🇿🇦' },
+  { code: 'US', name: 'United States', dial: '+1', flag: '🇺🇸' }
+])
+const selectedCountry = ref(countryOptions.value[0])
+const showCountryDropdown = ref(false)
+const countryDropdownEl = ref(null)
+
+function getFlagUrl(code) {
+  return `https://flagcdn.com/24x18/${String(code || '').toLowerCase()}.png`
+}
+
+function selectCountry(c) {
+  selectedCountry.value = c
+  showCountryDropdown.value = false
+}
+
+function toggleCountryDropdown() {
+  showCountryDropdown.value = !showCountryDropdown.value
+}
+
+function onDocClick(e) {
+  if (!showCountryDropdown.value) return
+  const el = countryDropdownEl.value
+  if (el && !el.contains(e.target)) {
+    showCountryDropdown.value = false
+  }
+}
+const locationErrors = ref({
+  address: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: ''
+})
 
 // Map & geolocation state
 const mapVisible = ref(false)
@@ -28,6 +72,7 @@ const mapError = ref('')
 let mapInstance = null
 let mapMarker = null
 const mapEl = ref(null)
+const deliverySectionEl = ref(null)
 let leafletLoaded = false
 const mapProvider = ref('') // 'google' | 'leaflet'
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -230,6 +275,7 @@ function useMyLocation() {
 }
 
 onMounted(() => {
+  document.addEventListener('click', onDocClick)
   // Optionally preload assets in background for faster open
   if (GOOGLE_KEY_ENABLED) {
     loadGoogleMapsOnce().catch((e) => {
@@ -240,6 +286,10 @@ onMounted(() => {
   } else {
     loadLeafletAssetsOnce().catch(() => {})
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocClick)
 })
 
 function loadGoogleMapsOnce() {
@@ -325,6 +375,14 @@ const completeOrder = () => {
     }, 3000)
     return
   }
+  // Validate required delivery location fields
+  if (!validateLocation()) {
+    // Scroll to the delivery location section for visibility
+    if (deliverySectionEl.value) {
+      deliverySectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    return
+  }
   
   // Since we're on checkout page, user should already be logged in
   // If not logged in, they wouldn't have reached this page
@@ -332,13 +390,64 @@ const completeOrder = () => {
 }
 
 const handleLocationSubmit = () => {
+  // Validate once more in case user changed values in modal
+  if (!validateLocation()) {
+    if (deliverySectionEl.value) {
+      deliverySectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    showLocationModal.value = false
+    return
+  }
   // Process order
   showLocationModal.value = false
-  alert('Order placed successfully!')
+  const fullPhone = getInternationalPhone()
+  alert(`Order placed successfully!\nPhone: ${fullPhone}`)
 }
 
 const closeModals = () => {
   showLocationModal.value = false
+}
+
+function validateLocation() {
+  let ok = true
+  const v = userLocation.value
+  const errs = { address: '', city: '', state: '', postalCode: '', country: '' }
+  if (!v.address || !v.address.trim()) {
+    errs.address = 'Street address is required'
+    ok = false
+  }
+  if (!v.city || !v.city.trim()) {
+    errs.city = 'City / Town is required'
+    ok = false
+  }
+  if (!v.state || !v.state.trim()) {
+    errs.state = 'State / Region is required'
+    ok = false
+  }
+  if (!v.postalCode || !v.postalCode.trim()) {
+    errs.postalCode = 'Postal code is required'
+    ok = false
+  }
+  if (!v.country || !v.country.trim()) {
+    errs.country = 'Country is required'
+    ok = false
+  }
+  locationErrors.value = errs
+  return ok
+}
+
+function clearLocationError(field) {
+  if (locationErrors.value[field]) {
+    locationErrors.value[field] = ''
+  }
+}
+
+function getInternationalPhone() {
+  const dial = selectedCountry.value?.dial || ''
+  const num = String(personalInfo.value.phone || '').trim()
+  // If user typed with +countrycode, keep as-is; else prefix selected dial code
+  if (num.startsWith('+')) return num
+  return `${dial}${num}`
 }
 </script>
 
@@ -350,28 +459,86 @@ const closeModals = () => {
         checkout
       </div>
       
+      <!-- Confirm Personal Information Details (full-width) -->
+  <div class="personal-info-container border-2 border-gray-300 rounded-lg mt-6 mb-6 overflow-visible w-full">
+        <h2 class="border-b-2 border-gray-300 px-4 py-4 text-center text-base sm:text-xl font-semibold text-[#384857] capitalize">
+          <i class="fa-solid fa-user-check font-extrabold text-xl mr-2"></i>
+          <span>confirm personal information details</span>
+        </h2>
+        <div class="p-4 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
+            <div class="min-w-0">
+              <input v-model="personalInfo.name" type="text" placeholder="Full name (e.g., John Doe)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe] min-w-0" />
+            </div>
+            <div class="min-w-0">
+              <input v-model="personalInfo.email" type="email" placeholder="Email address (e.g., john.doe@example.com)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe] min-w-0" />
+            </div>
+            <div class="flex w-full items-stretch min-w-0">
+              <div ref="countryDropdownEl" class="relative flex-none">
+                <button type="button"
+                  @click="toggleCountryDropdown"
+                  class="px-2 h-full border-2 border-r-0 border-gray-300 rounded-l-md bg-white text-[#384857] outline-none focus:border-[#68a4fe] flex items-center gap-1 min-w-[56px]">
+                  <img :src="getFlagUrl(selectedCountry.code)" alt="flag" class="w-5 h-3.5 object-cover rounded-sm"/>
+                  <span class="text-xs">{{ selectedCountry.dial }}</span>
+                  <svg class="w-3 h-3 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+                </button>
+                <ul v-if="showCountryDropdown" class="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-64 overflow-auto">
+                  <li v-for="c in countryOptions" :key="c.code" @click="selectCountry(c)"
+                    class="px-3 py-2 flex items-center cursor-pointer hover:bg-gray-50">
+                    <img :src="getFlagUrl(c.code)" alt="flag" class="w-5 h-3.5 object-cover rounded-sm"/>
+                    <span class="ml-2 text-sm">{{ c.dial }}</span>
+                    <span class="ml-2 text-[10px] text-gray-500 truncate">{{ c.name }}</span>
+                  </li>
+                </ul>
+              </div>
+              <input 
+                v-model="personalInfo.phone" 
+                type="tel" 
+                placeholder="Phone number (e.g., 712345678)"
+                class="flex-1 min-w-0 p-3 border-2 border-gray-300 rounded-r-md outline-none focus:border-[#68a4fe] border-l-0"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Delivery Location (full-width) -->
-      <div class="delivery-location-container border-2 border-gray-300 rounded-lg mt-6 mb-6 overflow-hidden w-full">
+  <div ref="deliverySectionEl" class="delivery-location-container border-2 border-gray-300 rounded-lg mt-6 mb-6 overflow-hidden w-full">
         <h2 class="border-b-2 border-gray-300 px-4 py-4 text-center text-base sm:text-xl font-semibold text-[#384857] capitalize">
           <i class="fa-solid fa-location-dot font-extrabold text-xl mr-2"></i>
           <span>delivery location</span>
         </h2>
         <div class="p-4 space-y-4">
           <div class="grid grid-cols-1 gap-3">
-            <input v-model="userLocation.address" type="text" placeholder="Street address" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input v-model="userLocation.apartment" type="text" placeholder="Apartment / Suite (optional)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
-              <input v-model="userLocation.landmark" type="text" placeholder="Nearby landmark (optional)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
+            <div>
+              <input v-model="userLocation.address" @input="clearLocationError('address')" type="text" placeholder="Street address (e.g., 123 Moi Ave)" :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', locationErrors.address ? 'border-red-400' : 'border-gray-300']" />
+              <p v-if="locationErrors.address" class="mt-1 text-xs text-red-600">{{ locationErrors.address }}</p>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input v-model="userLocation.city" type="text" placeholder="City / Town" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
-              <input v-model="userLocation.state" type="text" placeholder="State / Region" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
+              <input v-model="userLocation.apartment" type="text" placeholder="Apartment / Suite (optional) (e.g., Apt 4B)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
+              <input v-model="userLocation.landmark" type="text" placeholder="Nearby landmark (optional) (e.g., Near Sarit Centre)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input v-model="userLocation.postalCode" type="text" placeholder="Postal Code" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
-              <input v-model="userLocation.country" type="text" placeholder="Country" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]" />
+              <div>
+                <input v-model="userLocation.city" @input="clearLocationError('city')" type="text" placeholder="City / Town (e.g., Nairobi)" :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', locationErrors.city ? 'border-red-400' : 'border-gray-300']" />
+                <p v-if="locationErrors.city" class="mt-1 text-xs text-red-600">{{ locationErrors.city }}</p>
+              </div>
+              <div>
+                <input v-model="userLocation.state" @input="clearLocationError('state')" type="text" placeholder="State / Region (e.g., Nairobi County)" :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', locationErrors.state ? 'border-red-400' : 'border-gray-300']" />
+                <p v-if="locationErrors.state" class="mt-1 text-xs text-red-600">{{ locationErrors.state }}</p>
+              </div>
             </div>
-            <textarea v-model="userLocation.instructions" rows="3" placeholder="Delivery instructions (optional)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"></textarea>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <input v-model="userLocation.postalCode" @input="clearLocationError('postalCode')" type="text" placeholder="Postal Code (e.g., 00100)" :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', locationErrors.postalCode ? 'border-red-400' : 'border-gray-300']" />
+                <p v-if="locationErrors.postalCode" class="mt-1 text-xs text-red-600">{{ locationErrors.postalCode }}</p>
+              </div>
+              <div>
+                <input v-model="userLocation.country" @input="clearLocationError('country')" type="text" placeholder="Country (e.g., Kenya)" :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', locationErrors.country ? 'border-red-400' : 'border-gray-300']" />
+                <p v-if="locationErrors.country" class="mt-1 text-xs text-red-600">{{ locationErrors.country }}</p>
+              </div>
+            </div>
+            <textarea v-model="userLocation.instructions" rows="3" placeholder="Delivery instructions (optional) (e.g., Leave at reception)" class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"></textarea>
           </div>
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="text-xs text-gray-600">
@@ -522,28 +689,28 @@ const closeModals = () => {
                     <input
                       v-model="cardDetails.cardNumber"
                       type="text"
-                      placeholder="1234 1234 1234 1234"
+                      placeholder="Card number (e.g., 1234 1234 1234 1234)"
                       class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                       maxlength="19"
                     />
                     <input
                       v-model="cardDetails.cardholderName"
                       type="text"
-                      placeholder="Cardholder Name"
+                      placeholder="Cardholder name (e.g., John Doe)"
                       class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                     />
                     <div class="grid grid-cols-2 gap-4">
                       <input
                         v-model="cardDetails.expiryDate"
                         type="text"
-                        placeholder="MM/YY"
+                        placeholder="Expiry (e.g., 09/27)"
                         class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                         maxlength="5"
                       />
                       <input
                         v-model="cardDetails.cvv"
                         type="text"
-                        placeholder="CVV"
+                        placeholder="CVV (e.g., 123)"
                         class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                         maxlength="4"
                       />
@@ -577,13 +744,13 @@ const closeModals = () => {
                   <input
                     v-model="paypalDetails.email"
                     type="email"
-                    placeholder="PayPal Email"
+                    placeholder="PayPal email (e.g., john.doe@example.com)"
                     class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                   />
                   <input
                     v-model="paypalDetails.password"
                     type="password"
-                    placeholder="PayPal Password"
+                    placeholder="PayPal password (enter your password)"
                     class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                   />
                 </div>
@@ -614,7 +781,7 @@ const closeModals = () => {
                   <input
                     v-model="mpesaDetails.phoneNumber"
                     type="tel"
-                    placeholder="Phone Number (e.g., +254712345678)"
+                    placeholder="Phone number (e.g., +254712345678)"
                     class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
                   />
                   <div class="text-sm text-gray-600">
@@ -640,19 +807,19 @@ const closeModals = () => {
         <input
           v-model="userLocation.address"
           type="text"
-          placeholder="Street Address"
+          placeholder="Street address (e.g., 123 Moi Ave)"
           class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
         />
         <input
           v-model="userLocation.city"
           type="text"
-          placeholder="City"
+          placeholder="City / Town (e.g., Nairobi)"
           class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
         />
         <input
           v-model="userLocation.country"
           type="text"
-          placeholder="Country"
+          placeholder="Country (e.g., Kenya)"
           class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
         />
       </div>
