@@ -18,19 +18,43 @@ const toggleAccordion = (index) => {
 const faqs = [
   {
     question: "How do I pay?",
-    answer: "Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui perspiciatis suscipit ab consequatur adipisci tempora eaque vel quia. Non quidem dignissimos hic rerum quia sunt."
+    answer:
+      "You can pay using M‑Pesa, PayPal, or a debit/credit card. For M‑Pesa, choose M‑Pesa at checkout, enter your phone number, and confirm the STK push on your phone. For PayPal, select PayPal and sign in to your PayPal account to authorize the payment. For card payments, enter your card number, expiry (MM/YY), CVV, and cardholder name. All payments are processed securely over encrypted connections."
   },
   {
     question: "How do I make an order?",
-    answer: "Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui perspiciatis suscipit ab consequatur adipisci tempora eaque vel quia. Non quidem dignissimos hic rerum quia sunt."
+    answer:
+      "Browse products, add your preferred items to the cart, then proceed to Checkout. Confirm your personal details and delivery location, pick your payment method (M‑Pesa, PayPal, or card), review the order summary, and tap ‘Place order’. You’ll receive an order confirmation instantly."
   },
   {
     question: "What are the available payment methods?",
-    answer: "Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui perspiciatis suscipit ab consequatur adipisci tempora eaque vel quia. Non quidem dignissimos hic rerum quia sunt."
+    answer:
+      "We currently support M‑Pesa (for customers in supported regions), PayPal, and major debit/credit cards (Visa, Mastercard). More methods may be added over time."
   },
   {
     question: "How long should I wait before delivery?",
-    answer: "Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui perspiciatis suscipit ab consequatur adipisci tempora eaque vel quia. Non quidem dignissimos hic rerum quia sunt."
+    answer:
+      "Standard delivery typically takes 1–3 business days within major cities and 3–7 business days for up‑country deliveries. You’ll get tracking updates once your order ships."
+  },
+  {
+    question: "Do you deliver to my location?",
+    answer:
+      "We deliver nationwide. Enter your delivery address at checkout to see accurate shipping timelines. If your area requires special handling, our team will contact you."
+  },
+  {
+    question: "Can I change or cancel my order?",
+    answer:
+      "If the order hasn’t been shipped yet, you can change or cancel it from your Orders page or by contacting support with your order number. Once shipped, changes aren’t guaranteed, but we’ll do our best to help."
+  },
+  {
+    question: "What is your return policy?",
+    answer:
+      "You can return eligible items within 7 days of delivery in their original condition and packaging. Reach out to support with your order number to start a return. Certain items (like opened software or personal care items) may be non‑returnable."
+  },
+  {
+    question: "Is my payment information secure?",
+    answer:
+      "Yes. We use industry‑standard encryption and PCI‑compliant processors. We never store your full card details on our servers."
   }
 ]
 
@@ -75,6 +99,11 @@ const prevSlide = () => {
 const goToSlide = (index) => {
   currentSlide.value = index
 }
+
+// Read more toggles for About texts
+const showFullHistory = ref(false)
+const showFullMission = ref(false)
+const showFullVision = ref(false)
 </script>
 
 <template>
@@ -98,33 +127,40 @@ const goToSlide = (index) => {
               <h2 class="history-head text-xl md:text-3xl font-semibold capitalize">
                 Our <span class="text-[#68A4FE] mb-2">History</span>
               </h2>
-              <p class="history-content text-sm md:text-base font-normal my-4">
-                Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui
-                perspiciatis suscipit ab consequatur adipisci tempora eaque vel
-                quia. Non quidem dignissimos hic rerum quia sunt.Qui sit omnis
-                molestiae ipsa ea debitis repudiandae.
+              <p class="history-content text-sm md:text-base font-normal my-4" :class="!showFullHistory ? 'line-clamp-2' : ''">
+                MoTech began with a simple idea: make quality tech accessible to everyone.
+                From our early days supplying a handful of devices to friends and family, we’ve grown into a trusted ecommerce brand serving customers nationwide. We partner with leading manufacturers and verified distributors so you get genuine products, transparent pricing, and reliable after‑sales support. What hasn’t changed is our customer‑first culture—every decision we make prioritizes your experience.
               </p>
               <button
+                @click="showFullHistory = !showFullHistory"
                 class="read-more bg-[#68A4FE] capitalize text-sm sm:text-base text-white px-4 py-2 rounded-md hover:bg-[#3b81eb] transition-all ease-in-out duration-300"
               >
-                read more
+                {{ showFullHistory ? 'read less' : 'read more' }}
               </button>
               <h2 class="mission-head my-4 text-xl md:text-3xl font-semibold capitalize">
                 Our <span class="text-[#68A4FE]">Mission</span>
               </h2>
-              <p class="mission-content text-sm md:text-base font-normal my-4">
-                Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui
-                perspiciatis suscipit ab consequatur adipisci tempora eaque vel
-                quia. 
+              <p class="mission-content text-sm md:text-base font-normal my-4" :class="!showFullMission ? 'line-clamp-2' : ''">
+                Our mission is to simplify how people buy tech—through curated products, honest information, and dependable delivery. We work to remove friction at every step: discovering the right device, paying securely (M‑Pesa, PayPal, or card), and receiving your order on time. When questions arise, our support team is here to help until you’re satisfied.
               </p>
+              <button
+                @click="showFullMission = !showFullMission"
+                class="read-more bg-[#68A4FE] capitalize text-sm sm:text-base text-white px-4 py-2 rounded-md hover:bg-[#3b81eb] transition-all ease-in-out duration-300"
+              >
+                {{ showFullMission ? 'read less' : 'read more' }}
+              </button>
               <h2 class="vision-head text-xl md:text-3xl font-semibold capitalize my-4">
                 Our <span class="text-[#68A4FE]">vision</span>
               </h2>
-              <p class="vision-content text-sm md:text-base">
-                Qui sit omnis molestiae ipsa ea debitis repudiandae. Qui
-                perspiciatis suscipit ab consequatur adipisci tempora eaque vel
-                quia. 
+              <p class="vision-content text-sm md:text-base" :class="!showFullVision ? 'line-clamp-2' : ''">
+                We envision a marketplace where everyone—students, creators, professionals—can access modern technology confidently and affordably. By investing in strong supplier relationships, efficient logistics, and thoughtful customer experiences, MoTech aims to be the most trusted name for tech in the region and beyond.
               </p>
+              <button
+                @click="showFullVision = !showFullVision"
+                class="read-more bg-[#68A4FE] capitalize text-sm sm:text-base text-white px-4 py-2 rounded-md hover:bg-[#3b81eb] transition-all ease-in-out duration-300 mt-3"
+              >
+                {{ showFullVision ? 'read less' : 'read more' }}
+              </button>
             </div>
           </div>
         </section>
@@ -251,7 +287,7 @@ const goToSlide = (index) => {
               </div>
               <div class="payment-method-image w-full">
                 <img
-                  src="../assets/images/visa and mastercard.jpeg"
+                  src="../../assets/images/visa and mastercard.jpeg"
                   alt="Visa payment card"
                   class="w-full"
                 />
@@ -269,7 +305,7 @@ const goToSlide = (index) => {
               </div>
               <div class="payment-method-image w-full">
                 <img
-                  src="../assets/images/paypal image.png"
+                  src="../../assets/images/paypal image.png"
                   alt="Visa payment card"
                   class="w-full"
                 />
@@ -287,7 +323,7 @@ const goToSlide = (index) => {
               </div>
               <div class="payment-method-image w-full">
                 <img
-                  src="../assets/images/mpesa4.jpeg"
+                  src="../../assets/images/mpesa4.jpeg"
                   alt="Visa payment card"
                   class="h-24 w-full"
                 />
