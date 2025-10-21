@@ -1,12 +1,14 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
-const showLocationModal = ref(false)
+const showLocationModal = ref(false) // legacy – no longer used for UX, kept to avoid breakage
+const showOrderSummaryModal = ref(false)
 const showErrorMessage = ref(false)
 const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true') // Check login status from localStorage
 const userLocation = ref({
@@ -441,11 +443,40 @@ const orderItems = ref([
   }
 ])
 
-// Computed values
+// Router
+const router = useRouter()
+
+// Totals
 const subtotal = orderItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
 const shipping = 15
 const tax = Math.round(subtotal * 0.08)
 const total = subtotal + shipping + tax
+
+// Order summary for modal
+const orderSummary = computed(() => ({
+  personal: {
+    name: personalInfo.value.name,
+    email: personalInfo.value.email,
+    phone: getInternationalPhone()
+  },
+  location: { ...userLocation.value },
+  payment: selectedPaymentMethod.value,
+  totals: { subtotal, shipping, tax, total },
+  items: orderItems.value
+}))
+
+const placingOrder = ref(false)
+async function placeOrder() {
+  try {
+    placingOrder.value = true
+    // Simulate payment processing
+    await new Promise(r => setTimeout(r, 1200))
+    showOrderSummaryModal.value = false
+    router.push({ name: 'orders' })
+  } finally {
+    placingOrder.value = false
+  }
+}
 
 // Methods
 const selectPaymentMethod = (method) => {
@@ -466,7 +497,7 @@ const completeOrder = () => {
   const locationOk = validateLocation()
 
   if (personalOk && paymentOk && locationOk && selectedPaymentMethod.value) {
-    showLocationModal.value = true
+    showOrderSummaryModal.value = true
     return
   }
 
@@ -982,44 +1013,72 @@ function getInternationalPhone() {
       </div>
     </section>
   </main>
-  
-  <!-- Location Modal -->
-  <div v-if="showLocationModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
-      <h3 class="text-xl font-semibold text-[#384857] mb-4">Delivery Information</h3>
-      <p class="text-[#384857] mb-6">Please provide your delivery address</p>
-      <div class="space-y-4">
-        <input
-          v-model="userLocation.address"
-          type="text"
-          placeholder="Street address (e.g., 123 Moi Ave)"
-          class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-        />
-        <input
-          v-model="userLocation.city"
-          type="text"
-          placeholder="City / Town (e.g., Nairobi)"
-          class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-        />
-        <input
-          v-model="userLocation.country"
-          type="text"
-          placeholder="Country (e.g., Kenya)"
-          class="w-full p-3 border-2 border-gray-300 rounded-md outline-none focus:border-[#68a4fe]"
-        />
-      </div>
-      <div class="flex gap-4 mt-6">
-        <button
-          @click="closeModals"
-          class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-md text-[#384857] hover:bg-gray-50"
-        >
-          Cancel
+
+  <!-- Order Summary Modal -->
+  <div v-if="showOrderSummaryModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg w-full max-w-2xl mx-4 shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-6 py-4 border-b">
+        <h3 class="text-xl font-semibold text-[#384857]">Review and place your order</h3>
+        <button @click="showOrderSummaryModal = false" class="text-gray-500 hover:text-gray-700">
+          <span aria-hidden>×</span>
         </button>
-        <button
-          @click="handleLocationSubmit"
-          class="flex-1 px-4 py-2 bg-[#ffcf10] rounded-md text-white hover:bg-[#e6ba0f]"
-        >
-          Place Order
+      </div>
+      <div class="p-6 space-y-6 max-h-[70vh] overflow-auto">
+        <!-- Personal Info -->
+        <section>
+          <h4 class="text-[#384857] font-semibold mb-2">Personal information</h4>
+          <div class="text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div><span class="font-medium">Name:</span> {{ orderSummary.personal.name }}</div>
+            <div><span class="font-medium">Email:</span> {{ orderSummary.personal.email }}</div>
+            <div class="sm:col-span-2"><span class="font-medium">Phone:</span> {{ orderSummary.personal.phone }}</div>
+          </div>
+        </section>
+        <!-- Delivery Location -->
+        <section>
+          <h4 class="text-[#384857] font-semibold mb-2">Delivery location</h4>
+          <div class="text-sm text-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="sm:col-span-2"><span class="font-medium">Address:</span> {{ orderSummary.location.address }}</div>
+            <div><span class="font-medium">Apartment:</span> {{ orderSummary.location.apartment || '—' }}</div>
+            <div><span class="font-medium">Landmark:</span> {{ orderSummary.location.landmark || '—' }}</div>
+            <div><span class="font-medium">City:</span> {{ orderSummary.location.city }}</div>
+            <div><span class="font-medium">State:</span> {{ orderSummary.location.state }}</div>
+            <div><span class="font-medium">Postal Code:</span> {{ orderSummary.location.postalCode }}</div>
+            <div><span class="font-medium">Country:</span> {{ orderSummary.location.country }}</div>
+          </div>
+        </section>
+        <!-- Items -->
+        <section>
+          <h4 class="text-[#384857] font-semibold mb-2">Items ({{ orderSummary.items.length }})</h4>
+          <div class="divide-y border rounded-md">
+            <div v-for="it in orderSummary.items" :key="it.id" class="flex items-center justify-between px-3 py-2 text-sm">
+              <div class="flex items-center gap-3">
+                <img :src="it.image" class="w-10 h-10 object-cover rounded" alt=""/>
+                <div>
+                  <p class="text-[#384857] font-medium capitalize">{{ it.name }}</p>
+                  <p class="text-gray-500">Qty: {{ it.quantity }}</p>
+                </div>
+              </div>
+              <div class="text-[#384857] font-semibold">${{ (it.price * it.quantity).toFixed(2) }}</div>
+            </div>
+          </div>
+        </section>
+        <!-- Totals and payment -->
+        <section>
+          <h4 class="text-[#384857] font-semibold mb-2">Payment</h4>
+          <p class="text-sm text-gray-700 mb-3">Method: <span class="capitalize font-medium">{{ orderSummary.payment }}</span></p>
+          <div class="bg-gray-50 rounded-md p-3 text-sm text-[#384857] space-y-1">
+            <div class="flex justify-between"><span>Subtotal</span><span>${{ subtotal.toFixed(2) }}</span></div>
+            <div class="flex justify-between"><span>Shipping</span><span>${{ shipping.toFixed(2) }}</span></div>
+            <div class="flex justify-between"><span>Tax</span><span>${{ tax.toFixed(2) }}</span></div>
+            <div class="flex justify-between font-semibold text-lg pt-2 border-t"><span>Total</span><span class="text-[#FF412C]">${{ total.toFixed(2) }}</span></div>
+          </div>
+        </section>
+      </div>
+      <div class="px-6 py-4 border-t flex justify-end gap-3">
+        <button @click="showOrderSummaryModal = false" class="px-4 py-2 border-2 border-gray-300 rounded-md text-[#384857] hover:bg-gray-50">Back</button>
+        <button @click="placeOrder" :disabled="placingOrder" class="px-5 py-2.5 bg-[#68a4fe] hover:bg-[#5496f8] disabled:opacity-60 rounded-md text-white font-semibold">
+          <span v-if="!placingOrder">Proceed to payment</span>
+          <span v-else>Processing…</span>
         </button>
       </div>
     </div>

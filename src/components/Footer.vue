@@ -2,6 +2,7 @@
 </script>
 
 <template>
+  <div class="bg-[#384857] w-full">
     <footer class="bg-[#384857] px-[4%] pt-6 sm:pt-10 mt-8 mx-auto lg:max-w-[1500px]">
       <div
         class="footer-box gap-10 grid footer-grid border-b py-4 sm:py-8 border-[#8DAFCF]"
@@ -132,4 +133,5 @@
         &#169; official website of MoTech | all rights reserved
       </div>
     </footer>
+  </div>
 </template>
