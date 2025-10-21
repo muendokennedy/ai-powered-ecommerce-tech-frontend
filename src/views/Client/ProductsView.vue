@@ -1,56 +1,102 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 
 // Centralized products list with category field
 const products = ref([
   // Phones
-  { id: 'ph-1', category: 'phones', name: 'infinix hot 12', image: '/src/assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5 },
-  { id: 'ph-2', category: 'phones', name: 'redmi note 12', image: '/src/assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5 },
-  { id: 'ph-3', category: 'phones', name: 'iphone 12', image: '/src/assets/images/iphone12.png', price: 699, oldPrice: 799, rating: 5 },
-  { id: 'ph-4', category: 'phones', name: 'iphone 14', image: '/src/assets/images/iphone14.png', price: 899, oldPrice: 999, rating: 5 },
-  { id: 'ph-5', category: 'phones', name: 'tecno camon 18p', image: '/src/assets/images/techno camon 18p.png', price: 249, oldPrice: 299, rating: 5 },
-  { id: 'ph-6', category: 'phones', name: 'infinix smart 7 plus', image: '/src/assets/images/infinix smart 7 plus.png', price: 129, oldPrice: 169, rating: 5 },
-  { id: 'ph-7', category: 'phones', name: 'tecno spark 5', image: '/src/assets/images/techno spark 5.png', price: 159, oldPrice: 189, rating: 5 },
-  { id: 'ph-8', category: 'phones', name: 'xiaomi redmi 10 2022 pro', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, oldPrice: 269, rating: 5 },
+  { id: 'ph-1', category: 'phones', brand: 'Infinix', name: 'infinix hot 12', image: '/src/assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5 },
+  { id: 'ph-2', category: 'phones', brand: 'Xiaomi', name: 'redmi note 12', image: '/src/assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5 },
+  { id: 'ph-3', category: 'phones', brand: 'Apple', name: 'iphone 12', image: '/src/assets/images/iphone12.png', price: 699, oldPrice: 799, rating: 5 },
+  { id: 'ph-4', category: 'phones', brand: 'Apple', name: 'iphone 14', image: '/src/assets/images/iphone14.png', price: 899, oldPrice: 999, rating: 5 },
+  { id: 'ph-5', category: 'phones', brand: 'Tecno', name: 'tecno camon 18p', image: '/src/assets/images/techno camon 18p.png', price: 249, oldPrice: 299, rating: 5 },
+  { id: 'ph-6', category: 'phones', brand: 'Infinix', name: 'infinix smart 7 plus', image: '/src/assets/images/infinix smart 7 plus.png', price: 129, oldPrice: 169, rating: 5 },
+  { id: 'ph-7', category: 'phones', brand: 'Tecno', name: 'tecno spark 5', image: '/src/assets/images/techno spark 5.png', price: 159, oldPrice: 189, rating: 5 },
+  { id: 'ph-8', category: 'phones', brand: 'Xiaomi', name: 'xiaomi redmi 10 2022 pro', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, oldPrice: 269, rating: 5 },
 
   // Laptops
-  { id: 'lp-1', category: 'laptops', name: 'dell inspiron', image: '/src/assets/images/dell inspiron.png', price: 749, oldPrice: 899, rating: 5 },
-  { id: 'lp-2', category: 'laptops', name: 'dell latitude 5320', image: '/src/assets/images/dell latitude 5320.png', price: 999, oldPrice: 1149, rating: 5 },
-  { id: 'lp-3', category: 'laptops', name: 'hp laptop 15 ci7', image: '/src/assets/images/hp laptop 15 ci7.png', price: 1099, oldPrice: 1299, rating: 5 },
-  { id: 'lp-4', category: 'laptops', name: 'dell inspiron (2024)', image: '/src/assets/images/dell inspiron.png', price: 799, oldPrice: 949, rating: 5 },
-  { id: 'lp-5', category: 'laptops', name: 'hp laptop 15 ci7 (2024)', image: '/src/assets/images/hp laptop 15 ci7.png', price: 1029, oldPrice: 1249, rating: 5 },
-  { id: 'lp-6', category: 'laptops', name: 'dell inspiron plus', image: '/src/assets/images/dell inspiron.png', price: 899, oldPrice: 1049, rating: 5 },
-  { id: 'lp-7', category: 'laptops', name: 'dell latitude 5320 pro', image: '/src/assets/images/dell latitude 5320.png', price: 1049, oldPrice: 1199, rating: 5 },
-  { id: 'lp-8', category: 'laptops', name: 'hp laptop 15 business', image: '/src/assets/images/hp laptop 15 ci7.png', price: 999, oldPrice: 1149, rating: 5 },
+  { id: 'lp-1', category: 'laptops', brand: 'Dell', name: 'dell inspiron', image: '/src/assets/images/dell inspiron.png', price: 749, oldPrice: 899, rating: 5 },
+  { id: 'lp-2', category: 'laptops', brand: 'Dell', name: 'dell latitude 5320', image: '/src/assets/images/dell latitude 5320.png', price: 999, oldPrice: 1149, rating: 5 },
+  { id: 'lp-3', category: 'laptops', brand: 'HP', name: 'hp laptop 15 ci7', image: '/src/assets/images/hp laptop 15 ci7.png', price: 1099, oldPrice: 1299, rating: 5 },
+  { id: 'lp-4', category: 'laptops', brand: 'Dell', name: 'dell inspiron (2024)', image: '/src/assets/images/dell inspiron.png', price: 799, oldPrice: 949, rating: 5 },
+  { id: 'lp-5', category: 'laptops', brand: 'HP', name: 'hp laptop 15 ci7 (2024)', image: '/src/assets/images/hp laptop 15 ci7.png', price: 1029, oldPrice: 1249, rating: 5 },
+  { id: 'lp-6', category: 'laptops', brand: 'Dell', name: 'dell inspiron plus', image: '/src/assets/images/dell inspiron.png', price: 899, oldPrice: 1049, rating: 5 },
+  { id: 'lp-7', category: 'laptops', brand: 'Dell', name: 'dell latitude 5320 pro', image: '/src/assets/images/dell latitude 5320.png', price: 1049, oldPrice: 1199, rating: 5 },
+  { id: 'lp-8', category: 'laptops', brand: 'HP', name: 'hp laptop 15 business', image: '/src/assets/images/hp laptop 15 ci7.png', price: 999, oldPrice: 1149, rating: 5 },
 
   // Smartwatches
-  { id: 'sw-1', category: 'smartwatches', name: 'MoTech Watch S1', image: '/src/assets/images/redmi note 12.png', price: 99, oldPrice: 129, rating: 5 },
-  { id: 'sw-2', category: 'smartwatches', name: 'MoTech Watch Pro', image: '/src/assets/images/redmi note 12.png', price: 149, oldPrice: 199, rating: 5 },
-  { id: 'sw-3', category: 'smartwatches', name: 'MoTech Band 5', image: '/src/assets/images/redmi note 12.png', price: 49, oldPrice: 69, rating: 5 },
-  { id: 'sw-4', category: 'smartwatches', name: 'MoTech Watch X', image: '/src/assets/images/redmi note 12.png', price: 179, oldPrice: 229, rating: 5 },
-  { id: 'sw-5', category: 'smartwatches', name: 'MoTech Watch Lite', image: '/src/assets/images/redmi note 12.png', price: 79, oldPrice: 109, rating: 5 },
-  { id: 'sw-6', category: 'smartwatches', name: 'MoTech Band 6', image: '/src/assets/images/redmi note 12.png', price: 59, oldPrice: 79, rating: 5 },
-  { id: 'sw-7', category: 'smartwatches', name: 'MoTech Watch S2', image: '/src/assets/images/redmi note 12.png', price: 129, oldPrice: 159, rating: 5 },
-  { id: 'sw-8', category: 'smartwatches', name: 'MoTech Watch Ultra', image: '/src/assets/images/redmi note 12.png', price: 249, oldPrice: 299, rating: 5 },
+  { id: 'sw-1', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch S1', image: '/src/assets/images/redmi note 12.png', price: 99, oldPrice: 129, rating: 5 },
+  { id: 'sw-2', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch Pro', image: '/src/assets/images/redmi note 12.png', price: 149, oldPrice: 199, rating: 5 },
+  { id: 'sw-3', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Band 5', image: '/src/assets/images/redmi note 12.png', price: 49, oldPrice: 69, rating: 5 },
+  { id: 'sw-4', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch X', image: '/src/assets/images/redmi note 12.png', price: 179, oldPrice: 229, rating: 5 },
+  { id: 'sw-5', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch Lite', image: '/src/assets/images/redmi note 12.png', price: 79, oldPrice: 109, rating: 5 },
+  { id: 'sw-6', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Band 6', image: '/src/assets/images/redmi note 12.png', price: 59, oldPrice: 79, rating: 5 },
+  { id: 'sw-7', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch S2', image: '/src/assets/images/redmi note 12.png', price: 129, oldPrice: 159, rating: 5 },
+  { id: 'sw-8', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch Ultra', image: '/src/assets/images/redmi note 12.png', price: 249, oldPrice: 299, rating: 5 },
 
   // Televisions
-  { id: 'tv-1', category: 'televisions', name: 'MoTech TV 43" FHD', image: '/src/assets/images/redmi note 12.png', price: 299, oldPrice: 349, rating: 5 },
-  { id: 'tv-2', category: 'televisions', name: 'MoTech TV 55" 4K', image: '/src/assets/images/redmi note 12.png', price: 499, oldPrice: 599, rating: 5 },
-  { id: 'tv-3', category: 'televisions', name: 'MoTech TV 65" 4K', image: '/src/assets/images/redmi note 12.png', price: 699, oldPrice: 799, rating: 5 },
-  { id: 'tv-4', category: 'televisions', name: 'MoTech TV 75" 4K', image: '/src/assets/images/redmi note 12.png', price: 999, oldPrice: 1199, rating: 5 },
-  { id: 'tv-5', category: 'televisions', name: 'MoTech TV 32" HD', image: '/src/assets/images/redmi note 12.png', price: 199, oldPrice: 249, rating: 5 },
-  { id: 'tv-6', category: 'televisions', name: 'MoTech TV 50" 4K', image: '/src/assets/images/redmi note 12.png', price: 399, oldPrice: 499, rating: 5 },
-  { id: 'tv-7', category: 'televisions', name: 'MoTech TV 58" 4K', image: '/src/assets/images/redmi note 12.png', price: 449, oldPrice: 549, rating: 5 },
-  { id: 'tv-8', category: 'televisions', name: 'MoTech TV 85" 4K', image: '/src/assets/images/redmi note 12.png', price: 1499, oldPrice: 1699, rating: 5 }
+  { id: 'tv-1', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 43" FHD', image: '/src/assets/images/redmi note 12.png', price: 299, oldPrice: 349, rating: 5 },
+  { id: 'tv-2', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 55" 4K', image: '/src/assets/images/redmi note 12.png', price: 499, oldPrice: 599, rating: 5 },
+  { id: 'tv-3', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 65" 4K', image: '/src/assets/images/redmi note 12.png', price: 699, oldPrice: 799, rating: 5 },
+  { id: 'tv-4', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 75" 4K', image: '/src/assets/images/redmi note 12.png', price: 999, oldPrice: 1199, rating: 5 },
+  { id: 'tv-5', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 32" HD', image: '/src/assets/images/redmi note 12.png', price: 199, oldPrice: 249, rating: 5 },
+  { id: 'tv-6', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 50" 4K', image: '/src/assets/images/redmi note 12.png', price: 399, oldPrice: 499, rating: 5 },
+  { id: 'tv-7', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 58" 4K', image: '/src/assets/images/redmi note 12.png', price: 449, oldPrice: 549, rating: 5 },
+  { id: 'tv-8', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 85" 4K', image: '/src/assets/images/redmi note 12.png', price: 1499, oldPrice: 1699, rating: 5 }
 ])
 
 // Category filter state
 const selectedCategory = ref('All')
 const selectedCategoryKey = computed(() => selectedCategory.value.toLowerCase())
+const router = useRouter()
 
 const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
+
+// Search/autocomplete state
+const searchTerm = ref('')
+const isSearchOpen = ref(false)
+const highlightedIndex = ref(-1)
+const searchResults = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase()
+  if (!term) return []
+  let list = products.value
+  if (selectedCategoryKey.value !== 'all') {
+    list = list.filter(p => p.category === selectedCategoryKey.value)
+  }
+  return list
+    .filter(p => p.name.toLowerCase().includes(term) || (p.brand && p.brand.toLowerCase().includes(term)))
+    .slice(0, 8)
+})
+
+const openSearch = () => { isSearchOpen.value = true }
+const closeSearch = () => { setTimeout(() => { isSearchOpen.value = false }, 120) }
+const moveHighlight = (step) => {
+  const len = searchResults.value.length
+  if (!len) return
+  isSearchOpen.value = true
+  const next = highlightedIndex.value + step
+  highlightedIndex.value = ((next % len) + len) % len
+}
+const onEnter = () => {
+  const list = searchResults.value
+  if (!list.length) return
+  const idx = highlightedIndex.value >= 0 ? highlightedIndex.value : 0
+  selectSuggestion(list[idx])
+}
+const selectSuggestion = (p) => {
+  // Persist a lightweight snapshot for the detail page
+  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
+  searchTerm.value = p.name
+  isSearchOpen.value = false
+  router.push({ name: 'product-page', params: { id: p.id } })
+}
+
+const gotoProduct = (p) => {
+  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
+  router.push({ name: 'product-page', params: { id: p.id } })
+}
 </script>
 
 <template>
@@ -64,17 +110,59 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
       </div>
         <div class="product-search flex w-full relative my-4">
           <input
-            type="search"
+            type="text"
             name="search-term"
-            placeholder="Search here..."
-            class="w-full p-2 sm:p-4 pr-[6rem] sm:pr-32 border-2 border-gray-300 rounded-md outline-none focus:border-[#68A4FE] placeholder:text-sm sm:placeholder:text-base text-sm sm:text-base"
+            v-model="searchTerm"
+            @focus="openSearch"
+            @input="openSearch"
+            @keydown.esc="isSearchOpen = false"
+            @keydown.down.prevent="moveHighlight(1)"
+            @keydown.up.prevent="moveHighlight(-1)"
+            @keydown.enter.prevent="onEnter()"
+            @blur="closeSearch"
+            placeholder="Type the name of product"
+            class="relative z-50 w-full p-2 sm:p-4 pr-[6rem] sm:pr-32 border-2 border-gray-300 rounded-md outline-none focus:border-[#68A4FE] placeholder:text-sm sm:placeholder:text-base text-sm sm:text-base bg-white dark:bg-white"
           />
           <button
             type="submit"
-            class="text-sm sm:text-base absolute top-1/2 -translate-y-1/2 right-2 bg-[#68A4FE] rounded-md px-4 py-1 sm:py-2 text-white hover:bg-[#384857] transition-all duration-300 ease-in-out capitalize"
+            class="z-50 text-sm sm:text-base absolute top-1/2 -translate-y-1/2 right-2 bg-[#68A4FE] rounded-md px-4 py-1 sm:py-2 text-white hover:bg-[#384857] transition-all duration-300 ease-in-out capitalize"
           >
             search
           </button>
+          <!-- Backdrop overlay to dim the rest of the page when searching -->
+          <div
+            v-if="isSearchOpen && searchTerm"
+            class="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-40"
+            aria-hidden="true"
+            @click="isSearchOpen = false"
+          ></div>
+          <!-- Autocomplete dropdown -->
+          <div
+            v-if="isSearchOpen && searchTerm"
+            class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-80 overflow-auto"
+          >
+            <ul v-if="searchResults.length > 0" class="divide-y divide-gray-100">
+              <li
+                v-for="(item, idx) in searchResults"
+                :key="item.id"
+                class="flex items-center gap-3 p-3 cursor-pointer"
+                :class="{ 'bg-gray-100': idx === highlightedIndex, 'hover:bg-gray-50': idx !== highlightedIndex }"
+                @mousedown.prevent
+                @mouseenter="highlightedIndex = idx"
+                @click="selectSuggestion(item)"
+              >
+                <img :src="item.image" :alt="item.name" class="w-10 h-10 object-contain flex-shrink-0" />
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-sm font-medium text-gray-800 truncate capitalize">{{ item.name }}</span>
+                    <span class="text-sm font-semibold text-gray-900">{{ formatCurrency(item.price) }}</span>
+                  </div>
+                  <div class="text-xs text-gray-500 capitalize">Brand: {{ item.brand || '—' }}</div>
+                </div>
+              </li>
+            </ul>
+            <div v-else class="p-3 text-sm text-gray-600">No results for "{{ searchTerm }}"</div>
+          </div>
         </div>
         <div class="category-shopping flex justify-end items-center">
           <div class="category-input flex gap-2 sm:gap-4 items-center">
@@ -111,11 +199,11 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
           <div v-for="p in products.filter(p => p.category==='phones')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
-              <div class="product-image">
+              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize">{{ p.name }}</div>
+            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
             <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
               <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
             </div>
@@ -143,11 +231,11 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
           <div v-for="p in products.filter(p => p.category==='laptops')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
-              <div class="product-image">
+              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize">{{ p.name }}</div>
+            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
             <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
               <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
             </div>
@@ -175,11 +263,11 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
           <div v-for="p in products.filter(p => p.category==='smartwatches')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
-              <div class="product-image">
+              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize">{{ p.name }}</div>
+            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
             <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
               <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
             </div>
@@ -207,11 +295,11 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
           <div v-for="p in products.filter(p => p.category==='televisions')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
-              <div class="product-image">
+              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize">{{ p.name }}</div>
+            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
             <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
               <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
             </div>

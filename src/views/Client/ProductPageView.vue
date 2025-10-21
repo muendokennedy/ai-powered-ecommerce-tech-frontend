@@ -1,6 +1,28 @@
 <script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+
+const route = useRoute()
+const product = ref(null)
+
+onMounted(() => {
+  try {
+    const raw = sessionStorage.getItem('selectedProduct')
+    const parsed = raw ? JSON.parse(raw) : null
+    if (parsed && parsed.id === route.params.id) {
+      product.value = parsed
+    }
+  } catch {}
+})
+
+const title = computed(() => product.value?.name ?? 'Product')
+const brand = computed(() => product.value?.brand ?? '—')
+const image = computed(() => product.value?.image ?? '../assets/images/redmi note 12.png')
+const price = computed(() => product.value?.price ?? 0)
+const oldPrice = computed(() => product.value?.oldPrice ?? null)
+const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
 </script>
 <template>
     <Header/>
@@ -14,7 +36,7 @@ import Footer from '@/components/Footer.vue'
       <div class="product flex items-center flex-col md:flex-row justify-between w-full">
         <div class="w-full md:basis-[48%] p-2 sm:p-4 flex flex-col items-center">
           <div class="master-image w-[15rem] md:w-[16rem] h-[15rem] md:h-[20rem] flex justify-center items-center my-6">
-            <img src="../assets/images/redmi note 12.png" alt="Detailed product image" class="m-auto w-full h-full object-cover">
+            <img :src="image" :alt="title" class="m-auto w-full h-full object-cover">
           </div>
           <div class="w-full sm:w-4/5 flex justify-between gap-2 md:gap-4 mx-auto">
             <div class="small-image h-20 border-2 p-1 sm:p-2 rounded-md cursor-pointer">
@@ -36,8 +58,8 @@ import Footer from '@/components/Footer.vue'
           </div>
         </div>
         <div class="product-content-details w-full md:basis-[48%] p-2 sm:p-4 my-2 md:my-4">
-          <div class="product-title font-semibold text-lg sm:text-xl mb-4 text-[#384857]">Tecno spark 10P</div>
-          <div class="product-manufacturer text-sm text-[#384857]">Produced by techno</div>
+          <div class="product-title font-semibold text-lg sm:text-xl mb-4 text-[#384857] capitalize">{{ title }}</div>
+          <div class="product-manufacturer text-sm text-[#384857]">Brand: <span class="capitalize">{{ brand }}</span></div>
           <div class="flex gap-4 items-center my-2 border-b-2 py-4">
             <div class="text-xs text-[#ffcf10]">
               <i class="fa-solid fa-star"></i>
@@ -51,9 +73,9 @@ import Footer from '@/components/Footer.vue'
             </div>
           </div>
           <div class="price-details my-2">
-            <p class="first-price text-sm py-2 text-[#384857]">Most recent price: <span>$180</span></p>
-            <p class="deal-price text-sm py-2 text-[#384857]">Deal price: <span class="text-[#FF412C]">$150</span> inclusive of <span class="inline font-semibold text-[#384857]">VAT</span></p>
-            <p class="save-amount text-sm py-2 capitalize text-[#384857]">save: <span class="text-[#FF412C]">$130</span></p>
+            <p class="first-price text-sm py-2 text-[#384857]" v-if="oldPrice">Most recent price: <span>{{ formatCurrency(oldPrice) }}</span></p>
+            <p class="deal-price text-sm py-2 text-[#384857]">Deal price: <span class="text-[#FF412C]">{{ formatCurrency(price) }}</span> inclusive of <span class="inline font-semibold text-[#384857]">VAT</span></p>
+            <p class="save-amount text-sm py-2 capitalize text-[#384857]" v-if="oldPrice && price">save: <span class="text-[#FF412C]">{{ formatCurrency(oldPrice - price) }}</span></p>
           </div>
           <div class="vendor-action-container flex justify-between w-full py-4 border-b-2 text-center">
             <div class="replacement flex flex-col gap-4 items-center">
