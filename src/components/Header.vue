@@ -19,7 +19,7 @@ onMounted(() => {
 </script>
 
 <template>
-      <header class="fixed z-10 top-0 right-0 left-0 bg-[#68A4FE] shadow-[0_6px_12px_rgba(56,72,87,0.5)] shadow-gray-500">
+      <header class="fixed z-60 top-0 right-0 left-0 bg-[#68A4FE] shadow-[0_6px_12px_rgba(56,72,87,0.5)] shadow-gray-500">
       <section class="flex justify-between items-center px-[4%] mx-auto lg:max-w-[1500px]">
         <div class="text-2xl font-semibold sm:font-extrabold text-white">MoTech</div>
         <div class="py-4">

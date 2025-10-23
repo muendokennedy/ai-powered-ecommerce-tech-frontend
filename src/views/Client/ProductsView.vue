@@ -54,6 +54,34 @@ const router = useRouter()
 
 const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
 
+// Brand filter per-category
+const selectedBrandByCategory = ref({
+  phones: 'All brands',
+  laptops: 'All brands',
+  smartwatches: 'All brands',
+  televisions: 'All brands'
+})
+
+const setBrand = (category, label) => {
+  selectedBrandByCategory.value[category] = label
+}
+
+const getFiltered = (category) => {
+  const brandLabel = selectedBrandByCategory.value[category]
+  let list = products.value.filter(p => p.category === category)
+  if (!brandLabel || brandLabel.toLowerCase() === 'all brands') return list
+  const key = brandLabel.toLowerCase()
+  return list.filter(p => {
+    const brand = (p.brand || '').toLowerCase()
+    const name = (p.name || '').toLowerCase()
+    if (key === 'redmi') {
+      // Allow matching by model name for Redmi even if brand is Xiaomi
+      return brand.includes('redmi') || name.includes('redmi')
+    }
+    return brand === key
+  })
+}
+
 // Search/autocomplete state
 const searchTerm = ref('')
 const isSearchOpen = ref(false)
@@ -190,14 +218,14 @@ const gotoProduct = (p) => {
         >mobile phones</div>
         <div class="filter-bar flex justify-between sm:justify-end items-center my-2 sm:my-4">
           <div class="filter-tags space-x-4 capitalize text-xs sm:text-sm">
-            <a href="#" class="hover:text-[#68A4FE]">All brands</a>
-            <a href="#" class="hover:text-[#68A4FE]">Apple</a>
-            <a href="#" class="hover:text-[#68A4FE]">Samsung</a>
-            <a href="#" class="hover:text-[#68A4FE]">redmi</a>
+            <a href="#" @click.prevent="setBrand('phones','All brands')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.phones==='All brands'}" class="hover:text-[#68A4FE]">All brands</a>
+            <a href="#" @click.prevent="setBrand('phones','Apple')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.phones==='Apple'}" class="hover:text-[#68A4FE]">Apple</a>
+            <a href="#" @click.prevent="setBrand('phones','Samsung')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.phones==='Samsung'}" class="hover:text-[#68A4FE]">Samsung</a>
+            <a href="#" @click.prevent="setBrand('phones','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.phones==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in products.filter(p => p.category==='phones')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
+          <div v-for="p in getFiltered('phones')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
@@ -222,14 +250,14 @@ const gotoProduct = (p) => {
         >laptops</div>
         <div class="filter-bar flex justify-between sm:justify-end items-center my-2 sm:my-4">
           <div class="filter-tags space-x-4 capitalize text-xs sm:text-sm">
-            <a href="#" class="hover:text-[#68A4FE]">All brands</a>
-            <a href="#" class="hover:text-[#68A4FE]">Apple</a>
-            <a href="#" class="hover:text-[#68A4FE]">Samsung</a>
-            <a href="#" class="hover:text-[#68A4FE]">redmi</a>
+            <a href="#" @click.prevent="setBrand('laptops','All brands')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.laptops==='All brands'}" class="hover:text-[#68A4FE]">All brands</a>
+            <a href="#" @click.prevent="setBrand('laptops','Apple')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.laptops==='Apple'}" class="hover:text-[#68A4FE]">Apple</a>
+            <a href="#" @click.prevent="setBrand('laptops','Samsung')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.laptops==='Samsung'}" class="hover:text-[#68A4FE]">Samsung</a>
+            <a href="#" @click.prevent="setBrand('laptops','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.laptops==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in products.filter(p => p.category==='laptops')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
+          <div v-for="p in getFiltered('laptops')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
@@ -254,14 +282,14 @@ const gotoProduct = (p) => {
         >smartwatches</div>
         <div class="filter-bar flex justify-between sm:justify-end items-center my-2 sm:my-4">
           <div class="filter-tags space-x-4 capitalize text-xs sm:text-sm">
-            <a href="#" class="hover:text-[#68A4FE]">All brands</a>
-            <a href="#" class="hover:text-[#68A4FE]">Apple</a>
-            <a href="#" class="hover:text-[#68A4FE]">Samsung</a>
-            <a href="#" class="hover:text-[#68A4FE]">redmi</a>
+            <a href="#" @click.prevent="setBrand('smartwatches','All brands')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.smartwatches==='All brands'}" class="hover:text-[#68A4FE]">All brands</a>
+            <a href="#" @click.prevent="setBrand('smartwatches','Apple')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.smartwatches==='Apple'}" class="hover:text-[#68A4FE]">Apple</a>
+            <a href="#" @click.prevent="setBrand('smartwatches','Samsung')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.smartwatches==='Samsung'}" class="hover:text-[#68A4FE]">Samsung</a>
+            <a href="#" @click.prevent="setBrand('smartwatches','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.smartwatches==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in products.filter(p => p.category==='smartwatches')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
+          <div v-for="p in getFiltered('smartwatches')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
@@ -286,14 +314,14 @@ const gotoProduct = (p) => {
         >televisions</div>
         <div class="filter-bar flex justify-between sm:justify-end items-center my-2 sm:my-4">
           <div class="filter-tags space-x-4 capitalize text-xs sm:text-sm">
-            <a href="#" class="hover:text-[#68A4FE]">All brands</a>
-            <a href="#" class="hover:text-[#68A4FE]">Apple</a>
-            <a href="#" class="hover:text-[#68A4FE]">Samsung</a>
-            <a href="#" class="hover:text-[#68A4FE]">redmi</a>
+            <a href="#" @click.prevent="setBrand('televisions','All brands')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.televisions==='All brands'}" class="hover:text-[#68A4FE]">All brands</a>
+            <a href="#" @click.prevent="setBrand('televisions','Apple')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.televisions==='Apple'}" class="hover:text-[#68A4FE]">Apple</a>
+            <a href="#" @click.prevent="setBrand('televisions','Samsung')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.televisions==='Samsung'}" class="hover:text-[#68A4FE]">Samsung</a>
+            <a href="#" @click.prevent="setBrand('televisions','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.televisions==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in products.filter(p => p.category==='televisions')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
+          <div v-for="p in getFiltered('televisions')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
                 <img :src="p.image" :alt="p.name" />
