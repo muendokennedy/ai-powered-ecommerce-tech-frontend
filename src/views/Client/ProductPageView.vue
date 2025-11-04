@@ -1,6 +1,6 @@
 <script setup>
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -11,7 +11,7 @@ const product = ref(null)
 const activeImage = ref('')
 const galleryImages = ref([])
 
-onMounted(() => {
+function initProductFromSession() {
   try {
     const raw = sessionStorage.getItem('selectedProduct')
     const parsed = raw ? JSON.parse(raw) : null
@@ -31,7 +31,25 @@ onMounted(() => {
     galleryImages.value = capped
     activeImage.value = capped[0] || ''
   }
+}
+
+onMounted(() => {
+  initProductFromSession()
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch {}
 })
+
+// When navigating to this same view with a different :id, reinitialize product and gallery
+watch(
+  () => route.params.id,
+  () => {
+    initProductFromSession()
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch {}
+  }
+)
 
 const title = computed(() => product.value?.name ?? 'Product')
 const brand = computed(() => product.value?.brand ?? '—')
@@ -131,40 +149,405 @@ const relatedProducts = computed(() => {
   const cat = (product.value?.category || 'phones').toLowerCase()
   if (cat === 'laptops') {
     return [
-      { id: 'lp-1', name: 'dell inspiron', image: '../../assets/images/dell inspiron.png', price: 749, oldPrice: 899, rating: 5, brand: 'Dell', category: 'laptops' },
-      { id: 'lp-2', name: 'dell latitude 5320', image: '../../assets/images/dell latitude 5320.png', price: 999, oldPrice: 1149, rating: 5, brand: 'Dell', category: 'laptops' },
-      { id: 'lp-3', name: 'hp laptop 15 ci7', image: '../../assets/images/hp laptop 15 ci7.png', price: 1099, oldPrice: 1299, rating: 5, brand: 'HP', category: 'laptops' },
-      { id: 'lp-8', name: 'hp laptop 15 business', image: '../../assets/images/hp laptop 15 ci7.png', price: 999, oldPrice: 1149, rating: 5, brand: 'HP', category: 'laptops' },
+      {
+        id: 'lp-1',
+        name: 'dell inspiron',
+        brand: 'Dell',
+        category: 'laptops',
+        image: '../../assets/images/dell inspiron.png',
+        images: [
+          '../../assets/images/dell inspiron.png',
+          '../../assets/images/hp laptop 15 ci7.png',
+          '../../assets/images/dell latitude 5320.png',
+        ],
+        price: 749,
+        oldPrice: 899,
+        originalPrice: 899,
+        discountedPrice: 749,
+        rating: 5,
+        description: 'Slim productivity laptop with FHD display, fast SSD storage, and long battery life—great for school and work.',
+        specifications: {
+          ram: '16GB',
+          processor: 'Intel Core i7 (11th Gen)',
+          storage: '512GB SSD',
+          resolution: '1920 × 1080 (FHD)'
+        },
+      },
+      {
+        id: 'lp-2',
+        name: 'dell latitude 5320',
+        brand: 'Dell',
+        category: 'laptops',
+        image: '../../assets/images/dell latitude 5320.png',
+        images: [
+          '../../assets/images/dell latitude 5320.png',
+          '../../assets/images/dell inspiron.png',
+          '../../assets/images/hp laptop 15 ci7.png',
+        ],
+        price: 999,
+        oldPrice: 1149,
+        originalPrice: 1149,
+        discountedPrice: 999,
+        rating: 5,
+        description: 'Business-class ultrabook with premium build, strong security, and all-day battery.',
+        specifications: {
+          ram: '16GB',
+          processor: 'Intel Core i7 (11th Gen) vPro',
+          storage: '512GB SSD',
+          resolution: '1920 × 1080 (FHD)'
+        },
+      },
+      {
+        id: 'lp-3',
+        name: 'hp laptop 15 ci7',
+        brand: 'HP',
+        category: 'laptops',
+        image: '../../assets/images/hp laptop 15 ci7.png',
+        images: [
+          '../../assets/images/hp laptop 15 ci7.png',
+          '../../assets/images/dell inspiron.png',
+          '../../assets/images/dell latitude 5320.png',
+        ],
+        price: 1099,
+        oldPrice: 1299,
+        originalPrice: 1299,
+        discountedPrice: 1099,
+        rating: 5,
+        description: '15-inch performance laptop with Core i7, ample RAM, and speedy SSD for demanding tasks.',
+        specifications: {
+          ram: '16GB',
+          processor: 'Intel Core i7 (11th Gen)',
+          storage: '1TB SSD',
+          resolution: '1920 × 1080 (FHD)'
+        },
+      },
+      {
+        id: 'lp-8',
+        name: 'hp laptop 15 business',
+        brand: 'HP',
+        category: 'laptops',
+        image: '../../assets/images/hp laptop 15 ci7.png',
+        images: [
+          '../../assets/images/hp laptop 15 ci7.png',
+          '../../assets/images/dell latitude 5320.png',
+          '../../assets/images/dell inspiron.png',
+        ],
+        price: 999,
+        oldPrice: 1149,
+        originalPrice: 1149,
+        discountedPrice: 999,
+        rating: 5,
+        description: 'Reliable business notebook with FHD screen, quiet thermals, and excellent keyboard.',
+        specifications: {
+          ram: '16GB',
+          processor: 'Intel Core i5 (12th Gen)',
+          storage: '512GB SSD',
+          resolution: '1920 × 1080 (FHD)'
+        },
+      },
     ]
   }
   if (cat === 'televisions') {
     return [
-      { id: 'tv-2', name: 'MoTech TV 55" 4K', image: '../../assets/images/redmi note 12.png', price: 499, oldPrice: 599, rating: 5, brand: 'MoTech', category: 'televisions' },
-      { id: 'tv-3', name: 'MoTech TV 65" 4K', image: '../../assets/images/redmi note 12.png', price: 699, oldPrice: 799, rating: 5, brand: 'MoTech', category: 'televisions' },
-      { id: 'tv-6', name: 'MoTech TV 50" 4K', image: '../../assets/images/redmi note 12.png', price: 399, oldPrice: 499, rating: 5, brand: 'MoTech', category: 'televisions' },
-      { id: 'tv-8', name: 'MoTech TV 85" 4K', image: '../../assets/images/redmi note 12.png', price: 1499, oldPrice: 1699, rating: 5, brand: 'MoTech', category: 'televisions' },
+      {
+        id: 'tv-2',
+        name: 'MoTech TV 55" 4K',
+        brand: 'MoTech',
+        category: 'televisions',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/iphone12.png',
+          '../../assets/images/techno spark 5.png',
+        ],
+        price: 499,
+        oldPrice: 599,
+        originalPrice: 599,
+        discountedPrice: 499,
+        rating: 5,
+        description: '55-inch 4K smart TV with vivid colors, rich contrast, and popular streaming apps built-in.',
+        specifications: {
+          resolution: '3840 × 2160 (4K)',
+          screenSize: '55 inch',
+          refreshRate: '120 Hz'
+        },
+      },
+      {
+        id: 'tv-3',
+        name: 'MoTech TV 65" 4K',
+        brand: 'MoTech',
+        category: 'televisions',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/techno spark 5.png',
+          '../../assets/images/xiaomi redmi 10 2022 pro.png',
+        ],
+        price: 699,
+        oldPrice: 799,
+        originalPrice: 799,
+        discountedPrice: 699,
+        rating: 5,
+        description: '65-inch 4K TV with HDR support, smooth motion for sports, and multiple HDMI ports.',
+        specifications: {
+          resolution: '3840 × 2160 (4K)',
+          screenSize: '65 inch',
+          refreshRate: '120 Hz'
+        },
+      },
+      {
+        id: 'tv-6',
+        name: 'MoTech TV 50" 4K',
+        brand: 'MoTech',
+        category: 'televisions',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/iphone12.png',
+          '../../assets/images/xiaomi redmi 10 2022 pro.png',
+        ],
+        price: 399,
+        oldPrice: 499,
+        originalPrice: 499,
+        discountedPrice: 399,
+        rating: 5,
+        description: 'Compact 50-inch 4K TV perfect for bedrooms and apartments with built-in streaming.',
+        specifications: {
+          resolution: '3840 × 2160 (4K)',
+          screenSize: '50 inch',
+          refreshRate: '60 Hz'
+        },
+      },
+      {
+        id: 'tv-8',
+        name: 'MoTech TV 85" 4K',
+        brand: 'MoTech',
+        category: 'televisions',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/iphone12.png',
+          '../../assets/images/techno spark 5.png',
+        ],
+        price: 1499,
+        oldPrice: 1699,
+        originalPrice: 1699,
+        discountedPrice: 1499,
+        rating: 5,
+        description: 'Massive 85-inch cinematic 4K TV with immersive visuals and premium HDR.',
+        specifications: {
+          resolution: '3840 × 2160 (4K)',
+          screenSize: '85 inch',
+          refreshRate: '120 Hz'
+        },
+      },
     ]
   }
   if (cat === 'smartwatches') {
     return [
-      { id: 'sw-1', name: 'MoTech Watch S1', image: '../../assets/images/redmi note 12.png', price: 99, oldPrice: 129, rating: 5, brand: 'MoTech', category: 'smartwatches' },
-      { id: 'sw-2', name: 'MoTech Watch Pro', image: '../../assets/images/redmi note 12.png', price: 149, oldPrice: 199, rating: 5, brand: 'MoTech', category: 'smartwatches' },
-      { id: 'sw-7', name: 'MoTech Watch S2', image: '../../assets/images/redmi note 12.png', price: 129, oldPrice: 159, rating: 5, brand: 'MoTech', category: 'smartwatches' },
-      { id: 'sw-8', name: 'MoTech Watch Ultra', image: '../../assets/images/redmi note 12.png', price: 249, oldPrice: 299, rating: 5, brand: 'MoTech', category: 'smartwatches' },
+      {
+        id: 'sw-1',
+        name: 'MoTech Watch S1',
+        brand: 'MoTech',
+        category: 'smartwatches',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/techno spark 5.png',
+          '../../assets/images/iphone12.png',
+        ],
+        price: 99,
+        oldPrice: 129,
+        originalPrice: 129,
+        discountedPrice: 99,
+        rating: 5,
+        description: 'Lightweight smartwatch with AMOLED display, health tracking, and 7-day battery life.',
+        specifications: {
+          resolution: '390 × 390',
+          batteryLife: 'Up to 7 days',
+          waterResistance: '5 ATM'
+        },
+      },
+      {
+        id: 'sw-2',
+        name: 'MoTech Watch Pro',
+        brand: 'MoTech',
+        category: 'smartwatches',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/xiaomi redmi 10 2022 pro.png',
+          '../../assets/images/iphone12.png',
+        ],
+        price: 149,
+        oldPrice: 199,
+        originalPrice: 199,
+        discountedPrice: 149,
+        rating: 5,
+        description: 'Premium smartwatch with GPS, voice assistant, and advanced training metrics.',
+        specifications: {
+          resolution: '410 × 410',
+          batteryLife: 'Up to 10 days',
+          waterResistance: '5 ATM'
+        },
+      },
+      {
+        id: 'sw-7',
+        name: 'MoTech Watch S2',
+        brand: 'MoTech',
+        category: 'smartwatches',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/techno spark 5.png',
+          '../../assets/images/xiaomi redmi 10 2022 pro.png',
+        ],
+        price: 129,
+        oldPrice: 159,
+        originalPrice: 159,
+        discountedPrice: 129,
+        rating: 5,
+        description: 'Balanced smartwatch with essential health features and comfortable fit.',
+        specifications: {
+          resolution: '360 × 360',
+          batteryLife: 'Up to 5 days',
+          waterResistance: 'IP68'
+        },
+      },
+      {
+        id: 'sw-8',
+        name: 'MoTech Watch Ultra',
+        brand: 'MoTech',
+        category: 'smartwatches',
+        image: '../../assets/images/redmi note 12.png',
+        images: [
+          '../../assets/images/redmi note 12.png',
+          '../../assets/images/iphone12.png',
+          '../../assets/images/techno spark 5.png',
+        ],
+        price: 249,
+        oldPrice: 299,
+        originalPrice: 299,
+        discountedPrice: 249,
+        rating: 5,
+        description: 'Rugged smartwatch with large display, dual-band GPS, and extended multi-day battery.',
+        specifications: {
+          resolution: '454 × 454',
+          batteryLife: 'Up to 14 days',
+          waterResistance: '10 ATM'
+        },
+      },
     ]
   }
   // phones default
   return [
-    { id: 'ph-2', name: 'redmi note 12', image: '../../assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5, brand: 'Xiaomi', category: 'phones' },
-    { id: 'ph-7', name: 'tecno spark 5', image: '../../assets/images/techno spark 5.png', price: 159, oldPrice: 189, rating: 5, brand: 'Tecno', category: 'phones' },
-    { id: 'ph-8', name: 'redmi 10 2022 pro', image: '../../assets/images/xiaomi redmi 10 2022 pro.png', price: 219, oldPrice: 269, rating: 5, brand: 'Xiaomi', category: 'phones' },
-    { id: 'ph-3', name: 'iphone 12', image: '../../assets/images/iphone12.png', price: 699, oldPrice: 799, rating: 5, brand: 'Apple', category: 'phones' },
+    {
+      id: 'ph-2',
+      name: 'redmi note 12',
+      brand: 'Xiaomi',
+      category: 'phones',
+      image: '../../assets/images/redmi note 12.png',
+      images: [
+        '../../assets/images/redmi note 12.png',
+        '../../assets/images/xiaomi redmi 10 2022 pro.png',
+        '../../assets/images/techno spark 5.png',
+      ],
+      price: 136,
+      oldPrice: 206,
+      originalPrice: 206,
+      discountedPrice: 136,
+      rating: 5,
+      description: 'Affordable smartphone with vibrant display and long-lasting battery.',
+      specifications: {
+        ram: '6GB',
+        battery: '5000 mAh',
+        camera: '50 MP',
+        resolution: '1080 × 2400 (FHD+)'
+      },
+    },
+    {
+      id: 'ph-7',
+      name: 'tecno spark 5',
+      brand: 'Tecno',
+      category: 'phones',
+      image: '../../assets/images/techno spark 5.png',
+      images: [
+        '../../assets/images/techno spark 5.png',
+        '../../assets/images/xiaomi redmi 10 2022 pro.png',
+        '../../assets/images/redmi note 12.png',
+      ],
+      price: 159,
+      oldPrice: 189,
+      originalPrice: 189,
+      discountedPrice: 159,
+      rating: 5,
+      description: 'Great value device with solid battery and AI camera features.',
+      specifications: {
+        ram: '4GB',
+        battery: '5000 mAh',
+        camera: '16 MP',
+        resolution: '720 × 1600 (HD+)'
+      },
+    },
+    {
+      id: 'ph-8',
+      name: 'redmi 10 2022 pro',
+      brand: 'Xiaomi',
+      category: 'phones',
+      image: '../../assets/images/xiaomi redmi 10 2022 pro.png',
+      images: [
+        '../../assets/images/xiaomi redmi 10 2022 pro.png',
+        '../../assets/images/redmi note 12.png',
+        '../../assets/images/iphone12.png',
+      ],
+      price: 219,
+      oldPrice: 269,
+      originalPrice: 269,
+      discountedPrice: 219,
+      rating: 5,
+      description: 'Balanced mid-ranger with crisp FHD+ display and high-res main camera.',
+      specifications: {
+        ram: '6GB',
+        battery: '5000 mAh',
+        camera: '64 MP',
+        resolution: '1080 × 2400 (FHD+)'
+      },
+    },
+    {
+      id: 'ph-3',
+      name: 'iphone 12',
+      brand: 'Apple',
+      category: 'phones',
+      image: '../../assets/images/iphone12.png',
+      images: [
+        '../../assets/images/iphone12.png',
+        '../../assets/images/redmi note 12.png',
+        '../../assets/images/xiaomi redmi 10 2022 pro.png',
+      ],
+      price: 699,
+      oldPrice: 799,
+      originalPrice: 799,
+      discountedPrice: 699,
+      rating: 5,
+      description: 'Iconic Apple design with powerful A14 Bionic and excellent dual-camera system.',
+      specifications: {
+        ram: '4GB',
+        battery: '2815 mAh',
+        camera: '12 MP',
+        resolution: '1170 × 2532 (Super Retina XDR)'
+      },
+    },
   ]
 })
 
 const gotoProduct = (p) => {
   try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
   router.push({ name: 'product-page', params: { id: p.id } })
+}
+
+// For RouterLink-based navigation: set selection and let the link handle routing
+function setSelectedProduct(p) {
+  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
 }
 
 function uniq(arr) {
@@ -254,13 +637,22 @@ function uniq(arr) {
           class="product-box text-center my-2 sm:my-4 border-2 py-4"
         >
           <div class="flex justify-center items-center">
-            <button type="button" class="product-image" @click="gotoProduct(rp)">
+            <RouterLink
+              class="product-image block focus:outline-none focus:ring-2 focus:ring-[#68a4fe]"
+              :to="{ name: 'product-page', params: { id: rp.id } }"
+              :aria-label="`View details for ${rp.name}`"
+              @click="setSelectedProduct(rp)"
+            >
               <img :src="resolveImg(rp.image)" :alt="rp.name" />
-            </button>
+            </RouterLink>
           </div>
-          <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(rp)">
+          <RouterLink
+            class="product-title text-sm font-normal sm:font-semibold capitalize hover:text-[#68A4FE] focus:outline-none focus:ring-2 focus:ring-[#68a4fe]"
+            :to="{ name: 'product-page', params: { id: rp.id } }"
+            @click="setSelectedProduct(rp)"
+          >
             {{ rp.name }}
-          </div>
+          </RouterLink>
           <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4 flex justify-center">
             <svg v-for="i in (rp.rating || 5)" :key="`rp-star-${rp.id}-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mx-0.5">
               <polygon points="12,17.27 18.18,21 16.54,13.97 22,9.24 14.81,8.62 12,2 9.19,8.62 2,9.24 7.46,13.97 5.82,21" />
