@@ -58,6 +58,17 @@ const price = computed(() => product.value?.price ?? 0)
 const oldPrice = computed(() => product.value?.oldPrice ?? null)
 const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
 
+// Delivery window: start = tomorrow, end = start + 4 days
+const deliveryWindow = computed(() => {
+  const now = new Date()
+  const start = new Date(now)
+  start.setDate(now.getDate() + 1)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 4)
+  const fmt = (d) => d.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+  return `${fmt(start)} - ${fmt(end)}`
+})
+
 function resolveImg(p) {
   if (!p) return ''
   // External or data URLs
@@ -626,7 +637,7 @@ function addToCart(p) {
             <p class="deal-price text-sm py-2 text-[#384857]">Deal price: <span class="text-[#FF412C]">{{ formatCurrency(price) }}</span> inclusive of <span class="inline font-semibold text-[#384857]">VAT</span></p>
             <p class="save-amount text-sm py-2 capitalize text-[#384857]" v-if="oldPrice && price">save: <span class="text-[#FF412C]">{{ formatCurrency(oldPrice - price) }}</span></p>
           </div>
-          <div class="delivery-timeline text-sm my-4">Delivery by: <span>March 29 - April 1</span></div>
+          <div class="delivery-timeline text-sm my-4">Delivery by: <span class="font-bold">{{ deliveryWindow }}</span></div>
           <div class="vendor-name text-sm my-4">
             <span>Sold by MoTech electronics</span> <span>(250 out of 300 already sold)</span>
           </div>
