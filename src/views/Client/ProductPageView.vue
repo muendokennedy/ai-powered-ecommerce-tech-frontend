@@ -553,6 +553,29 @@ function setSelectedProduct(p) {
 function uniq(arr) {
   return arr.filter((v, i, a) => a.indexOf(v) === i)
 }
+
+// Add to cart without navigating; uses sessionStorage 'cartItems'
+function addToCart(p) {
+  try {
+    const raw = sessionStorage.getItem('cartItems')
+    const cart = raw ? JSON.parse(raw) : []
+    const idx = cart.findIndex((it) => it.id === p.id)
+    if (idx >= 0) {
+      cart[idx].quantity = (cart[idx].quantity || 1) + 1
+    } else {
+      cart.push({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        oldPrice: p.oldPrice || null,
+        image: p.image,
+        quantity: 1,
+      })
+    }
+    sessionStorage.setItem('cartItems', JSON.stringify(cart))
+  } catch {}
+}
 </script>
 <template>
     <Header/>
@@ -636,35 +659,33 @@ function uniq(arr) {
           :key="rp.id"
           class="product-box text-center my-2 sm:my-4 border-2 py-4"
         >
-          <div class="flex justify-center items-center">
-            <RouterLink
-              class="product-image block focus:outline-none focus:ring-2 focus:ring-[#68a4fe]"
-              :to="{ name: 'product-page', params: { id: rp.id } }"
-              :aria-label="`View details for ${rp.name}`"
-              @click="setSelectedProduct(rp)"
-            >
-              <img :src="resolveImg(rp.image)" :alt="rp.name" />
-            </RouterLink>
-          </div>
           <RouterLink
-            class="product-title text-sm font-normal sm:font-semibold capitalize hover:text-[#68A4FE] focus:outline-none focus:ring-2 focus:ring-[#68a4fe]"
+            class="product-box block"
             :to="{ name: 'product-page', params: { id: rp.id } }"
+            :aria-label="`View details for ${rp.name}`"
             @click="setSelectedProduct(rp)"
           >
-            {{ rp.name }}
-          </RouterLink>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4 flex justify-center">
-            <svg v-for="i in (rp.rating || 5)" :key="`rp-star-${rp.id}-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mx-0.5">
-              <polygon points="12,17.27 18.18,21 16.54,13.97 22,9.24 14.81,8.62 12,2 9.19,8.62 2,9.24 7.46,13.97 5.82,21" />
-            </svg>
-          </div>
-          <div class="flex justify-between w-20 sm:w-24 mx-auto">
-            <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50" v-if="rp.oldPrice">
-              {{ formatCurrency(rp.oldPrice) }}
+            <div class="flex justify-center items-center">
+              <div class="product-image">
+                <img :src="resolveImg(rp.image)" :alt="rp.name" />
+              </div>
             </div>
-            <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(rp.price) }}</div>
-          </div>
-          <button class="add-cart-btn text-xs">add to cart</button>
+            <div class="product-title text-sm font-normal sm:font-semibold capitalize hover:text-[#68A4FE]">
+              {{ rp.name }}
+            </div>
+            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4 flex justify-center">
+              <svg v-for="i in (rp.rating || 5)" :key="`rp-star-${rp.id}-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mx-0.5">
+                <polygon points="12,17.27 18.18,21 16.54,13.97 22,9.24 14.81,8.62 12,2 9.19,8.62 2,9.24 7.46,13.97 5.82,21" />
+              </svg>
+            </div>
+            <div class="flex justify-between w-20 sm:w-24 mx-auto">
+              <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50" v-if="rp.oldPrice">
+                {{ formatCurrency(rp.oldPrice) }}
+              </div>
+              <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(rp.price) }}</div>
+            </div>
+          </RouterLink>
+          <button class="add-cart-btn text-xs mt-2" @click.stop.prevent="addToCart(rp)">add to cart</button>
         </div>
       </div>
       </section>
