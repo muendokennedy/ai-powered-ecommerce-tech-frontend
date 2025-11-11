@@ -50,7 +50,7 @@ const router = createRouter({
       }
     },
     {
-      path: '/product/page',
+      path: '/product/:id',
       name: 'product-page',
       component: () => import('@/views/Client/ProductPageView.vue')
     },

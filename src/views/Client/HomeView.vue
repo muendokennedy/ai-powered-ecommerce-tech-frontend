@@ -62,7 +62,7 @@ const slides = ref([
       <section
         v-for="(slide, index) in slides"
         :key="index"
-        class="slide home min-h-screen w-full px-[6%] sm:px-[4%] md:pl-[4%] mx-auto scroll-mt-[100px] lg:max-w-[1500px] flex-col-reverse relative md:flex-row pb-16 md:pb-4"
+        class="slide home min-h-screen w-full px-[6%] sm:px-[4%] md:pl-[4%] mx-auto scroll-mt-[100px]  flex-col-reverse relative md:flex-row pb-16 md:pb-4"
         :class="[slide.bgColor, {'active': currentIndex === index, '': currentIndex !== index}]"
       >
         <div class="slide-content basis-2/4 flex justify-center items-start flex-col">
