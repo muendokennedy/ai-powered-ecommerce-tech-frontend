@@ -13,6 +13,14 @@ const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
 // Reactive cart and wishlist loaded from sessionStorage
 const cartItems = ref([])
 const wishlistItems = ref([])
+// Recommendations for "you may also like"
+const recommendations = ref([
+  { id: 'rec-ph-1', name: 'infinix hot 12', brand: 'Infinix', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
+  { id: 'rec-ph-2', name: 'redmi note 12', brand: 'Xiaomi', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
+  { id: 'rec-ph-3', name: 'iphone 12', brand: 'Apple', image: '/src/assets/images/iphone12.png', price: 699, rating: 5 },
+  { id: 'rec-ph-4', name: 'tecno spark 5', brand: 'Tecno', image: '/src/assets/images/techno spark 5.png', price: 159, rating: 5 },
+  { id: 'rec-ph-5', name: 'redmi 10 2022 pro', brand: 'Xiaomi', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, rating: 5 },
+])
 
 function loadCart() {
   try {
@@ -135,6 +143,25 @@ function wishlistAddToCart(it) {
   saveCart()
   // Remove from wishlist
   wishlistRemove(it)
+}
+
+// Quick add to cart from recommendations
+function addToCartQuick(it) {
+  const idx = cartItems.value.findIndex(x => x.id === it.id)
+  if (idx >= 0) {
+    cartItems.value[idx].quantity = (cartItems.value[idx].quantity || 1) + 1
+  } else {
+    cartItems.value.push({
+      id: it.id,
+      name: it.name,
+      brand: it.brand,
+      price: it.price,
+      oldPrice: it.oldPrice ?? null,
+      image: it.image,
+      quantity: 1,
+    })
+  }
+  saveCart()
 }
 function resolveImg(p) {
 
@@ -350,100 +377,24 @@ const proceedToCheckout = () => {
         you may also<span class="text-[#68A4FE] px-2"> like</span>
       </div>
       <div class="top-sales-container grid mx-auto w-[95%]">
-        <div class="product-box text-center my-2 sm:my-4">
+        <div
+          v-for="rec in recommendations"
+          :key="rec.id"
+          class="product-box text-center my-2 sm:my-4"
+        >
           <div class="flex justify-center items-center">
             <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
+              <img :src="resolveImg(rec.image)" :alt="rec.name" />
             </div>
           </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
+          <div class="product-title text-sm font-normal sm:font-semibold capitalize">
+            {{ rec.name }}
           </div>
           <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
+            <i v-for="i in (rec.rating || 0)" :key="`r-${rec.id}-${i}`" class="fa-solid fa-star"></i>
           </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
+          <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(rec.price) }}</div>
+          <button class="add-cart-btn text-xs" @click="addToCartQuick(rec)">add to cart</button>
         </div>
       </div>
       </section>
