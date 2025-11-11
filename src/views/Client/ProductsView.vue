@@ -285,6 +285,33 @@ const gotoProduct = (p) => {
   try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
   router.push({ name: 'product-page', params: { id: p.id } })
 }
+
+// Add to cart: persist in sessionStorage under both 'cartItems' and 'cartproducts' for compatibility
+const addToCart = (p) => {
+  const addToKey = (key) => {
+    try {
+      const raw = sessionStorage.getItem(key)
+      const cart = raw ? JSON.parse(raw) : []
+      const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
+      if (idx >= 0) {
+        cart[idx].quantity = (cart[idx].quantity || 1) + 1
+      } else {
+        cart.push({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          price: p.price,
+          oldPrice: p.oldPrice ?? null,
+          image: p.image,
+          quantity: 1,
+        })
+      }
+      sessionStorage.setItem(key, JSON.stringify(cart))
+    } catch {}
+  }
+  addToKey('cartItems')
+  addToKey('cartproducts')
+}
 </script>
 
 <template>
@@ -399,7 +426,7 @@ const gotoProduct = (p) => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
       </section>
@@ -431,7 +458,7 @@ const gotoProduct = (p) => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
       </section>
@@ -463,7 +490,7 @@ const gotoProduct = (p) => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
       </section>
@@ -495,7 +522,7 @@ const gotoProduct = (p) => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
       </section>
