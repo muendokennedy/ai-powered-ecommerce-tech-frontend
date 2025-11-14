@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { PlusIcon, MinusIcon, StarIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { PlusIcon, MinusIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 const router = useRouter()
 
@@ -116,6 +116,9 @@ function saveForLater(it) {
       image: it.image,
     })
     saveWishlist()
+    showToast(`${it.name} saved for later`, 'success')
+  } else {
+    showToast(`${it.name} is already in your wishlist`, 'warning')
   }
 }
 
@@ -139,7 +142,7 @@ function wishlistAddToCart(it) {
     })
     showToast(`${it.name} added to cart`, 'success')
   } else {
-    showToast(`${it.name} is already in the cart`, 'info')
+    showToast(`${it.name} is already in the cart`, 'warning')
   }
   saveCart()
   // Remove from wishlist
@@ -165,7 +168,7 @@ function hideToast() {
 function addToCartQuick(it) {
   const idx = cartItems.value.findIndex(x => x.id === it.id)
   if (idx >= 0) {
-    showToast(`${it.name} is already in the cart`, 'info')
+    showToast(`${it.name} is already in the cart`, 'warning')
     return
   }
   {
@@ -429,11 +432,15 @@ const proceedToCheckout = () => {
       <div
         class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
         :class="{
-          'bg-emerald-500/90 border-emerald-300': toast.type === 'success' || toast.type === 'info',
+          'bg-emerald-500/90 border-emerald-300': toast.type === 'success',
+          'bg-amber-400/90 border-amber-300 text-black': toast.type === 'warning',
           'bg-red-600/95 border-red-400': toast.type === 'error'
         }"
       >
-        <CheckCircleIcon class="size-6 flex-shrink-0 opacity-95" />
+        <component
+          :is="toast.type === 'warning' ? ExclamationTriangleIcon : CheckCircleIcon"
+          class="size-6 flex-shrink-0 opacity-95"
+        />
         <div class="flex-1 pr-2">
           <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
         </div>

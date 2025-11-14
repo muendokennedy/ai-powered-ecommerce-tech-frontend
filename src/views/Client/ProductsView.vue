@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { CheckCircleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -311,7 +311,7 @@ const addToCart = (p) => {
     const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
     if (idx >= 0) {
       // Do not increment; show info toast
-      showToast(`${p.name} is already in the cart`, 'info')
+      showToast(`${p.name} is already in the cart`, 'warning')
       // Keep cart unchanged
       sessionStorage.setItem('cartItems', JSON.stringify(cart))
     } else {
@@ -575,11 +575,15 @@ const addToCart = (p) => {
       <div
         class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
         :class="{
-          'bg-emerald-500/90 border-emerald-300': toast.type === 'success' || toast.type === 'info',
+          'bg-emerald-500/90 border-emerald-300': toast.type === 'success',
+          'bg-amber-400/90 border-amber-300 text-black': toast.type === 'warning',
           'bg-red-600/95 border-red-400': toast.type === 'error'
         }"
       >
-        <CheckCircleIcon class="size-6 flex-shrink-0 opacity-95" />
+        <component
+          :is="toast.type === 'warning' ? ExclamationTriangleIcon : CheckCircleIcon"
+          class="size-6 flex-shrink-0 opacity-95"
+        />
         <div class="flex-1 pr-2">
           <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
         </div>

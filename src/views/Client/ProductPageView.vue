@@ -4,10 +4,12 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 const route = useRoute()
 const router = useRouter()
 const product = ref(null)
+const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
 const activeImage = ref('')
 const galleryImages = ref([])
 
@@ -618,6 +620,81 @@ function addToCart(p) {
     sessionStorage.setItem('cartItems', JSON.stringify(cart))
   } catch {}
 }
+
+function proceedToBuy() {
+  if (!product.value) return
+  // Behave exactly like add to cart (no navigation)
+  // Capture name before mutation for message
+  const name = product.value.name || 'Item'
+  // Check current cart for duplicates before adding
+  try {
+    const raw = sessionStorage.getItem('cartItems')
+    const cart = raw ? JSON.parse(raw) : []
+    if (Array.isArray(cart)) {
+      const exists = cart.findIndex(it => it.id === product.value.id) >= 0
+      if (exists) {
+        showToast(`${name} is already in the cart`, 'warning')
+        return
+      }
+    }
+  } catch {}
+  // Not in cart: add then remove from wishlist if present
+  addToCart(product.value)
+  try {
+    const rawWish = sessionStorage.getItem('wishlistItems')
+    if (rawWish) {
+      const wishArr = JSON.parse(rawWish)
+      if (Array.isArray(wishArr)) {
+        const filtered = wishArr.filter(w => w.id !== product.value.id)
+        if (filtered.length !== wishArr.length) {
+          sessionStorage.setItem('wishlistItems', JSON.stringify(filtered))
+        }
+      }
+    }
+  } catch {}
+  showToast(`${name} added to cart`, 'success')
+}
+
+// Toast utilities (success/warning/error)
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.visible = false
+  }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
+// Save current product for later (wishlist)
+function saveForLaterFromProduct() {
+  try {
+    const raw = sessionStorage.getItem('wishlistItems')
+    const wish = raw ? JSON.parse(raw) : []
+    const p = product.value
+    if (!p) return
+    const idx = Array.isArray(wish) ? wish.findIndex((it) => it.id === p.id) : -1
+    if (idx >= 0) {
+      showToast(`${p.name} is already in your wishlist`, 'warning')
+    } else {
+      const entry = {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        oldPrice: p.oldPrice || null,
+        image: p.image,
+      }
+      const next = Array.isArray(wish) ? [...wish, entry] : [entry]
+      sessionStorage.setItem('wishlistItems', JSON.stringify(next))
+      showToast(`${p.name} saved for later`, 'success')
+    }
+  } catch {}
+}
 </script>
 <template>
     <Header/>
@@ -646,8 +723,8 @@ function addToCart(p) {
             </button>
           </div>
           <div class="action-button-container my-4 sm:my-8 flex w-full justify-between">
-            <button type="submit" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#ffcf10] basis-[48%] capitalize">Proceed to buy</button>
-            <button type="submit" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#68a4fe] basis-[48%] text-white capitalize">save for later</button>
+            <button type="button" @click="proceedToBuy" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#ffcf10] basis-[48%] capitalize">Proceed to buy</button>
+            <button type="button" @click="saveForLaterFromProduct" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#68a4fe] basis-[48%] text-white capitalize">save for later</button>
           </div>
         </div>
         <div class="product-content-details w-full md:basis-[48%] p-2 sm:p-4 my-2 md:my-4">
@@ -689,6 +766,38 @@ function addToCart(p) {
       </div>
       <p class="description-text text-sm my-4">{{ descriptionText }}</p>
       </section>
+      <!-- Toast (slides near top, below header) -->
+      <div
+        class="fixed z-50 right-4 top-20 md:top-24 transform transition-all duration-300 ease-out"
+        :class="toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'"
+        role="status"
+        aria-live="polite"
+      >
+        <div
+          class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
+          :class="{
+            'bg-emerald-500/90 border-emerald-300': toast.type === 'success',
+            'bg-amber-400/90 border-amber-300 text-black': toast.type === 'warning',
+            'bg-red-600/95 border-red-400': toast.type === 'error'
+          }"
+        >
+          <component
+            :is="toast.type === 'warning' ? ExclamationTriangleIcon : CheckCircleIcon"
+            class="size-6 flex-shrink-0 opacity-95"
+          />
+          <div class="flex-1 pr-2">
+            <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-md/0 p-1 hover:opacity-80 focus:outline-none"
+            aria-label="Dismiss notification"
+            @click="hideToast"
+          >
+            <XMarkIcon class="size-5" />
+          </button>
+        </div>
+      </div>
       <section class="related-products px-[4%] mx-auto lg:max-w-[1500px]">
         <div
         class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
