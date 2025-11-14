@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { CheckCircleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -286,31 +287,68 @@ const gotoProduct = (p) => {
   router.push({ name: 'product-page', params: { id: p.id } })
 }
 
-// Add to cart: persist in sessionStorage under both 'cartItems' and 'cartproducts' for compatibility
+// Toast utilities
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.visible = false
+  }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
+// Add to cart: write to 'cartItems' (and mirror to 'cartproducts')
 const addToCart = (p) => {
-  const addToKey = (key) => {
+  try {
+    // Primary cart
+    const raw = sessionStorage.getItem('cartItems')
+    const cart = raw ? JSON.parse(raw) : []
+    const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
+    if (idx >= 0) {
+      // Do not increment; show info toast
+      showToast(`${p.name} is already in the cart`, 'info')
+      // Keep cart unchanged
+      sessionStorage.setItem('cartItems', JSON.stringify(cart))
+    } else {
+      cart.push({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        oldPrice: p.oldPrice ?? null,
+        image: p.image,
+        quantity: 1,
+      })
+      sessionStorage.setItem('cartItems', JSON.stringify(cart))
+      showToast(`${p.name} added to cart`, 'success')
+    }
+    // Mirror to 'cartproducts' without incrementing duplicates
     try {
-      const raw = sessionStorage.getItem(key)
-      const cart = raw ? JSON.parse(raw) : []
-      const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
-      if (idx >= 0) {
-        cart[idx].quantity = (cart[idx].quantity || 1) + 1
-      } else {
-        cart.push({
-          id: p.id,
-          name: p.name,
-          brand: p.brand,
-          price: p.price,
-          oldPrice: p.oldPrice ?? null,
-          image: p.image,
-          quantity: 1,
-        })
+      const raw2 = sessionStorage.getItem('cartproducts')
+      const cart2 = raw2 ? JSON.parse(raw2) : []
+      const idx2 = Array.isArray(cart2) ? cart2.findIndex(it => it.id === p.id) : -1
+      if (idx2 === -1) {
+        // add only when newly added to cartItems
+        if (idx === -1) {
+          cart2.push({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            price: p.price,
+            oldPrice: p.oldPrice ?? null,
+            image: p.image,
+            quantity: 1,
+          })
+        }
       }
-      sessionStorage.setItem(key, JSON.stringify(cart))
+      sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
     } catch {}
-  }
-  addToKey('cartItems')
-  addToKey('cartproducts')
+  } catch {}
 }
 </script>
 
@@ -527,5 +565,33 @@ const addToCart = (p) => {
         </div>
       </section>
     </main>
+    <!-- Toast (slides near top, below header) -->
+    <div
+      class="fixed z-50 right-4 top-20 md:top-24 transform transition-all duration-300 ease-out"
+      :class="toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
+        :class="{
+          'bg-emerald-500/90 border-emerald-300': toast.type === 'success' || toast.type === 'info',
+          'bg-red-600/95 border-red-400': toast.type === 'error'
+        }"
+      >
+        <CheckCircleIcon class="size-6 flex-shrink-0 opacity-95" />
+        <div class="flex-1 pr-2">
+          <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center rounded-md/0 p-1 hover:opacity-80 focus:outline-none"
+          aria-label="Dismiss notification"
+          @click="hideToast"
+        >
+          <XMarkIcon class="size-5" />
+        </button>
+      </div>
+    </div>
     <Footer/>
 </template>

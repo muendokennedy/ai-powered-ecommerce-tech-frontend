@@ -73,21 +73,52 @@ function resolveImg(p) {
   if (!p) return ''
   // External or data URLs
   if (/^(https?:)?\/\//.test(p) || /^data:/.test(p)) return p
-  // Public assets (served from /public)
-  if (p.startsWith('/images/') || p.startsWith('/img/') || p.startsWith('/assets/')) return p
-  // Convert common aliases to a relative path from this file
-  let cleaned = p
-  if (p.startsWith('/src/')) {
-    // from project root to this file: src/views/Client -> ../../
-    cleaned = p.replace(/^\/src\//, '../../')
-  } else if (p.startsWith('@/')) {
-    cleaned = p.replace(/^@\//, '../../')
-  }
-  try {
-    return new URL(cleaned, import.meta.url).href
-  } catch (_e) {
-    return p // fallback to original
-  }
+    if (typeof p !== 'string') return ''
+    // Already absolute (http/https or data URIs)
+    if (/^(https?:)?\/\//.test(p) || p.startsWith('data:')) return p
+    // Normalize slashes
+    let path = p.replace(/\\/g, '/').trim()
+    // Remove leading './' or '../'
+    path = path.replace(/^\.\/+/, '')
+    while (path.startsWith('../')) path = path.slice(3)
+
+    // Unify common aliases/prefixes to /src/assets
+    // Examples we may see:
+    // - '@/assets/...'
+    // - 'src/assets/...'
+    // - '/src/assets/...'
+    // - 'assets/...'
+    // - '/assets/...'
+    // - erroneously '/src/views/assets/...'
+    if (path.startsWith('@/')) path = path.replace('@/', 'src/')
+    // Fix erroneous '/src/views/...'
+    path = path.replace(/^src\/views\//, 'src/')
+    path = path.replace(/^\/src\/views\//, '/src/')
+
+    // Ensure we end up under src/assets
+    if (path.startsWith('/src/assets/')) {
+      // ok
+    } else if (path.startsWith('src/assets/')) {
+      path = '/' + path
+    } else if (path.startsWith('/assets/')) {
+      path = '/src' + path
+    } else if (path.startsWith('assets/')) {
+      path = '/src/' + path
+    } else if (path.startsWith('/src/')) {
+      // already under /src but not assets — leave as-is
+    } else if (path.startsWith('src/')) {
+      path = '/' + path
+    } else {
+      // bare filename or unknown: assume under /src/assets/images or /src/assets root
+      // Prefer placing under /src/assets/ without forcing images/ to avoid wrong subdirs
+      path = '/src/assets/' + path.replace(/^\//, '')
+    }
+
+    try {
+      return new URL(path, import.meta.url).href
+    } catch (e) {
+      return path
+    }
 }
 
 

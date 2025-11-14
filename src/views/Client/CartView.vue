@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
+import { PlusIcon, MinusIcon, StarIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 const router = useRouter()
 
@@ -125,11 +125,9 @@ function wishlistRemove(it) {
 }
 
 function wishlistAddToCart(it) {
-  // Add to cart (increment if exists)
+  // Add to cart (no duplicate increment)
   const idx = cartItems.value.findIndex(x => x.id === it.id)
-  if (idx >= 0) {
-    cartItems.value[idx].quantity = (cartItems.value[idx].quantity || 1) + 1
-  } else {
+  if (idx === -1) {
     cartItems.value.push({
       id: it.id,
       name: it.name,
@@ -139,18 +137,38 @@ function wishlistAddToCart(it) {
       image: it.image,
       quantity: 1,
     })
+    showToast(`${it.name} added to cart`, 'success')
+  } else {
+    showToast(`${it.name} is already in the cart`, 'info')
   }
   saveCart()
   // Remove from wishlist
   wishlistRemove(it)
 }
 
-// Quick add to cart from recommendations
+// Toast utilities
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.visible = false
+  }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
+// Quick add to cart from recommendations (no duplicate increment)
 function addToCartQuick(it) {
   const idx = cartItems.value.findIndex(x => x.id === it.id)
   if (idx >= 0) {
-    cartItems.value[idx].quantity = (cartItems.value[idx].quantity || 1) + 1
-  } else {
+    showToast(`${it.name} is already in the cart`, 'info')
+    return
+  }
+  {
     cartItems.value.push({
       id: it.id,
       name: it.name,
@@ -162,25 +180,27 @@ function addToCartQuick(it) {
     })
   }
   saveCart()
+  showToast(`${it.name} added to cart`, 'success')
 }
 function resolveImg(p) {
-
-  console.log(p)
-  // Normalize to '/src/assets/...'
-  // const fallback = '../../src/assets/images/redmi note 12.png'
-  // if (!p) return fallback
-  // if (/^(https?:)\/\//.test(p) || /^data:/.test(p)) return p
+  if (!p || typeof p !== 'string') return ''
+  // External or data URLs
+  if (/^(https?:)?\/\//.test(p) || p.startsWith('data:')) return p
+  // Normalize slashes and trim
+  let path = p.replace(/\\/g, '/').trim()
+  // Fix erroneous '/src/views/' to '/src/'
+  path = path.replace('/src/views/', '/src/')
   // Already absolute to src
-  if (p.startsWith('/src/')) return p
+  if (path.startsWith('/src/')) return path
   // Alias to src
-  if (p.startsWith('@/')) return p.replace(/^@\//, '/src/')
+  if (path.startsWith('@/')) return path.replace(/^@\//, '/src/')
   // Public assets patterns
-  if (p.startsWith('/assets/') || p.startsWith('/images/') || p.startsWith('/img/')) return `/src${p}`
+  if (path.startsWith('/assets/') || path.startsWith('/images/') || path.startsWith('/img/')) return `/src${path}`
   // Relative paths containing assets/ -> coerce to /src/assets/...
-  const idx = p.indexOf('assets/')
-  if (idx !== -1) return `/src/${p.slice(idx)}`
-  // As a last resort, return as-is
-  return p
+  const idx = path.indexOf('assets/')
+  if (idx !== -1) return `/src/${path.slice(idx)}`
+  // As a last resort, return normalized original
+  return path
 }
 
 // Method to handle proceed to checkout
@@ -399,5 +419,33 @@ const proceedToCheckout = () => {
       </div>
       </section>
     </main>
+    <!-- Toast (slides near top, below header) -->
+    <div
+      class="fixed z-50 right-4 top-20 md:top-24 transform transition-all duration-300 ease-out"
+      :class="toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
+        :class="{
+          'bg-emerald-500/90 border-emerald-300': toast.type === 'success' || toast.type === 'info',
+          'bg-red-600/95 border-red-400': toast.type === 'error'
+        }"
+      >
+        <CheckCircleIcon class="size-6 flex-shrink-0 opacity-95" />
+        <div class="flex-1 pr-2">
+          <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center rounded-md/0 p-1 hover:opacity-80 focus:outline-none"
+          aria-label="Dismiss notification"
+          @click="hideToast"
+        >
+          <XMarkIcon class="size-5" />
+        </button>
+      </div>
+    </div>
     <Footer/>
 </template>
