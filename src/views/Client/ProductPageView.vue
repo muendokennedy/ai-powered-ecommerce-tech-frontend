@@ -673,14 +673,24 @@ function hideToast() {
 // Save current product for later (wishlist)
 function saveForLaterFromProduct() {
   try {
-    const raw = sessionStorage.getItem('wishlistItems')
-    const wish = raw ? JSON.parse(raw) : []
     const p = product.value
     if (!p) return
-    const idx = Array.isArray(wish) ? wish.findIndex((it) => it.id === p.id) : -1
-    if (idx >= 0) {
-      showToast(`${p.name} is already in your wishlist`, 'warning')
-    } else {
+    const rawWish = sessionStorage.getItem('wishlistItems')
+    const rawCart = sessionStorage.getItem('cartItems')
+    const wish = rawWish ? JSON.parse(rawWish) : []
+    const cart = rawCart ? JSON.parse(rawCart) : []
+
+    const inCartIdx = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) : -1
+    const inWishIdx = Array.isArray(wish) ? wish.findIndex((it) => it.id === p.id) : -1
+
+    // If in cart, remove it from cart
+    if (inCartIdx >= 0) {
+      const updatedCart = cart.filter((it) => it.id !== p.id)
+      sessionStorage.setItem('cartItems', JSON.stringify(updatedCart))
+    }
+
+    // Ensure it exists in wishlist
+    if (inWishIdx === -1) {
       const entry = {
         id: p.id,
         name: p.name,
@@ -692,15 +702,24 @@ function saveForLaterFromProduct() {
       const next = Array.isArray(wish) ? [...wish, entry] : [entry]
       sessionStorage.setItem('wishlistItems', JSON.stringify(next))
       showToast(`${p.name} saved for later`, 'success')
+    } else {
+      // Already in wishlist; if it was also in cart, we removed it above
+      if (inCartIdx >= 0) {
+        showToast(`${p.name} moved to wishlist`, 'success')
+      } else {
+        showToast(`${p.name} is already in your wishlist`, 'warning')
+      }
     }
-  } catch {}
+  } catch {
+    // ignore
+  }
 }
 </script>
 <template>
-    <Header/>
-    <main class="menu-toggle">
-      <section class="product-home mt-16 px-[4%] mx-auto lg:max-w-[1500px]">
-        <div
+  <Header/>
+  <main class="menu-toggle">
+    <section class="product-home mt-16 px-[4%] mx-auto lg:max-w-[1500px]">
+      <div
         class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
       >
         <span class="text-[#68A4FE] px-2">product</span> page
