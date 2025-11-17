@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
+import { StarIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
@@ -450,22 +450,37 @@ onMounted(() => {
 
 function resolveImg(path) {
   if (!path) return ''
-  // Normalize various possible stored paths to /src/assets/images
-  let p = path.trim()
-  // If product object stored images array, prefer first
-  if (Array.isArray(path)) {
-    p = path[0] || ''
-  }
-  // Strip leading public or src views segments
-  p = p.replace(/\\/g, '/').replace(/^(public\/|src\/views\/|src\/)/i, '')
+  // Accept arrays (prefer first) or strings
+  let p = Array.isArray(path) ? (path[0] || '') : String(path)
+  p = p.trim().replace(/\\/g, '/')
+
   // If already an absolute URL or data URI, return as-is
   if (/^(https?:)?\/\//i.test(p) || /^data:/i.test(p)) return p
-  // Ensure images path prefix
-  if (!p.startsWith('assets/') && !p.startsWith('images/')) {
-    p = p.replace(/^assets\/images\//, 'images/')
-    if (!p.startsWith('images/')) p = 'images/' + p
+
+  // Remove current origin if it's been inlined accidentally
+  const originEsc = window.location.origin.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
+  p = p.replace(new RegExp('^' + originEsc), '')
+
+  // Strip leading slashes
+  p = p.replace(/^\/+/, '')
+
+  // Collapse duplicated src/assets/images prefixes anywhere in the string
+  p = p.replace(/(^|\/)src\/assets\/images\//ig, '$1images/')
+  p = p.replace(/^src\/assets\//i, '')
+  p = p.replace(/^assets\//i, '')
+  p = p.replace(/^public\//i, '')
+  p = p.replace(/^src\/views\//i, '')
+
+  // Ensure `images/` prefix
+  if (!/^images\//i.test(p)) {
+    // if it's like assets/images/foo after previous steps, normalize
+    p = p.replace(/^assets\/images\//i, 'images/')
+    if (!/^images\//i.test(p)) p = 'images/' + p
   }
-  return '/src/assets/' + p.replace(/^images\//, 'images/')
+
+  // Build absolute URL to match Vite dev served path
+  const finalPath = '/src/assets/' + p.replace(/^images\//i, 'images/')
+  return new URL(finalPath, window.location.origin).toString()
 }
 
 // Router
@@ -1045,11 +1060,15 @@ function getInternationalPhone() {
     <div class="bg-white rounded-lg w-full max-w-2xl mx-4 shadow-2xl overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b">
         <h3 class="text-xl font-semibold text-[#384857]">Review and place your order</h3>
-        <button @click="showOrderSummaryModal = false" class="text-gray-500 hover:text-gray-700">
-          <span aria-hidden>×</span>
+        <button
+          @click="showOrderSummaryModal = false"
+          class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100"
+          aria-label="Close"
+        >
+          <XMarkIcon class="w-5 h-5"/>
         </button>
       </div>
-      <div class="p-6 space-y-6 max-h-[70vh] overflow-auto">
+      <div class="p-6 space-y-6 max-h-[55vh] overflow-auto">
         <!-- Personal Info -->
         <section>
           <h4 class="text-[#384857] font-semibold mb-2">Personal information</h4>
