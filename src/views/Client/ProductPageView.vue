@@ -603,21 +603,22 @@ function addToCart(p) {
   try {
     const raw = sessionStorage.getItem('cartItems')
     const cart = raw ? JSON.parse(raw) : []
-    const idx = cart.findIndex((it) => it.id === p.id)
-    if (idx >= 0) {
-      cart[idx].quantity = (cart[idx].quantity || 1) + 1
-    } else {
-      cart.push({
-        id: p.id,
-        name: p.name,
-        brand: p.brand,
-        price: p.price,
-        oldPrice: p.oldPrice || null,
-        image: p.image,
-        quantity: 1,
-      })
+    const exists = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) >= 0 : false
+    if (exists) {
+      showToast(`${p.name} is already in the cart`, 'warning')
+      return
     }
+    cart.push({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      price: p.price,
+      oldPrice: p.oldPrice || null,
+      image: p.image,
+      quantity: 1,
+    })
     sessionStorage.setItem('cartItems', JSON.stringify(cart))
+    showToast(`${p.name} added to cart`, 'success')
   } catch {}
 }
 
