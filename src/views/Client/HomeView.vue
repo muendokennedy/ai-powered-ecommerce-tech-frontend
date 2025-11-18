@@ -5,51 +5,6 @@ import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { ChevronRightIcon, ChevronLeftIcon, StarIcon } from '@heroicons/vue/24/solid'
 
-const slides = ref([
-      {
-        title: "Mobile Ready",
-        product: "Xiaomi Redmi Note 4",
-        description: "The Redmi 8A Dual Comes With AI Portrait Mode And AI Scene Detection",
-        image: "/src/assets/images/redmi note 12.png",
-        bgColor: "bg-[#536474]",
-      },
-      {
-        title: "Mobile Ready",
-        product: "Techno Spark 10P",
-        description: "The Redmi 8A Dual Comes With AI Portrait Mode And AI Scene Detection",
-        image: "/src/assets/images/redmi note 12.png",
-        bgColor: "bg-[#28a9c9]",
-      },
-      {
-        title: "Mobile Ready",
-        product: "Samsung Galaxy A50",
-        description: "The Redmi 8A Dual Comes With AI Portrait Mode And AI Scene Detection",
-        image: "/src/assets/images/redmi note 12.png",
-        bgColor: "bg-[#b237be]",
-      },
-    ]);
-
-    const currentIndex = ref(0);
-
-    const next = () => {
-      currentIndex.value = (currentIndex.value + 1) % slides.value.length;
-    };
-
-    const prev = () => {
-      currentIndex.value =
-        (currentIndex.value - 1 + slides.value.length) % slides.value.length;
-    };
-
-    const startAutoPlay = () => {
-      setInterval(() => {
-        next();
-      }, 3000);
-    };
-
-    onMounted(() => {
-      startAutoPlay();
-    });
-
 // Products data (same structure as ProductsView.vue)
 const products = ref([
   // Phones
@@ -253,6 +208,30 @@ const products = ref([
   }
 ])
 
+// Hero slider products: Dell Latitude 5320, Redmi Note 12, iPhone 14
+const heroSlides = computed(() => {
+  const order = ['dell latitude 5320','redmi note 12','iphone 14']
+  const colors = ['bg-[#536474]','bg-[#28a9c9]','bg-[#b237be]']
+  return order.map((name, idx) => {
+    const prod = products.value.find(p => (p.name || '').toLowerCase() === name)
+    if (!prod) return null
+    return {
+      title: 'Mobile Ready',
+      productName: prod.name,
+      description: prod.description,
+      image: prod.image,
+      bgColor: colors[idx] || 'bg-[#536474]',
+      product: prod
+    }
+  }).filter(Boolean)
+})
+
+const currentIndex = ref(0)
+const next = () => { currentIndex.value = (currentIndex.value + 1) % heroSlides.value.length }
+const prev = () => { currentIndex.value = (currentIndex.value - 1 + heroSlides.value.length) % heroSlides.value.length }
+const startAutoPlay = () => { setInterval(() => { next() }, 3000) }
+onMounted(() => { startAutoPlay() })
+
 // Derived lists for sections
 const topSales = computed(() => products.value.slice(0, 6))
 const specialOffers = computed(() => products.value.slice(6, 12))
@@ -274,6 +253,14 @@ const specialOffersFiltered = computed(() => filterByBrand(specialOffers.value, 
 const setOfferBrand = (label) => { selectedOfferBrand.value = label }
 const newArrivals = computed(() => products.value.slice(12, 17))
 
+// Promo products (for clickable offer boxes)
+const promoRedmiProduct = computed(() =>
+  products.value.find(p => (p.name || '').toLowerCase().includes('redmi note 12'))
+)
+const promoDellProduct = computed(() =>
+  products.value.find(p => (p.name || '').toLowerCase().includes('dell inspiron'))
+)
+
 // Navigation to product page (same pattern as ProductsView.vue)
 const router = useRouter()
 const gotoProduct = (p) => {
@@ -282,6 +269,8 @@ const gotoProduct = (p) => {
 }
 
 const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
+
+const shopSlide = (slide) => { if (slide?.product) gotoProduct(slide.product) }
 
 </script>
 
@@ -294,7 +283,7 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
     <div
       class="slides flex transition-transform duration-500">
       <section
-        v-for="(slide, index) in slides"
+        v-for="(slide, index) in heroSlides"
         :key="index"
         class="slide home min-h-screen w-full px-[6%] sm:px-[4%] md:pl-[4%] mx-auto scroll-mt-[100px]  flex-col-reverse relative md:flex-row pb-16 md:pb-4"
         :class="[slide.bgColor, {'active': currentIndex === index, '': currentIndex !== index}]"
@@ -304,13 +293,13 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
             {{ slide.title }}
           </h3>
           <h1 class="text-2xl sm:text-3xl text-white font-semibold my-2 sm:my-4">
-            {{ slide.product }}
+            {{ slide.productName }}
           </h1>
           <div class="hero-description text-sm sm:text-lg font-normal text-white mb-6">
             {{ slide.description }}
           </div>
-          <button class="shop-btn text-white text-base sm:text-lg font-semibold bg-[#68A4FE] py-2 sm:py-4 px-8 sm:px-11 rounded-md capitalize cursor-pointer hover:bg-[#3b81eb] transition-all
-           duration-300 ease-in-out">
+          <button @click="shopSlide(slide)" class="shop-btn text-white text-base sm:text-lg font-semibold bg-[#68A4FE] py-2 sm:py-4 px-8 sm:px-11 rounded-md capitalize cursor-pointer hover:bg-[#3b81eb] transition-all
+           duration-300 ease-in-out" aria-label="Shop now: view product details">
             shop now
           </button>
           <span class="text-white my-4 block">up to 50% off</span>
@@ -324,7 +313,7 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
         <!-- Progress Indicators -->
         <div class="progress-container absolute bottom-8 left-1/2 -translate-x-1/2 flex space-x-4">
           <div
-            v-for="(slide, index) in slides"
+            v-for="(slide, index) in heroSlides"
             :key="index"
             class="progress-bar h-3 w-10 sm:w-20 rounded-md"
             :class="currentIndex === index ? 'bg-[#68A4FE]' : 'bg-white'"
@@ -401,7 +390,12 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
         </div>
         <div class="offer-container flex my-4 sm:my-8 gap-6 flex-col sm:flex-row">
           <div
-            class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2"
+            class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2 cursor-pointer hover:shadow-lg transition"
+            role="button" tabindex="0"
+            @click="promoRedmiProduct && gotoProduct(promoRedmiProduct)"
+            @keydown.enter.prevent="promoRedmiProduct && gotoProduct(promoRedmiProduct)"
+            @keydown.space.prevent="promoRedmiProduct && gotoProduct(promoRedmiProduct)"
+            aria-label="View Redmi Note 12 product details"
           >
             <div class="basis-[48%] px-3 sm:px-0">
               <img src="../../assets/images/redmi note 12.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
@@ -418,7 +412,12 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
             </div>
           </div>
           <div
-            class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2"
+            class="offer-box bg-[#ECEEEF] flex flex-col md:flex-row gap-1 md:gap-2 items-center basis-[48%] py-4 px-4 md:p-2 cursor-pointer hover:shadow-lg transition"
+            role="button" tabindex="0"
+            @click="promoDellProduct && gotoProduct(promoDellProduct)"
+            @keydown.enter.prevent="promoDellProduct && gotoProduct(promoDellProduct)"
+            @keydown.space.prevent="promoDellProduct && gotoProduct(promoDellProduct)"
+            aria-label="View Dell Inspiron product details"
           >
             <div class="basis-[48%] px-3 sm:px-0">
               <img src="../../assets/images/dell inspiron.png" alt="A product on offer" class=" scale-50 object-cover md:scale-100"/>
