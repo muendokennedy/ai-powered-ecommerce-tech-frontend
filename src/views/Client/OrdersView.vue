@@ -180,9 +180,8 @@ const getProgressSteps = (status) => {
   }))
 }
 
-const canCancelOrder = (status) => {
-  return !['Delivered', 'Cancelled', 'In Transit'].includes(status)
-}
+// Show cancel button for all statuses except 'Delivered' (and hide on already 'Cancelled')
+const canCancelOrder = (status) => status !== 'Delivered' && status !== 'Cancelled'
 
 const toggleOrderDetails = (orderId) => {
   showOrderDetails.value[orderId] = !showOrderDetails.value[orderId]
@@ -355,6 +354,7 @@ const closeModals = () => {
                   {{ showOrderDetails[order.id] ? 'Hide' : 'View' }} Details
                 </button>
                 <button
+                  v-if="order.status === 'Delivered'"
                   @click="generateReceipt(order)"
                   class="px-4 py-2 bg-[#FFCF10] hover:bg-yellow-500 rounded-md text-white text-center transition-colors duration-300 flex items-center gap-2"
                 >
