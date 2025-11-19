@@ -45,6 +45,7 @@ function loadCart() {
 
 function saveCart() {
   try { sessionStorage.setItem('cartItems', JSON.stringify(cartItems.value)) } catch {}
+  try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
 }
 
 onMounted(() => {

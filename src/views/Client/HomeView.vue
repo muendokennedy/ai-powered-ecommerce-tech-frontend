@@ -325,6 +325,7 @@ const addToCart = (p) => {
       }
       sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
     } catch {}
+    try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
   } catch {}
 }
 

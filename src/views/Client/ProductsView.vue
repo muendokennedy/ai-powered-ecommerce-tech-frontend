@@ -348,6 +348,8 @@ const addToCart = (p) => {
       }
       sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
     } catch {}
+    // Notify header to refresh cart count
+    try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
   } catch {}
 }
 </script>
