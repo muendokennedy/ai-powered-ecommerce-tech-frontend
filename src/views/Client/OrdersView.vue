@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -14,6 +14,9 @@ const showCancelModal = ref(false)
 const currentReceiptOrder = ref(null)
 const orderToCancel = ref(null)
 const isCancelling = ref(false)
+// Barcode & QR refs
+const barcodeRef = ref(null)
+const qrcodeRef = ref(null)
 
 // Sample orders data - replace with actual API call
 const sampleOrders = [
@@ -236,6 +239,43 @@ const closeModals = () => {
   orderToCancel.value = null
   currentReceiptOrder.value = null
 }
+
+// Generate barcode (order number) and QR code (order number) when receipt opens
+const renderCodes = async () => {
+  if (!showReceiptModal.value || !currentReceiptOrder.value) return
+  await nextTick()
+  try {
+    const [{ default: JsBarcode }, QR] = await Promise.all([
+      import('jsbarcode'),
+      import('qrcode')
+    ])
+    if (barcodeRef.value) {
+      barcodeRef.value.innerHTML = ''
+      JsBarcode(barcodeRef.value, String(currentReceiptOrder.value.id), {
+        format: 'CODE128',
+        displayValue: true,
+        fontSize: 10,
+        height: 40,
+        margin: 0
+      })
+    }
+    if (qrcodeRef.value) {
+      const canvas = qrcodeRef.value
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+      await QR.toCanvas(canvas, String(currentReceiptOrder.value.id), {
+        width: 96,
+        margin: 0
+      })
+    }
+  } catch (e) {
+    console.error('Barcode/QR generation failed:', e)
+  }
+}
+
+watch([showReceiptModal, currentReceiptOrder], () => {
+  renderCodes()
+})
 </script>
 
 <template>
@@ -417,7 +457,7 @@ const closeModals = () => {
                   <span class="text-[#384857] font-medium">${{ order.deliveryFee.toFixed(2) }}</span>
                 </div>
                 <div v-if="order.tax > 0" class="flex justify-between text-sm">
-                  <span class="text-gray-600">Tax:</span>
+                  <span class="text-gray-600">VAT:</span>
                   <span class="text-[#384857] font-medium">${{ order.tax.toFixed(2) }}</span>
                 </div>
                 <div class="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
@@ -469,7 +509,7 @@ const closeModals = () => {
     <!-- Receipt Modal -->
     <div 
       v-if="showReceiptModal && currentReceiptOrder" 
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-16 sm:pt-16"
       @click.self="closeModals"
     >
       <div class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -485,95 +525,66 @@ const closeModals = () => {
         </div>
 
         <!-- Receipt Content -->
-        <div class="receipt-content p-6">
-          <!-- Company Info -->
-          <div class="company-info text-center mb-6">
-            <h2 class="text-2xl font-bold text-[#68A4FE] mb-2">MoTech</h2>
-            <p class="text-sm text-gray-600">Electronic Store</p>
-            <p class="text-sm text-gray-600">Thank you for your purchase!</p>
+        <div class="receipt-content p-6 font-mono text-xs leading-5 text-[#222]">
+          <!-- Header Branding -->
+          <div class="text-center mb-3">
+            <h2 class="text-sm font-bold tracking-wide">MOTECH ELECTRONICS</h2>
+            <p class="text-[10px]">VAT NO: P0123456789 | PIN: A123456789B</p>
+            <p class="text-[10px]">Branch: MO TECH VIRTUAL - Nairobi, Kenya</p>
+            <p class="text-[10px]">Tel: 020-1234567 | Thank you for shopping!</p>
           </div>
-
-          <!-- Order Info -->
-          <div class="order-info border-b border-gray-200 pb-4 mb-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <p class="text-sm text-gray-600">Order Number:</p>
-                <p class="font-semibold text-[#384857]">{{ currentReceiptOrder.id }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-600">Order Date:</p>
-                <p class="font-semibold text-[#384857]">{{ formatDate(currentReceiptOrder.orderDate) }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-600">Status:</p>
-                <span 
-                  :class="getStatusClass(currentReceiptOrder.status)"
-                  class="px-2 py-1 rounded text-sm font-medium"
-                >
-                  {{ currentReceiptOrder.status }}
-                </span>
-              </div>
-              <div>
-                <p class="text-sm text-gray-600">Payment Method:</p>
-                <p class="font-semibold text-[#384857] capitalize">{{ currentReceiptOrder.paymentMethod }}</p>
-              </div>
-              <div v-if="currentReceiptOrder.status === 'Delivered' && currentReceiptOrder.deliveredDate">
-                <p class="text-sm text-gray-600">Delivered On:</p>
-                <p class="font-semibold text-green-600">{{ formatDate(currentReceiptOrder.deliveredDate) }}</p>
-              </div>
-              <div v-else-if="currentReceiptOrder.estimatedDelivery">
-                <p class="text-sm text-gray-600">Estimated Delivery:</p>
-                <p class="font-semibold text-[#384857]">{{ formatDate(currentReceiptOrder.estimatedDelivery) }}</p>
-              </div>
-            </div>
+          <div class="divider">------------------------------------</div>
+          <!-- Order & Payment Meta -->
+          <div class="grid grid-cols-2 gap-y-1 mt-2">
+            <p>ORDER#: {{ currentReceiptOrder.id }}</p>
+            <p class="text-right">DATE: {{ formatDate(currentReceiptOrder.orderDate) }}</p>
+            <p>STATUS: {{ currentReceiptOrder.status }}</p>
+            <p class="text-right">PAY: {{ currentReceiptOrder.paymentMethod.toUpperCase() }}</p>
+            <p class="col-span-2">ITEMS: {{ currentReceiptOrder.items.reduce((a, i) => a + i.quantity, 0) }}</p>
+            <p v-if="currentReceiptOrder.status === 'Delivered' && currentReceiptOrder.deliveredDate">DELIVERED: {{ formatDate(currentReceiptOrder.deliveredDate) }}</p>
+            <p v-else-if="currentReceiptOrder.estimatedDelivery" class="col-span-2">EST. DELIVERY: {{ formatDate(currentReceiptOrder.estimatedDelivery) }}</p>
           </div>
-
+          <!-- Barcode for order number -->
+          <div class="mt-2 flex justify-center">
+            <svg ref="barcodeRef" class="max-w-full"></svg>
+          </div>
+          <div class="divider mt-2">------------------------------------</div>
           <!-- Items -->
-          <div class="receipt-items mb-4">
-            <h4 class="font-semibold text-[#384857] mb-3">Items Purchased</h4>
-            <div class="space-y-2">
-              <div 
-                v-for="item in currentReceiptOrder.items" 
-                :key="item.id"
-                class="flex justify-between items-center py-2 border-b border-gray-100"
-              >
-                <div>
-                  <p class="font-medium text-[#384857]">{{ item.name }}</p>
-                  <p class="text-sm text-gray-600">Qty: {{ item.quantity }} × ${{ item.price.toFixed(2) }}</p>
-                </div>
-                <p class="font-semibold text-[#FF412C]">${{ (item.price * item.quantity).toFixed(2) }}</p>
+          <div class="mt-2">
+            <p class="font-bold">ITEMS</p>
+            <div v-for="item in currentReceiptOrder.items" :key="item.id" class="flex justify-between">
+              <div class="w-2/3 pr-2">
+                <p class="truncate capitalize">{{ item.name }}</p>
+                <p class="text-[10px]">Qty {{ item.quantity }} @ ${{ item.price.toFixed(2) }}</p>
+              </div>
+              <div class="text-right w-1/3">
+                <p>${{ (item.price * item.quantity).toFixed(2) }}</p>
               </div>
             </div>
           </div>
-
-          <!-- Receipt Summary -->
-          <div class="receipt-summary border-t border-gray-200 pt-4">
-            <div class="space-y-2">
-              <div class="flex justify-between">
-                <span class="text-gray-600">Subtotal:</span>
-                <span class="text-[#384857]">${{ currentReceiptOrder.subtotal.toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between">
-                <span class="text-gray-600">Delivery Fee:</span>
-                <span class="text-[#384857]">${{ currentReceiptOrder.deliveryFee.toFixed(2) }}</span>
-              </div>
-              <div v-if="currentReceiptOrder.tax > 0" class="flex justify-between">
-                <span class="text-gray-600">Tax:</span>
-                <span class="text-[#384857]">${{ currentReceiptOrder.tax.toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
-                <span class="text-[#384857]">Total Paid:</span>
-                <span class="text-[#FF412C]">${{ currentReceiptOrder.totalAmount.toFixed(2) }}</span>
-              </div>
-            </div>
+          <div class="divider mt-2">------------------------------------</div>
+          <!-- Totals -->
+          <div class="space-y-1">
+            <div class="flex justify-between"><span>SUBTOTAL</span><span>${{ currentReceiptOrder.subtotal.toFixed(2) }}</span></div>
+            <div class="flex justify-between"><span>DELIVERY</span><span>${{ currentReceiptOrder.deliveryFee.toFixed(2) }}</span></div>
+            <div v-if="currentReceiptOrder.tax > 0" class="flex justify-between"><span>VAT</span><span>${{ currentReceiptOrder.tax.toFixed(2) }}</span></div>
+            <div class="divider">------------------------------------</div>
+            <div class="flex justify-between font-bold text-sm"><span>TOTAL PAID</span><span>${{ currentReceiptOrder.totalAmount.toFixed(2) }}</span></div>
           </div>
-
-          <!-- Receipt Footer -->
-          <div class="receipt-footer mt-6 pt-4 border-t border-gray-200 text-center">
-            <p class="text-sm text-gray-600">Delivery Address:</p>
-            <p class="text-sm text-[#384857] mb-4">{{ currentReceiptOrder.deliveryAddress }}</p>
-            <p class="text-xs text-gray-500">Thank you for shopping with MoTech!</p>
+          <div class="divider mt-3">------------------------------------</div>
+          <!-- Address & Footer -->
+          <div class="mt-2">
+            <p class="font-bold">DELIVERY ADDRESS</p>
+            <p class="text-[10px]">{{ currentReceiptOrder.deliveryAddress }}</p>
           </div>
+          <div class="divider mt-2">------------------------------------</div>
+          <p class="text-center text-[10px] tracking-wide">NO CASH VALUE • KEEP FOR YOUR RECORDS</p>
+          <p class="text-center text-[10px]">Powered by MoTech Commerce</p>
+          <!-- QR code at bottom for order number -->
+          <div class="mt-3 flex justify-center">
+            <canvas ref="qrcodeRef" width="96" height="96" class="border border-dashed border-gray-300 p-1"></canvas>
+          </div>
+          <p class="text-center text-[10px] mt-1">Scan for Order#: {{ currentReceiptOrder.id }}</p>
         </div>
 
         <!-- Receipt Actions -->
