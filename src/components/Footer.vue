@@ -52,7 +52,8 @@
             MoTech
           </div>
           <p class="text-sm text-[#8DAFCF]">
-            Eius Vel Sequi Maiores Atque Voluptates Fugiat. Aut Fugit Nobis
+            Your trusted tech shop for phones, laptops, TVs, and wearables —
+            fair prices, fast delivery, and friendly local support.
           </p>
         </div>
         <div class="footer-box flex flex-col">
