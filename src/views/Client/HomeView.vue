@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { ChevronRightIcon, ChevronLeftIcon, StarIcon } from '@heroicons/vue/24/solid'
+import { ChevronRightIcon, ChevronLeftIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 // Products data (same structure as ProductsView.vue)
 const products = ref([
@@ -272,6 +272,62 @@ const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
 
 const shopSlide = (slide) => { if (slide?.product) gotoProduct(slide.product) }
 
+// Toast utilities (match ProductsView behavior)
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toast.value.visible = false }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
+// Add to cart (identical logic to ProductsView)
+const addToCart = (p) => {
+  try {
+    const raw = sessionStorage.getItem('cartItems')
+    const cart = raw ? JSON.parse(raw) : []
+    const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
+    if (idx >= 0) {
+      showToast(`${p.name} is already in the cart`, 'warning')
+      sessionStorage.setItem('cartItems', JSON.stringify(cart))
+    } else {
+      cart.push({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        oldPrice: p.oldPrice ?? null,
+        image: p.image,
+        quantity: 1,
+      })
+      sessionStorage.setItem('cartItems', JSON.stringify(cart))
+      showToast(`${p.name} added to cart`, 'success')
+    }
+    // Mirror to 'cartproducts' when newly added
+    try {
+      const raw2 = sessionStorage.getItem('cartproducts')
+      const cart2 = raw2 ? JSON.parse(raw2) : []
+      const idx2 = Array.isArray(cart2) ? cart2.findIndex(it => it.id === p.id) : -1
+      if (idx2 === -1 && idx === -1) {
+        cart2.push({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          price: p.price,
+          oldPrice: p.oldPrice ?? null,
+          image: p.image,
+          quantity: 1,
+        })
+      }
+      sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
+    } catch {}
+  } catch {}
+}
+
 </script>
 
 <template>
@@ -351,7 +407,7 @@ const shopSlide = (slide) => { if (slide?.product) gotoProduct(slide.product) }
               <StarIcon class="inline size-4 sm:size-5 text-[#FFCF10]" v-for="i in p.rating" :key="i" />
             </div>
             <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
       </section>
@@ -385,7 +441,7 @@ const shopSlide = (slide) => { if (slide?.product) gotoProduct(slide.product) }
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
         <div class="offer-container flex my-4 sm:my-8 gap-6 flex-col sm:flex-row">
@@ -453,11 +509,43 @@ const shopSlide = (slide) => { if (slide?.product) gotoProduct(slide.product) }
               <StarIcon class="inline size-4 sm:size-5 text-[#FFCF10]" v-for="i in p.rating" :key="i" />
             </div>
             <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
-            <button class="add-cart-btn text-xs">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
           </div>
         </div>
       </section>
     </main>
+    <!-- Toast (slides near top, below header) -->
+    <div
+      class="fixed z-50 right-4 top-20 md:top-24 transform transition-all duration-300 ease-out"
+      :class="toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
+        :class="{
+          'bg-emerald-500/90 border-emerald-300': toast.type === 'success',
+          'bg-amber-400/90 border-amber-300 text-black': toast.type === 'warning',
+          'bg-red-600/95 border-red-400': toast.type === 'error'
+        }"
+      >
+        <component
+          :is="toast.type === 'warning' ? ExclamationTriangleIcon : CheckCircleIcon"
+          class="size-6 flex-shrink-0 opacity-95"
+        />
+        <div class="flex-1 pr-2">
+          <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center rounded-md/0 p-1 hover:opacity-80 focus:outline-none"
+          aria-label="Dismiss notification"
+          @click="hideToast"
+        >
+          <XMarkIcon class="size-5" />
+        </button>
+      </div>
+    </div>
     <Footer/>
 </template>
 
