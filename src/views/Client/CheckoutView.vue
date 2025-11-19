@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { StarIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
+import { StarIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
@@ -429,28 +429,68 @@ function validatePaymentDetails() {
   return true
 }
 
-// Order items (you can replace this with props or store data)
-const orderItems = ref([
-  {
-    id: 1,
-    name: 'redmi note 12',
-    brand: 'From redmi',
-    price: 316,
-    quantity: 2,
-    image: '/src/assets/images/redmi note 12.png',
-    rating: 5,
-    reviews: '100,450 Ratings'
+// Load cart items from session storage (populated in CartView / Product actions)
+const orderItems = ref([])
+
+function loadCartItems() {
+  const raw = sessionStorage.getItem('cartItems')
+  let parsed = []
+  if (raw) {
+    try { parsed = JSON.parse(raw) || [] } catch (_) { parsed = [] }
   }
-])
+  // Ensure each item has a quantity (default 1) and keep shape consistent
+  orderItems.value = Array.isArray(parsed)
+    ? parsed.map(p => ({ ...p, quantity: p.quantity || 1 }))
+    : []
+}
+
+onMounted(() => {
+  loadCartItems()
+})
+
+function resolveImg(path) {
+  if (!path) return ''
+  // Accept arrays (prefer first) or strings
+  let p = Array.isArray(path) ? (path[0] || '') : String(path)
+  p = p.trim().replace(/\\/g, '/')
+
+  // If already an absolute URL or data URI, return as-is
+  if (/^(https?:)?\/\//i.test(p) || /^data:/i.test(p)) return p
+
+  // Remove current origin if it's been inlined accidentally
+  const originEsc = window.location.origin.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')
+  p = p.replace(new RegExp('^' + originEsc), '')
+
+  // Strip leading slashes
+  p = p.replace(/^\/+/, '')
+
+  // Collapse duplicated src/assets/images prefixes anywhere in the string
+  p = p.replace(/(^|\/)src\/assets\/images\//ig, '$1images/')
+  p = p.replace(/^src\/assets\//i, '')
+  p = p.replace(/^assets\//i, '')
+  p = p.replace(/^public\//i, '')
+  p = p.replace(/^src\/views\//i, '')
+
+  // Ensure `images/` prefix
+  if (!/^images\//i.test(p)) {
+    // if it's like assets/images/foo after previous steps, normalize
+    p = p.replace(/^assets\/images\//i, 'images/')
+    if (!/^images\//i.test(p)) p = 'images/' + p
+  }
+
+  // Build absolute URL to match Vite dev served path
+  const finalPath = '/src/assets/' + p.replace(/^images\//i, 'images/')
+  return new URL(finalPath, window.location.origin).toString()
+}
 
 // Router
 const router = useRouter()
 
-// Totals
-const subtotal = orderItems.value.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-const shipping = 15
-const tax = Math.round(subtotal * 0.08)
-const total = subtotal + shipping + tax
+// Reactive totals
+const subtotal = computed(() => orderItems.value.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0))
+const shipping = computed(() => orderItems.value.length ? 15 : 0)
+const tax = computed(() => Math.round(subtotal.value * 0.08))
+const total = computed(() => subtotal.value + shipping.value + tax.value)
 
 // Order summary for modal
 const orderSummary = computed(() => ({
@@ -461,7 +501,7 @@ const orderSummary = computed(() => ({
   },
   location: { ...userLocation.value },
   payment: selectedPaymentMethod.value,
-  totals: { subtotal, shipping, tax, total },
+  totals: { subtotal: subtotal.value, shipping: shipping.value, tax: tax.value, total: total.value },
   items: orderItems.value
 }))
 
@@ -770,13 +810,14 @@ function getInternationalPhone() {
             </h2>
             
             <div class="order-items p-4 space-y-4">
-              <div 
-                v-for="item in orderItems" 
+              <div v-if="!orderItems.length" class="text-sm text-gray-600 italic">No items in cart.</div>
+              <div
+                v-for="item in orderItems"
                 :key="item.id"
                 class="order-item flex items-center gap-4 pb-4 border-b border-gray-200"
               >
-                <img 
-                  :src="item.image" 
+                <img
+                  :src="resolveImg(item.image)"
                   :alt="item.name"
                   class="w-16 h-16 object-contain"
                 />
@@ -785,7 +826,7 @@ function getInternationalPhone() {
                     {{ item.name }}
                   </div>
                   <div class="product-brand text-xs text-gray-600">{{ item.brand }}</div>
-                  <div class="rating-box flex gap-1 items-center mt-1">
+                  <div class="rating-box flex gap-1 items-center mt-1" v-if="item.rating">
                     <div class="star-box text-[#FFCF10]">
                       <StarIcon class="size-3 inline" v-for="n in item.rating" :key="n"></StarIcon>
                     </div>
@@ -795,7 +836,7 @@ function getInternationalPhone() {
                   </div>
                 </div>
                 <div class="item-total text-[#FF412C] font-semibold">
-                  ${{ item.price * item.quantity }}
+                  ${{ (item.price * item.quantity).toFixed(2) }}
                 </div>
               </div>
             </div>
@@ -803,20 +844,20 @@ function getInternationalPhone() {
             <div class="order-totals p-4 space-y-3">
               <div class="subtotal flex justify-between text-[#384857]">
                 <span>Subtotal:</span>
-                <span>${{ subtotal }}</span>
+                <span>${{ subtotal.toFixed(2) }}</span>
               </div>
               <div class="shipping flex justify-between text-[#384857]">
                 <span>Shipping:</span>
-                <span>${{ shipping }}</span>
+                <span>${{ shipping.toFixed(2) }}</span>
               </div>
               <div class="tax flex justify-between text-[#384857]">
                 <span>Tax:</span>
-                <span>${{ tax }}</span>
+                <span>${{ tax.toFixed(2) }}</span>
               </div>
               <div class="border-t pt-3">
                 <div class="total flex justify-between text-[#384857] font-semibold text-lg">
                   <span>Total:</span>
-                  <span class="text-[#FF412C]">${{ total }}</span>
+                  <span class="text-[#FF412C]">${{ total.toFixed(2) }}</span>
                 </div>
               </div>
             </div>
@@ -1019,11 +1060,15 @@ function getInternationalPhone() {
     <div class="bg-white rounded-lg w-full max-w-2xl mx-4 shadow-2xl overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b">
         <h3 class="text-xl font-semibold text-[#384857]">Review and place your order</h3>
-        <button @click="showOrderSummaryModal = false" class="text-gray-500 hover:text-gray-700">
-          <span aria-hidden>×</span>
+        <button
+          @click="showOrderSummaryModal = false"
+          class="text-gray-500 hover:text-gray-700 p-2 rounded-md hover:bg-gray-100"
+          aria-label="Close"
+        >
+          <XMarkIcon class="w-5 h-5"/>
         </button>
       </div>
-      <div class="p-6 space-y-6 max-h-[70vh] overflow-auto">
+      <div class="p-6 space-y-6 max-h-[55vh] overflow-auto">
         <!-- Personal Info -->
         <section>
           <h4 class="text-[#384857] font-semibold mb-2">Personal information</h4>

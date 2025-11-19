@@ -4,10 +4,12 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 const route = useRoute()
 const router = useRouter()
 const product = ref(null)
+const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
 const activeImage = ref('')
 const galleryImages = ref([])
 
@@ -73,21 +75,52 @@ function resolveImg(p) {
   if (!p) return ''
   // External or data URLs
   if (/^(https?:)?\/\//.test(p) || /^data:/.test(p)) return p
-  // Public assets (served from /public)
-  if (p.startsWith('/images/') || p.startsWith('/img/') || p.startsWith('/assets/')) return p
-  // Convert common aliases to a relative path from this file
-  let cleaned = p
-  if (p.startsWith('/src/')) {
-    // from project root to this file: src/views/Client -> ../../
-    cleaned = p.replace(/^\/src\//, '../../')
-  } else if (p.startsWith('@/')) {
-    cleaned = p.replace(/^@\//, '../../')
-  }
-  try {
-    return new URL(cleaned, import.meta.url).href
-  } catch (_e) {
-    return p // fallback to original
-  }
+    if (typeof p !== 'string') return ''
+    // Already absolute (http/https or data URIs)
+    if (/^(https?:)?\/\//.test(p) || p.startsWith('data:')) return p
+    // Normalize slashes
+    let path = p.replace(/\\/g, '/').trim()
+    // Remove leading './' or '../'
+    path = path.replace(/^\.\/+/, '')
+    while (path.startsWith('../')) path = path.slice(3)
+
+    // Unify common aliases/prefixes to /src/assets
+    // Examples we may see:
+    // - '@/assets/...'
+    // - 'src/assets/...'
+    // - '/src/assets/...'
+    // - 'assets/...'
+    // - '/assets/...'
+    // - erroneously '/src/views/assets/...'
+    if (path.startsWith('@/')) path = path.replace('@/', 'src/')
+    // Fix erroneous '/src/views/...'
+    path = path.replace(/^src\/views\//, 'src/')
+    path = path.replace(/^\/src\/views\//, '/src/')
+
+    // Ensure we end up under src/assets
+    if (path.startsWith('/src/assets/')) {
+      // ok
+    } else if (path.startsWith('src/assets/')) {
+      path = '/' + path
+    } else if (path.startsWith('/assets/')) {
+      path = '/src' + path
+    } else if (path.startsWith('assets/')) {
+      path = '/src/' + path
+    } else if (path.startsWith('/src/')) {
+      // already under /src but not assets — leave as-is
+    } else if (path.startsWith('src/')) {
+      path = '/' + path
+    } else {
+      // bare filename or unknown: assume under /src/assets/images or /src/assets root
+      // Prefer placing under /src/assets/ without forcing images/ to avoid wrong subdirs
+      path = '/src/assets/' + path.replace(/^\//, '')
+    }
+
+    try {
+      return new URL(path, import.meta.url).href
+    } catch (e) {
+      return path
+    }
 }
 
 
@@ -570,29 +603,124 @@ function addToCart(p) {
   try {
     const raw = sessionStorage.getItem('cartItems')
     const cart = raw ? JSON.parse(raw) : []
-    const idx = cart.findIndex((it) => it.id === p.id)
-    if (idx >= 0) {
-      cart[idx].quantity = (cart[idx].quantity || 1) + 1
-    } else {
-      cart.push({
+    const exists = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) >= 0 : false
+    if (exists) {
+      showToast(`${p.name} is already in the cart`, 'warning')
+      return
+    }
+    cart.push({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      price: p.price,
+      oldPrice: p.oldPrice || null,
+      image: p.image,
+      quantity: 1,
+    })
+    sessionStorage.setItem('cartItems', JSON.stringify(cart))
+    showToast(`${p.name} added to cart`, 'success')
+  } catch {}
+}
+
+function proceedToBuy() {
+  if (!product.value) return
+  // Behave exactly like add to cart (no navigation)
+  // Capture name before mutation for message
+  const name = product.value.name || 'Item'
+  // Check current cart for duplicates before adding
+  try {
+    const raw = sessionStorage.getItem('cartItems')
+    const cart = raw ? JSON.parse(raw) : []
+    if (Array.isArray(cart)) {
+      const exists = cart.findIndex(it => it.id === product.value.id) >= 0
+      if (exists) {
+        showToast(`${name} is already in the cart`, 'warning')
+        return
+      }
+    }
+  } catch {}
+  // Not in cart: add then remove from wishlist if present
+  addToCart(product.value)
+  try {
+    const rawWish = sessionStorage.getItem('wishlistItems')
+    if (rawWish) {
+      const wishArr = JSON.parse(rawWish)
+      if (Array.isArray(wishArr)) {
+        const filtered = wishArr.filter(w => w.id !== product.value.id)
+        if (filtered.length !== wishArr.length) {
+          sessionStorage.setItem('wishlistItems', JSON.stringify(filtered))
+        }
+      }
+    }
+  } catch {}
+  showToast(`${name} added to cart`, 'success')
+}
+
+// Toast utilities (success/warning/error)
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.visible = false
+  }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
+// Save current product for later (wishlist)
+function saveForLaterFromProduct() {
+  try {
+    const p = product.value
+    if (!p) return
+    const rawWish = sessionStorage.getItem('wishlistItems')
+    const rawCart = sessionStorage.getItem('cartItems')
+    const wish = rawWish ? JSON.parse(rawWish) : []
+    const cart = rawCart ? JSON.parse(rawCart) : []
+
+    const inCartIdx = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) : -1
+    const inWishIdx = Array.isArray(wish) ? wish.findIndex((it) => it.id === p.id) : -1
+
+    // If in cart, remove it from cart
+    if (inCartIdx >= 0) {
+      const updatedCart = cart.filter((it) => it.id !== p.id)
+      sessionStorage.setItem('cartItems', JSON.stringify(updatedCart))
+    }
+
+    // Ensure it exists in wishlist
+    if (inWishIdx === -1) {
+      const entry = {
         id: p.id,
         name: p.name,
         brand: p.brand,
         price: p.price,
         oldPrice: p.oldPrice || null,
         image: p.image,
-        quantity: 1,
-      })
+      }
+      const next = Array.isArray(wish) ? [...wish, entry] : [entry]
+      sessionStorage.setItem('wishlistItems', JSON.stringify(next))
+      showToast(`${p.name} saved for later`, 'success')
+    } else {
+      // Already in wishlist; if it was also in cart, we removed it above
+      if (inCartIdx >= 0) {
+        showToast(`${p.name} moved to wishlist`, 'success')
+      } else {
+        showToast(`${p.name} is already in your wishlist`, 'warning')
+      }
     }
-    sessionStorage.setItem('cartItems', JSON.stringify(cart))
-  } catch {}
+  } catch {
+    // ignore
+  }
 }
 </script>
 <template>
-    <Header/>
-    <main class="menu-toggle">
-      <section class="product-home mt-16 px-[4%] mx-auto lg:max-w-[1500px]">
-        <div
+  <Header/>
+  <main class="menu-toggle">
+    <section class="product-home mt-16 px-[4%] mx-auto lg:max-w-[1500px]">
+      <div
         class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
       >
         <span class="text-[#68A4FE] px-2">product</span> page
@@ -615,8 +743,8 @@ function addToCart(p) {
             </button>
           </div>
           <div class="action-button-container my-4 sm:my-8 flex w-full justify-between">
-            <button type="submit" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#ffcf10] basis-[48%] capitalize">Proceed to buy</button>
-            <button type="submit" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#68a4fe] basis-[48%] text-white capitalize">save for later</button>
+            <button type="button" @click="proceedToBuy" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#ffcf10] basis-[48%] capitalize">Proceed to buy</button>
+            <button type="button" @click="saveForLaterFromProduct" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#68a4fe] basis-[48%] text-white capitalize">save for later</button>
           </div>
         </div>
         <div class="product-content-details w-full md:basis-[48%] p-2 sm:p-4 my-2 md:my-4">
@@ -658,6 +786,38 @@ function addToCart(p) {
       </div>
       <p class="description-text text-sm my-4">{{ descriptionText }}</p>
       </section>
+      <!-- Toast (slides near top, below header) -->
+      <div
+        class="fixed z-50 right-4 top-20 md:top-24 transform transition-all duration-300 ease-out"
+        :class="toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'"
+        role="status"
+        aria-live="polite"
+      >
+        <div
+          class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
+          :class="{
+            'bg-emerald-500/90 border-emerald-300': toast.type === 'success',
+            'bg-amber-400/90 border-amber-300 text-black': toast.type === 'warning',
+            'bg-red-600/95 border-red-400': toast.type === 'error'
+          }"
+        >
+          <component
+            :is="toast.type === 'warning' ? ExclamationTriangleIcon : CheckCircleIcon"
+            class="size-6 flex-shrink-0 opacity-95"
+          />
+          <div class="flex-1 pr-2">
+            <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
+          </div>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-md/0 p-1 hover:opacity-80 focus:outline-none"
+            aria-label="Dismiss notification"
+            @click="hideToast"
+          >
+            <XMarkIcon class="size-5" />
+          </button>
+        </div>
+      </div>
       <section class="related-products px-[4%] mx-auto lg:max-w-[1500px]">
         <div
         class="heading text-[#384857] border-b-2 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"

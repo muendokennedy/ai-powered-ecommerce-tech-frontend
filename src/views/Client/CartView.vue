@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
-import { PlusIcon, MinusIcon, StarIcon } from '@heroicons/vue/24/solid'
+import { PlusIcon, MinusIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 
 const router = useRouter()
 
@@ -13,6 +13,14 @@ const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
 // Reactive cart and wishlist loaded from sessionStorage
 const cartItems = ref([])
 const wishlistItems = ref([])
+// Recommendations for "you may also like"
+const recommendations = ref([
+  { id: 'rec-ph-1', name: 'infinix hot 12', brand: 'Infinix', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
+  { id: 'rec-ph-2', name: 'redmi note 12', brand: 'Xiaomi', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
+  { id: 'rec-ph-3', name: 'iphone 12', brand: 'Apple', image: '/src/assets/images/iphone12.png', price: 699, rating: 5 },
+  { id: 'rec-ph-4', name: 'tecno spark 5', brand: 'Tecno', image: '/src/assets/images/techno spark 5.png', price: 159, rating: 5 },
+  { id: 'rec-ph-5', name: 'redmi 10 2022 pro', brand: 'Xiaomi', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, rating: 5 },
+])
 
 function loadCart() {
   try {
@@ -37,6 +45,7 @@ function loadCart() {
 
 function saveCart() {
   try { sessionStorage.setItem('cartItems', JSON.stringify(cartItems.value)) } catch {}
+  try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
 }
 
 onMounted(() => {
@@ -108,6 +117,9 @@ function saveForLater(it) {
       image: it.image,
     })
     saveWishlist()
+    showToast(`${it.name} saved for later`, 'success')
+  } else {
+    showToast(`${it.name} is already in your wishlist`, 'warning')
   }
 }
 
@@ -117,11 +129,50 @@ function wishlistRemove(it) {
 }
 
 function wishlistAddToCart(it) {
-  // Add to cart (increment if exists)
+  // Add to cart (no duplicate increment)
+  const idx = cartItems.value.findIndex(x => x.id === it.id)
+  if (idx === -1) {
+    cartItems.value.push({
+      id: it.id,
+      name: it.name,
+      brand: it.brand,
+      price: it.price,
+      oldPrice: it.oldPrice ?? null,
+      image: it.image,
+      quantity: 1,
+    })
+    showToast(`${it.name} added to cart`, 'success')
+  } else {
+    showToast(`${it.name} is already in the cart`, 'warning')
+  }
+  saveCart()
+  // Remove from wishlist
+  wishlistRemove(it)
+}
+
+// Toast utilities
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.visible = false
+  }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
+// Quick add to cart from recommendations (no duplicate increment)
+function addToCartQuick(it) {
   const idx = cartItems.value.findIndex(x => x.id === it.id)
   if (idx >= 0) {
-    cartItems.value[idx].quantity = (cartItems.value[idx].quantity || 1) + 1
-  } else {
+    showToast(`${it.name} is already in the cart`, 'warning')
+    return
+  }
+  {
     cartItems.value.push({
       id: it.id,
       name: it.name,
@@ -133,27 +184,27 @@ function wishlistAddToCart(it) {
     })
   }
   saveCart()
-  // Remove from wishlist
-  wishlistRemove(it)
+  showToast(`${it.name} added to cart`, 'success')
 }
 function resolveImg(p) {
-
-  console.log(p)
-  // Normalize to '/src/assets/...'
-  // const fallback = '../../src/assets/images/redmi note 12.png'
-  // if (!p) return fallback
-  // if (/^(https?:)\/\//.test(p) || /^data:/.test(p)) return p
+  if (!p || typeof p !== 'string') return ''
+  // External or data URLs
+  if (/^(https?:)?\/\//.test(p) || p.startsWith('data:')) return p
+  // Normalize slashes and trim
+  let path = p.replace(/\\/g, '/').trim()
+  // Fix erroneous '/src/views/' to '/src/'
+  path = path.replace('/src/views/', '/src/')
   // Already absolute to src
-  if (p.startsWith('/src/')) return p
+  if (path.startsWith('/src/')) return path
   // Alias to src
-  if (p.startsWith('@/')) return p.replace(/^@\//, '/src/')
+  if (path.startsWith('@/')) return path.replace(/^@\//, '/src/')
   // Public assets patterns
-  if (p.startsWith('/assets/') || p.startsWith('/images/') || p.startsWith('/img/')) return `/src${p}`
+  if (path.startsWith('/assets/') || path.startsWith('/images/') || path.startsWith('/img/')) return `/src${path}`
   // Relative paths containing assets/ -> coerce to /src/assets/...
-  const idx = p.indexOf('assets/')
-  if (idx !== -1) return `/src/${p.slice(idx)}`
-  // As a last resort, return as-is
-  return p
+  const idx = path.indexOf('assets/')
+  if (idx !== -1) return `/src/${path.slice(idx)}`
+  // As a last resort, return normalized original
+  return path
 }
 
 // Method to handle proceed to checkout
@@ -350,103 +401,59 @@ const proceedToCheckout = () => {
         you may also<span class="text-[#68A4FE] px-2"> like</span>
       </div>
       <div class="top-sales-container grid mx-auto w-[95%]">
-        <div class="product-box text-center my-2 sm:my-4">
+        <div
+          v-for="rec in recommendations"
+          :key="rec.id"
+          class="product-box text-center my-2 sm:my-4"
+        >
           <div class="flex justify-center items-center">
             <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
+              <img :src="resolveImg(rec.image)" :alt="rec.name" />
             </div>
           </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
+          <div class="product-title text-sm font-normal sm:font-semibold capitalize">
+            {{ rec.name }}
           </div>
           <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
+            <i v-for="i in (rec.rating || 0)" :key="`r-${rec.id}-${i}`" class="fa-solid fa-star"></i>
           </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
-        </div>
-        <div class="product-box text-center my-2 sm:my-4">
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img src="../assets/images/redmi note 12.png" alt="A mobile phone"/>
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold">
-            infinix hot 12
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-            <i class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">$136</div>
-          <button class="add-cart-btn text-xs">add to cart</button>
+          <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(rec.price) }}</div>
+          <button class="add-cart-btn text-xs" @click="addToCartQuick(rec)">add to cart</button>
         </div>
       </div>
       </section>
     </main>
+    <!-- Toast (slides near top, below header) -->
+    <div
+      class="fixed z-50 right-4 top-20 md:top-24 transform transition-all duration-300 ease-out"
+      :class="toast.visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'"
+      role="status"
+      aria-live="polite"
+    >
+      <div
+        class="min-w-[260px] max-w-[420px] px-4 py-3 rounded-lg shadow-xl text-white border flex items-start gap-3 backdrop-blur-sm"
+        :class="{
+          'bg-emerald-500/90 border-emerald-300': toast.type === 'success',
+          'bg-amber-400/90 border-amber-300 text-black': toast.type === 'warning',
+          'bg-red-600/95 border-red-400': toast.type === 'error'
+        }"
+      >
+        <component
+          :is="toast.type === 'warning' ? ExclamationTriangleIcon : CheckCircleIcon"
+          class="size-6 flex-shrink-0 opacity-95"
+        />
+        <div class="flex-1 pr-2">
+          <p class="text-sm leading-5 font-medium">{{ toast.message }}</p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center rounded-md/0 p-1 hover:opacity-80 focus:outline-none"
+          aria-label="Dismiss notification"
+          @click="hideToast"
+        >
+          <XMarkIcon class="size-5" />
+        </button>
+      </div>
+    </div>
     <Footer/>
 </template>

@@ -1,9 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Bars3BottomLeftIcon, ShoppingCartIcon } from '@heroicons/vue/24/solid'
 
 const show = ref(false)
 const isLoggedIn = ref(false)
+const cartCount = ref(0)
 
 // Check login status
 const checkLoginStatus = () => {
@@ -14,7 +15,31 @@ onMounted(() => {
   checkLoginStatus()
   // Listen for storage changes to update login status across tabs
   window.addEventListener('storage', checkLoginStatus)
+  // Initialize cart count and subscribe to updates
+  updateCartCount()
+  window.addEventListener('storage', updateCartCount)
+  window.addEventListener('cart-updated', updateCartCount)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') updateCartCount()
+  })
 })
+
+onUnmounted(() => {
+  window.removeEventListener('storage', checkLoginStatus)
+  window.removeEventListener('storage', updateCartCount)
+  window.removeEventListener('cart-updated', updateCartCount)
+})
+
+// Update cart count from sessionStorage (unique items only)
+function updateCartCount() {
+  try {
+    const raw = sessionStorage.getItem('cartItems')
+    const cart = raw ? JSON.parse(raw) : []
+    cartCount.value = Array.isArray(cart) ? cart.length : 0
+  } catch {
+    cartCount.value = 0
+  }
+}
 
 </script>
 
@@ -32,7 +57,7 @@ onMounted(() => {
                 <router-link :to="{name: 'products'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Products</router-link>
                 <router-link v-if="isLoggedIn" :to="{name: 'orders'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">My Orders</router-link>
                 <router-link :to="{name: 'contact'}" class="block py-4 px-6  text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">contact</router-link>
-                <router-link :to="{name: 'cart'}" class="cart-link  flex items-center text-white capitalize ease-in-ou gap-8 px-6 mt-4">cart<span class="cart-btn p-2"><ShoppingCartIcon class="size-6"></ShoppingCartIcon><span class="count right-4 bottom-0 top-7">0</span></span></router-link>
+                <router-link :to="{name: 'cart'}" class="cart-link  flex items-center text-white capitalize ease-in-ou gap-8 px-6 mt-4">cart<span class="cart-btn p-2"><ShoppingCartIcon class="size-6"></ShoppingCartIcon><span class="count right-4 bottom-0 top-7">{{ cartCount }}</span></span></router-link>
             </div>
         </Transition>
         <nav class="primary-navigation-bar flex items-center justify-between">
@@ -41,7 +66,7 @@ onMounted(() => {
           <router-link :to="{name: 'products'}" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">Products</router-link>
           <router-link v-if="isLoggedIn" :to="{name: 'orders'}" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">My Orders</router-link>
           <router-link :to="{name: 'contact'}" class="py-4 px-3 text-white capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out">contact</router-link>
-          <router-link :to="{name: 'cart'}" class="cart-link flex items-center px-0 text-white capitalize ease-in-out">cart<span class="cart-btn p-2"><ShoppingCartIcon class="size-6 cart-icon"></ShoppingCartIcon><span class="count right-4 bottom-0 top-7">0</span></span></router-link>
+          <router-link :to="{name: 'cart'}" class="cart-link flex items-center px-0 text-white capitalize ease-in-out">cart<span class="cart-btn p-2"><ShoppingCartIcon class="size-6 cart-icon"></ShoppingCartIcon><span class="count right-4 bottom-0 top-7">{{ cartCount }}</span></span></router-link>
         </nav>
       </section>
     </header>
