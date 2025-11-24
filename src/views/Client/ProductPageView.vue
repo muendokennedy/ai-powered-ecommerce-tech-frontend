@@ -618,6 +618,26 @@ function addToCart(p) {
       quantity: 1,
     })
     sessionStorage.setItem('cartItems', JSON.stringify(cart))
+    // Mirror to 'cartproducts' if newly added (match ProductsView/HomeView behavior)
+    try {
+      const raw2 = sessionStorage.getItem('cartproducts')
+      const cart2 = raw2 ? JSON.parse(raw2) : []
+      const exists2 = Array.isArray(cart2) ? cart2.findIndex(it => it.id === p.id) >= 0 : false
+      if (!exists2) {
+        cart2.push({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          price: p.price,
+          oldPrice: p.oldPrice || null,
+          image: p.image,
+          quantity: 1,
+        })
+        sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
+      }
+    } catch {}
+    // Dispatch custom event so Header updates live
+    try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
     showToast(`${p.name} added to cart`, 'success')
   } catch {}
 }
@@ -641,6 +661,7 @@ function proceedToBuy() {
   } catch {}
   // Not in cart: add then remove from wishlist if present
   addToCart(product.value)
+  // Header will update via cart-updated event dispatched in addToCart
   try {
     const rawWish = sessionStorage.getItem('wishlistItems')
     if (rawWish) {
