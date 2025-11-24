@@ -5,12 +5,13 @@ import { jsPDF } from 'jspdf'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 // html2canvas/html-to-image removed to revert to stable manual jsPDF layout
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { ShoppingBagIcon, EyeIcon, DocumentTextIcon, XMarkIcon, ArrowLongRightIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const route = useRoute()
 const isLoading = ref(true)
 const orders = ref([])
 const showOrderDetails = ref({})
@@ -24,124 +25,35 @@ const receiptRef = ref(null)
 const barcodeRef = ref(null)
 const qrcodeRef = ref(null)
 
-// Sample orders data - replace with actual API call
-const sampleOrders = [
-  {
-    id: 'ORD-2025-001',
-    orderDate: '2025-09-10T10:30:00Z',
-    status: 'Delivered',
-    items: [
-      {
-        id: 1,
-        name: 'iPhone 14',
-        price: 999.99,
-        quantity: 1,
-        image: '/src/assets/images/iphone14.png'
-      },
-      {
-        id: 2,
-        name: 'Dell Inspiron Laptop',
-        price: 799.99,
-        quantity: 1,
-        image: '/src/assets/images/dell inspiron.png'
-      }
-    ],
-    subtotal: 1799.98,
-    deliveryFee: 15.00,
-    tax: 144.00,
-    totalAmount: 1958.98,
-    deliveryAddress: '123 Main St, Nairobi, Kenya',
-    paymentMethod: 'visa',
-    deliveredDate: '2025-09-12T14:30:00Z',
-    trackingNumber: null // Delivered orders don't need active tracking
-  },
-  {
-    id: 'ORD-2025-002',
-    orderDate: '2025-09-11T14:15:00Z',
-    status: 'In Transit',
-    items: [
-      {
-        id: 3,
-        name: 'Redmi Note 12',
-        price: 299.99,
-        quantity: 2,
-        image: '/src/assets/images/redmi note 12.png'
-      }
-    ],
-    subtotal: 599.98,
-    deliveryFee: 10.00,
-    tax: 48.00,
-    totalAmount: 657.98,
-    deliveryAddress: '456 Oak Ave, Mombasa, Kenya',
-    paymentMethod: 'm-pesa',
-    estimatedDelivery: '2025-09-15T00:00:00Z',
-    trackingNumber: 'TRK987654321'
-  },
-  {
-    id: 'ORD-2025-003',
-    orderDate: '2025-09-11T16:45:00Z',
-    status: 'Processing',
-    items: [
-      {
-        id: 4,
-        name: 'HP Laptop 15 CI7',
-        price: 899.99,
-        quantity: 1,
-        image: '/src/assets/images/hp laptop 15 ci7.png'
-      }
-    ],
-    subtotal: 899.99,
-    deliveryFee: 12.00,
-    tax: 72.00,
-    totalAmount: 983.99,
-    deliveryAddress: '789 Pine St, Kisumu, Kenya',
-    paymentMethod: 'paypal',
-    estimatedDelivery: '2025-09-16T00:00:00Z',
-    trackingNumber: 'TRK456789123'
-  },
-  {
-    id: 'ORD-2025-004',
-    orderDate: '2025-09-11T18:30:00Z',
-    status: 'Pending',
-    items: [
-      {
-        id: 5,
-        name: 'Infinix Smart 7 Plus',
-        price: 199.99,
-        quantity: 1,
-        image: '/src/assets/images/infinix smart 7 plus.png'
-      }
-    ],
-    subtotal: 199.99,
-    deliveryFee: 8.00,
-    tax: 16.00,
-    totalAmount: 223.99,
-    deliveryAddress: '321 Cedar Ave, Eldoret, Kenya',
-    paymentMethod: 'visa',
-    estimatedDelivery: '2025-09-17T00:00:00Z',
-    trackingNumber: null // Pending orders don't have tracking yet
-  }
-]
+// Orders now loaded dynamically from localStorage 'orders'.
 
 onMounted(async () => {
-  // Check if user is logged in
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   if (!isLoggedIn) {
     router.push({ path: '/login', query: { returnTo: '/orders' } })
     return
   }
-  
   await loadOrders()
+  const newId = route?.query?.newId
+  if (newId && typeof newId === 'string') {
+    showOrderDetails.value[newId] = true
+    await nextTick()
+    const el = document.querySelector(`[data-order-id="${newId}"]`)
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 })
 
 const loadOrders = async () => {
   try {
     isLoading.value = true
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // For now, use sample data
-    orders.value = sampleOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+    const raw = localStorage.getItem('orders')
+    let parsed = []
+    if (raw) {
+      try { parsed = JSON.parse(raw) || [] } catch { parsed = [] }
+    }
+    if (!Array.isArray(parsed)) parsed = []
+    // Sort newest first
+    orders.value = parsed.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
   } catch (error) {
     console.error('Error loading orders:', error)
   } finally {
@@ -531,6 +443,7 @@ watch([showReceiptModal, currentReceiptOrder], () => {
         <div 
           v-for="order in orders" 
           :key="order.id" 
+          :data-order-id="order.id"
           class="order-box flex flex-col justify-between p-4 w-full border-b-2 border-gray-300 my-4 text-[#384857]"
         >
           <!-- Order Header -->
