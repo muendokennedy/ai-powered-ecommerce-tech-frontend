@@ -1,5 +1,10 @@
 <script setup>
 import { ref, onMounted, watch, nextTick } from 'vue'
+// Static imports to avoid dynamic import fetch errors during PDF generation
+import { jsPDF } from 'jspdf'
+import JsBarcode from 'jsbarcode'
+import QRCode from 'qrcode'
+// html2canvas/html-to-image removed to revert to stable manual jsPDF layout
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -14,7 +19,8 @@ const showCancelModal = ref(false)
 const currentReceiptOrder = ref(null)
 const orderToCancel = ref(null)
 const isCancelling = ref(false)
-// Barcode & QR refs
+// Receipt + code refs
+const receiptRef = ref(null)
 const barcodeRef = ref(null)
 const qrcodeRef = ref(null)
 
@@ -147,7 +153,7 @@ const formatDate = (dateString) => {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
@@ -195,11 +201,229 @@ const generateReceipt = (order) => {
   showReceiptModal.value = true
 }
 
-const downloadReceipt = () => {
-  // Only allow PDF download for delivered orders
-  if (currentReceiptOrder.value?.status === 'Delivered') {
-    // In a real app, this would generate a PDF
-    alert('PDF receipt download would be implemented here')
+// Build standalone printable HTML for the given order
+const buildPrintableReceipt = (order) => {
+  if (!order) return '<p>No order selected</p>'
+  const itemRows = order.items.map(it => `
+      <tr>
+        <td style="padding:2px 4px;white-space:nowrap;">${it.name}</td>
+        <td style="padding:2px 4px;text-align:right;">${it.quantity} @ $${it.price.toFixed(2)}</td>
+        <td style="padding:2px 4px;text-align:right;">$${(it.price * it.quantity).toFixed(2)}</td>
+      </tr>`).join('')
+  return `<!DOCTYPE html><html><head><meta charset='utf-8' />
+    <title>Receipt ${order.id}</title>
+    <style>
+      body{font-family:monospace;font-size:12px;line-height:1.25;color:#222;padding:16px;max-width:480px;margin:0 auto;background:#fff;}
+      h1,h2,h3{margin:4px 0;font-weight:700;font-size:14px;text-align:center;}
+      .divider{margin:6px 0;text-align:center;letter-spacing:1px;}
+      table{width:100%;border-collapse:collapse;margin-top:4px;}
+      th{font-weight:700;text-align:left;padding:4px 4px;border-bottom:1px solid #ccc;font-size:11px;}
+      td{font-size:11px;}
+      .totals td{padding:2px 4px;}
+      .totals .label{font-weight:700;}
+      .barcode, .qrcode{display:flex;justify-content:center;margin:8px 0;}
+      .actions{position:sticky;top:0;background:#fff;padding:8px 0;display:flex;gap:8px;justify-content:center;border-bottom:1px solid #eee;}
+      button{font-size:12px;padding:6px 10px;border:1px solid #222;background:#ffcf10;cursor:pointer;border-radius:4px;}
+      button#printBtn{background:#68a4fe;color:#fff;border-color:#68a4fe;}
+      @media print{.actions{display:none;}body{padding:0;margin:0;}}
+    </style>
+  </head><body>
+    <div class='actions'>
+      <button id='printBtn' onclick='window.print()'>Print / Save PDF</button>
+    </div>
+    <h2>MOTECH ELECTRONICS</h2>
+    <div style='text-align:center;font-size:10px;'>VAT NO: P0123456789 | PIN: A123456789B<br/>Branch: MO TECH VIRTUAL - Nairobi, Kenya<br/>Tel: 020-1234567 | Thank you for shopping!</div>
+    <div class='divider'>------------------------------------</div>
+    <div style='display:grid;grid-template-columns:1fr 1fr;row-gap:2px;font-size:11px;'>
+      <div>ORDER#: ${order.id}</div><div style='text-align:right;'>DATE: ${formatDate(order.orderDate)}</div>
+      <div>STATUS: ${order.status}</div><div style='text-align:right;'>PAY: ${order.paymentMethod.toUpperCase()}</div>
+      <div style='grid-column:1/3;'>ITEMS: ${order.items.reduce((a,i)=>a+i.quantity,0)}</div>
+      ${order.status === 'Delivered' && order.deliveredDate ? `<div style='grid-column:1/3;'>DELIVERED: ${formatDate(order.deliveredDate)}</div>` : (order.estimatedDelivery ? `<div style='grid-column:1/3;'>EST. DELIVERY: ${formatDate(order.estimatedDelivery)}</div>` : '')}
+    </div>
+    <div class='barcode'><svg id='barcode'></svg></div>
+    <div class='divider'>------------------------------------</div>
+    <table>
+      <thead><tr><th>Item</th><th style='text-align:right;'>Qty/Unit</th><th style='text-align:right;'>Total</th></tr></thead>
+      <tbody>${itemRows}</tbody>
+    </table>
+    <div class='divider'>------------------------------------</div>
+    <table class='totals'>
+      <tr><td class='label'>SUBTOTAL</td><td style='text-align:right;'>$${order.subtotal.toFixed(2)}</td></tr>
+      <tr><td class='label'>DELIVERY</td><td style='text-align:right;'>$${order.deliveryFee.toFixed(2)}</td></tr>
+      ${order.tax > 0 ? `<tr><td class='label'>VAT</td><td style='text-align:right;'>$${order.tax.toFixed(2)}</td></tr>` : ''}
+      <tr><td colspan='2'><div class='divider'>------------------------------------</div></td></tr>
+      <tr><td class='label'>TOTAL PAID</td><td style='text-align:right;font-weight:700;'>$${order.totalAmount.toFixed(2)}</td></tr>
+    </table>
+    <div class='divider'>------------------------------------</div>
+    <div style='font-size:11px;'><strong>DELIVERY ADDRESS</strong><br/>${order.deliveryAddress}</div>
+    <div class='divider'>------------------------------------</div>
+    <div class='qrcode'><canvas id='qrcode' width='96' height='96' style='border:1px dashed #ccc;padding:2px;'></canvas></div>
+    <div style='text-align:center;font-size:10px;'>Scan for Order#: ${order.id}</div>
+    <p style='text-align:center;font-size:10px;margin-top:6px;'>NO CASH VALUE • KEEP FOR YOUR RECORDS</p>
+    <p style='text-align:center;font-size:10px;'>Powered by MoTech Commerce</p>
+  </body></html>`
+}
+
+const downloadReceipt = async () => {
+  const order = currentReceiptOrder.value
+  if (!order || order.status !== 'Delivered') return
+  try {
+    // Thermal receipt width (slightly wider to prevent truncation). Increased from 220pt to 260pt (~92mm).
+    const receiptWidth = 260 // pt
+    const margin = 16
+    const lh = 12 // slightly tighter line height for narrow width
+    let y = margin
+
+    // Pre-generate barcode & QR to know image heights
+    let barcodeData = null, barcodeW = 0, barcodeH = 0
+    let qrData = null, qrSize = 0
+    try {
+      const bcCanvas = document.createElement('canvas')
+      JsBarcode(bcCanvas, String(order.id), { format: 'CODE128', displayValue: false, height: 40, margin: 0 })
+      barcodeData = bcCanvas.toDataURL('image/png')
+      // Fit barcode within receipt width minus margins
+      // Allow a slightly wider barcode now that width is larger
+      barcodeW = Math.min(receiptWidth - margin * 2, 200)
+      barcodeH = barcodeW / (bcCanvas.width / bcCanvas.height)
+    } catch {}
+    try {
+      const qrCanvas = document.createElement('canvas')
+      await QRCode.toCanvas(qrCanvas, String(order.id), { width: 96, margin: 0 })
+      qrData = qrCanvas.toDataURL('image/png')
+      qrSize = Math.min(96, receiptWidth - margin * 2)
+    } catch {}
+
+    // Helper to estimate text block height
+    const addLines = (count = 1) => { y += lh * count }
+    const dividerStr = (usable) => '-'.repeat(Math.max(10, Math.floor(usable / 6)))
+
+    // Height calculation pass
+    addLines(4) // header lines
+    addLines(1) // divider
+    addLines(3) // ORDER#/STATUS/ITEMS
+    if (order.status === 'Delivered' && order.deliveredDate) {
+      addLines(1)
+    } else if (order.estimatedDelivery) {
+      addLines(1)
+    }
+    if (barcodeData) { y += 8; y += barcodeH + 12 } // spacing + barcode + bottom space
+    addLines(1) // divider
+    addLines(1) // ITEMS label
+    // Each item: name + qty line
+    addLines(order.items.length * 2)
+    addLines(1) // divider
+    // Totals: subtotal, delivery, maybe VAT, divider, total
+    addLines( (order.tax > 0 ? 5 : 4) )
+    addLines(1) // divider
+    addLines(1) // DELIVERY ADDRESS label
+    addLines( order.deliveryAddress.split('\n').length )
+    addLines(1) // divider
+    if (qrData) { y += 8; y += qrSize + 12; addLines(1) } // scan text line
+    addLines(2) // footer lines
+    const receiptHeight = y + margin
+
+    // Create PDF with computed height
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [receiptWidth, receiptHeight] })
+    const pageWidth = receiptWidth
+    y = margin // reset for actual render
+
+    const divider = () => dividerStr(pageWidth - margin * 2)
+    const drawDivider = () => {
+      // Draw a dashed line across the usable width
+      pdf.setDrawColor(0)
+      pdf.setLineWidth(0.3)
+      const xStart = margin
+      const xEnd = pageWidth - margin
+      const dash = 3 // pt length of dash
+      const gap = 2 // pt gap between dashes
+      for (let x = xStart; x < xEnd; x += dash + gap) {
+        const segEnd = Math.min(x + dash, xEnd)
+        pdf.line(x, y, segEnd, y)
+      }
+      y += lh
+    }
+    const text = (str, size = 10, bold = false, align = 'left') => {
+      pdf.setFont('courier', bold ? 'bold' : 'normal')
+      pdf.setFontSize(size)
+      if (align === 'right') pdf.text(str, pageWidth - margin, y, { align: 'right' })
+      else if (align === 'center') pdf.text(str, pageWidth / 2, y, { align: 'center' })
+      else pdf.text(str, margin, y)
+      y += lh
+    }
+    const leftRight = (l, r, size = 10) => {
+      pdf.setFont('courier', 'normal')
+      pdf.setFontSize(size)
+      pdf.text(l, margin, y)
+      if (r) pdf.text(r, pageWidth - margin, y, { align: 'right' })
+      y += lh
+    }
+
+    // Header
+    text('MOTECH ELECTRONICS', 11, true, 'center')
+    text('VAT NO: P0123456789 | PIN: A123456789B', 8, false, 'center')
+    text('Branch: MO TECH VIRTUAL - Nairobi, Kenya', 8, false, 'center')
+    text('Tel: 020-1234567 | Thank you!', 8, false, 'center')
+    drawDivider()
+
+    // Meta
+    leftRight(`ORDER#: ${order.id}`)
+    leftRight(`DATE: ${formatDate(order.orderDate)}`)
+    leftRight(`STATUS: ${order.status}`)
+    leftRight(`PAY: ${order.paymentMethod.toUpperCase()}`)
+    leftRight(`ITEMS: ${order.items.reduce((a,i)=>a+i.quantity,0)}`, '')
+    if (order.status === 'Delivered' && order.deliveredDate) leftRight(`DELIVERED: ${formatDate(order.deliveredDate)}`, '')
+    else if (order.estimatedDelivery) leftRight(`EST. DELIVERY: ${formatDate(order.estimatedDelivery)}`, '')
+
+    // Barcode
+    if (barcodeData) {
+      y += 8
+      pdf.addImage(barcodeData, 'PNG', (pageWidth - barcodeW) / 2, y, barcodeW, barcodeH)
+      y += barcodeH + 12
+    }
+
+    drawDivider()
+    text('ITEMS', 9, true)
+    order.items.forEach(it => {
+      const total = `$${(it.price * it.quantity).toFixed(2)}`
+      // Wider width allows longer names before truncation
+      const name = it.name.length > 30 ? it.name.slice(0, 29) + '…' : it.name
+      pdf.setFont('courier', 'normal'); pdf.setFontSize(9)
+      pdf.text(name, margin, y)
+      pdf.text(total, pageWidth - margin, y, { align: 'right' })
+      y += lh
+      pdf.text(`Qty ${it.quantity} @ $${it.price.toFixed(2)}`, margin, y)
+      y += lh
+    })
+
+    drawDivider()
+    leftRight('SUBTOTAL', `$${order.subtotal.toFixed(2)}`, 9)
+    leftRight('DELIVERY', `$${order.deliveryFee.toFixed(2)}`, 9)
+    if (order.tax > 0) leftRight('VAT', `$${order.tax.toFixed(2)}`, 9)
+    drawDivider()
+    pdf.setFont('courier', 'bold'); leftRight('TOTAL PAID', `$${order.totalAmount.toFixed(2)}`, 10)
+
+    drawDivider()
+    text('DELIVERY ADDRESS', 9, true)
+    pdf.setFont('courier','normal'); pdf.setFontSize(8)
+    order.deliveryAddress.split('\n').forEach(line => { pdf.text(line, margin, y); y += lh })
+    drawDivider()
+
+    // QR code
+    if (qrData) {
+      y += 8
+      pdf.addImage(qrData, 'PNG', (pageWidth - qrSize) / 2, y, qrSize, qrSize)
+      y += qrSize + 12
+      text(`Scan for Order#: ${order.id}`, 8, false, 'center')
+    }
+
+    text('NO CASH VALUE • KEEP FOR YOUR RECORDS', 8, false, 'center')
+    text('Powered by MoTech Commerce', 8, false, 'center')
+
+    const blob = pdf.output('blob')
+    const url = URL.createObjectURL(blob)
+    const viewer = window.open(url, '_blank'); if (viewer) { try { viewer.focus() } catch {} }
+  } catch (e) {
+    console.error('PDF generation failed:', e)
   }
 }
 
@@ -245,10 +469,6 @@ const renderCodes = async () => {
   if (!showReceiptModal.value || !currentReceiptOrder.value) return
   await nextTick()
   try {
-    const [{ default: JsBarcode }, QR] = await Promise.all([
-      import('jsbarcode'),
-      import('qrcode')
-    ])
     if (barcodeRef.value) {
       barcodeRef.value.innerHTML = ''
       JsBarcode(barcodeRef.value, String(currentReceiptOrder.value.id), {
@@ -263,7 +483,7 @@ const renderCodes = async () => {
       const canvas = qrcodeRef.value
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-      await QR.toCanvas(canvas, String(currentReceiptOrder.value.id), {
+      await QRCode.toCanvas(canvas, String(currentReceiptOrder.value.id), {
         width: 96,
         margin: 0
       })
@@ -525,7 +745,7 @@ watch([showReceiptModal, currentReceiptOrder], () => {
         </div>
 
         <!-- Receipt Content -->
-        <div class="receipt-content p-6 font-mono text-xs leading-5 text-[#222]">
+        <div ref="receiptRef" class="receipt-content p-6 font-mono text-xs leading-5 text-[#222]">
           <!-- Header Branding -->
           <div class="text-center mb-3">
             <h2 class="text-sm font-bold tracking-wide">MOTECH ELECTRONICS</h2>

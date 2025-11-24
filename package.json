@@ -21,6 +21,9 @@
     "jsbarcode": "^3.11.6",
     "pinia": "^3.0.3",
     "qrcode": "^1.5.4",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1",
+    "html-to-image": "^1.11.11",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },
