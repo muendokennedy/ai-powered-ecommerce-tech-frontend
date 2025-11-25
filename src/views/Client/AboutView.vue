@@ -282,8 +282,8 @@ const showFullVision = ref(false)
                 Visa & Mastercard
               </div>
               <div class="payment-method-content text-xs sm:text-sm my-4">
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Dicta,
-                laboriosam.
+                Fast, secure checkout via globally accepted Visa and Mastercard,
+                protecting your card details.
               </div>
               <div class="payment-method-image w-full">
                 <img
@@ -300,8 +300,8 @@ const showFullVision = ref(false)
                 PayPal
               </div>
               <div class="payment-method-content text-xs sm:text-sm my-4">
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Dicta,
-                laboriosam.
+                Pay easily using your PayPal balance or linked cards—no need to
+                re‑enter sensitive details.
               </div>
               <div class="payment-method-image w-full">
                 <img
@@ -318,8 +318,8 @@ const showFullVision = ref(false)
                 M-Pesa
               </div>
               <div class="payment-method-content text-xs sm:text-sm my-4">
-                Lorem ipsum dolor, sit amet consectetur adipisicing elit. Dicta,
-                laboriosam.
+                Instant mobile money payments: confirm the M‑Pesa STK push on phone
+                for quick, secure checkout.
               </div>
               <div class="payment-method-image w-full">
                 <img
