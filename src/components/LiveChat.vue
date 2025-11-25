@@ -67,7 +67,7 @@ function handleKey(e) {
   <button
     @click="toggleChat"
     aria-label="Live chat"
-    class="fixed bottom-4 right-4 z-50 rounded-full shadow-[4px_4px_10px_rgba(56,72,87,0.5)] bg-[#68A4FE] hover:bg-[#384857] text-white w-14 h-14 flex items-center justify-center transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#68A4FE]"
+    class="fixed bottom-4 right-4 z-50 rounded-full shadow-[4px_4px_10px_rgba(56,72,87,0.5)] bg-[#68A4FE] hover:bg-[#384857] text-white w-14 h-14 flex items-center justify-center transition-colors duration-300"
   >
     <span v-if="!isOpen" class="text-xl">
       <ChatBubbleOvalLeftIcon class="w-7 h-7" />
