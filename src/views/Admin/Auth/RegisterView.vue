@@ -1,6 +1,7 @@
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axiosClient from '@/axiosClient'
 
 // Departments aligned with SettingsView
 const departments = ['Operations','Customer Service','Inventory','Marketing']
@@ -130,16 +131,40 @@ const validate = () => {
 
 const onSubmit = async () => {
   const isValid = validate()
-  if (!isValid) {
-    return
-  }
+  if (!isValid) return
 
   loading.value = true
-  setTimeout(async () => {
-    loading.value = false
-    // In a real app, send form + avatar file to API
+  // Build payload expected by backend
+  const payload = {
+    name: form.name,
+    email: form.email,
+    phone: form.phone,
+    department: form.department,
+    location: form.location,
+    password: form.password,
+    password_confirmation: form.confirmPassword,
+    remember: !!form.remember,
+  }
+
+  try {
+    await axiosClient.post('/admin/register', payload)
     await router.push('/admin/dashboard')
-  }, 900)
+  } catch (err) {
+    // Map Laravel validation errors (422)
+    const validation = err?.validation || err?.response?.data?.errors
+    if (validation && typeof validation === 'object') {
+      // Clear previous errors first
+      Object.keys(errors).forEach(k => delete errors[k])
+      for (const [key, msgs] of Object.entries(validation)) {
+        errors[key] = Array.isArray(msgs) ? msgs[0] : String(msgs)
+      }
+    } else {
+      // Fallback generic error
+      errors._general = err?.response?.data?.message || 'Registration failed. Please try again.'
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {

@@ -1,8 +1,9 @@
 
 <script setup>
-import {  reactive } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
+import axiosClient from '@/axiosClient'
 
 const dashboardStats = reactive({
   products: { count: 1247, change: 12.5, trend: 'up' },
@@ -25,6 +26,19 @@ const lowStockProducts = reactive([
   { name: 'Samsung QLED 65"', stock: 2, category: 'TVs' }
 ])
 
+// Fetched admin user
+const adminUser = ref(null)
+
+onMounted(async () => {
+  try {
+    const resp = await axiosClient.get('/api/admin/dashboard')
+    // Expecting JSON like { user: { name, email, ... }, stats?, ... }
+    adminUser.value = resp.data?.user || resp.data || null
+  } catch (e) {
+    // Non-blocking: keep UI functional even if request fails
+    adminUser.value = null
+  }
+})
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -53,6 +67,7 @@ const getStatusColor = (status) => {
         <div class="max-w-7xl mx-auto">
           <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+            <p v-if="adminUser" class="mt-1 text-sm text-gray-600 dark:text-gray-300">Welcome, {{ adminUser.name }} <span class="opacity-70">({{ adminUser.email }})</span></p>
           </div>
 
           <!-- Stats Cards -->
