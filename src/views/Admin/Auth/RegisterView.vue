@@ -136,7 +136,7 @@ const onSubmit = async () => {
   loading.value = true
   // Build payload expected by backend
   const payload = {
-    name: form.name,
+    fullName: form.name,
     email: form.email,
     phone: form.phone,
     department: form.department,
@@ -146,9 +146,11 @@ const onSubmit = async () => {
     remember: !!form.remember,
   }
 
+  console.log(payload)
+
   try {
     await axiosClient.post('/admin/register', payload)
-    await router.push('/admin/dashboard')
+    // await router.push('/admin/dashboard')
   } catch (err) {
     // Map Laravel validation errors (422)
     const validation = err?.validation || err?.response?.data?.errors

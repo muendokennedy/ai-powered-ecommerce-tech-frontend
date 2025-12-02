@@ -33,7 +33,7 @@ onMounted(async () => {
   try {
     const resp = await axiosClient.get('/api/admin/dashboard')
     // Expecting JSON like { user: { name, email, ... }, stats?, ... }
-    adminUser.value = resp.data?.user || resp.data || null
+    adminUser.value = resp.data?.admin || resp.data || null
   } catch (e) {
     // Non-blocking: keep UI functional even if request fails
     adminUser.value = null
@@ -67,7 +67,7 @@ const getStatusColor = (status) => {
         <div class="max-w-7xl mx-auto">
           <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-            <p v-if="adminUser" class="mt-1 text-sm text-gray-600 dark:text-gray-300">Welcome, {{ adminUser.name }} <span class="opacity-70">({{ adminUser.email }})</span></p>
+            <p v-if="adminUser" class="mt-1 text-sm text-gray-600 dark:text-gray-300">Welcome, {{ adminUser.fullName }} <span class="opacity-70">({{ adminUser.email }})</span></p>
           </div>
 
           <!-- Stats Cards -->
