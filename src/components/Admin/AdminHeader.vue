@@ -1,5 +1,28 @@
 <script setup>
+import { onMounted } from 'vue'
+import { useUserStore } from '@/stores/user'
+import axiosClient from '@/axiosClient'
 
+const storedUser = useUserStore()
+
+
+
+onMounted(async () => {
+  if (!storedUser.user) {
+    try {
+      const resp = await axiosClient.get('/api/admin/dashboard')
+      const data = resp?.data || {}
+      const user = data.user || data.admin || data.data || null
+
+      if (user){
+        storedUser.setUser(user) 
+      } 
+    
+    } catch (e) {
+      // silently ignore; header remains without user details
+    }
+  }
+})
 </script>
 <template>
       <!-- Top Navigation -->
@@ -22,8 +45,8 @@
           <!-- Profile -->
           <div class="flex items-center space-x-4">
             <div class="text-right">
-      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Kennedy Muendo</p>
-      <p class="text-xs text-gray-500 dark:text-gray-400">kennedy@admin.com</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ storedUser.user?.fullName }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ storedUser.user?.email }}</p>
             </div>
             <img
               class="h-10 w-10 rounded-full border-2 border-[#042EFF]"

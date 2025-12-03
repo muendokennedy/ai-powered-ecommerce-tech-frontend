@@ -1,9 +1,9 @@
 
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
-import axiosClient from '@/axiosClient'
+import { useUserStore } from '@/stores/user'
 
 const dashboardStats = reactive({
   products: { count: 1247, change: 12.5, trend: 'up' },
@@ -26,19 +26,9 @@ const lowStockProducts = reactive([
   { name: 'Samsung QLED 65"', stock: 2, category: 'TVs' }
 ])
 
-// Fetched admin user
-const adminUser = ref(null)
-
-onMounted(async () => {
-  try {
-    const resp = await axiosClient.get('/api/admin/dashboard')
-    // Expecting JSON like { user: { name, email, ... }, stats?, ... }
-    adminUser.value = resp.data?.admin || resp.data || null
-  } catch (e) {
-    // Non-blocking: keep UI functional even if request fails
-    adminUser.value = null
-  }
-})
+// Admin user from Pinia store
+const userStore = useUserStore()
+const adminUser = userStore.user
 
 const getStatusColor = (status) => {
   switch (status) {

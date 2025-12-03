@@ -2,6 +2,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
+import { useUserStore } from '@/stores/user'
 
 // Departments aligned with SettingsView
 const departments = ['Operations','Customer Service','Inventory','Marketing']
@@ -134,6 +135,7 @@ const onSubmit = async () => {
   if (!isValid) return
 
   loading.value = true
+  const userStore = useUserStore()
   // Build payload expected by backend
   const payload = {
     fullName: form.name,
@@ -146,14 +148,18 @@ const onSubmit = async () => {
     remember: !!form.remember,
   }
 
-  console.log(payload)
-
   try {
-    await axiosClient.post('/admin/register', payload)
-    // await router.push('/admin/dashboard')
+    const res = await axiosClient.post('/admin/register', payload)
+    // const data = res?.data || {}
+    // const user = data.user || data.admin || data.data || null
+    // if (user) {
+    //   userStore.setUser(user)
+    // }
+    await router.push('/admin/dashboard')
   } catch (err) {
     // Map Laravel validation errors (422)
     const validation = err?.validation || err?.response?.data?.errors
+
     if (validation && typeof validation === 'object') {
       // Clear previous errors first
       Object.keys(errors).forEach(k => delete errors[k])
