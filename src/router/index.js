@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/Client/HomeView.vue'
+import { useUserStore } from '@/stores/user'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -125,6 +126,20 @@ const router = createRouter({
       component: () => import('@/views/Admin/Auth/RegisterView.vue')
     }
   ],
+})
+
+// Global admin auth guard using Pinia user store
+router.beforeEach((to, from, next) => {
+  const isAdminRoute = to.path.startsWith('/admin')
+  const isAuthException = to.path === '/admin/login' || to.path === '/admin/register'
+
+  if (isAdminRoute && !isAuthException) {
+    const userStore = useUserStore()
+    if (!userStore.user) {
+      return next({ path: '/admin/login', query: { returnTo: to.fullPath } })
+    }
+  }
+  return next()
 })
 
 export default router

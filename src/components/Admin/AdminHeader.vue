@@ -3,26 +3,16 @@ import { onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import axiosClient from '@/axiosClient'
 
+
 const storedUser = useUserStore()
 
 
-
-onMounted(async () => {
-  if (!storedUser.user) {
-    try {
-      const resp = await axiosClient.get('/api/admin/dashboard')
-      const data = resp?.data || {}
-      const user = data.user || data.admin || data.data || null
-
-      if (user){
-        storedUser.setUser(user) 
-      } 
-    
-    } catch (e) {
-      // silently ignore; header remains without user details
-    }
-  }
+onMounted(() => {
+  storedUser.fetchUser()
 })
+
+
+
 </script>
 <template>
       <!-- Top Navigation -->

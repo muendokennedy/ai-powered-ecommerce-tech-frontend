@@ -1,3 +1,4 @@
+import axiosClient from '@/axiosClient'
 import { defineStore } from 'pinia'
 import {ref, computed}  from 'vue'
 
@@ -7,13 +8,15 @@ export const useUserStore = defineStore('user', () => {
 
   const isAuthenticated = computed(() => !!user.value)
 
-  const setUser = (userData) => {
-    user.value = userData
+  const fetchUser = async () => {
+    const res = await axiosClient.get('/api/admin/dashboard')
+    user.value = res.data.admin
   }
+  
 
   const clearUser = () => {
     user.value = null
   }
 
-  return { user, isAuthenticated, setUser, clearUser }
+  return { user, isAuthenticated, fetchUser, clearUser }
 })
