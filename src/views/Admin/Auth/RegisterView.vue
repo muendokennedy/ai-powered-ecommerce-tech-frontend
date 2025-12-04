@@ -150,11 +150,12 @@ const onSubmit = async () => {
 
   try {
     const res = await axiosClient.post('/admin/register', payload)
-    // const data = res?.data || {}
-    // const user = data.user || data.admin || data.data || null
-    // if (user) {
-    //   userStore.setUser(user)
-    // }
+
+    const userStore = useUserStore()
+    if (typeof userStore.fetchUser === 'function') {
+      try { await userStore.fetchUser() } catch (_) {}
+    }
+    
     await router.push('/admin/dashboard')
   } catch (err) {
     // Map Laravel validation errors (422)
