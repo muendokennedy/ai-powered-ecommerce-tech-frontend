@@ -22,6 +22,11 @@ const recommendations = ref([
   { id: 'rec-ph-5', name: 'redmi 10 2022 pro', brand: 'Xiaomi', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, rating: 5 },
 ])
 
+// Hide recommendations if both cart and wishlist are empty
+const showRecommendations = computed(() => {
+  return cartItems.value.length > 0 || wishlistItems.value.length > 0
+})
+
 function loadCart() {
   try {
     const raw = sessionStorage.getItem('cartItems')
@@ -394,7 +399,7 @@ const proceedToCheckout = () => {
           </div>
         </div>
       </section>
-      <section class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
+      <section v-if="showRecommendations" class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
         <div
         class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
       >

@@ -1,8 +1,12 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import axiosClient from '@/axiosClient'
+import { useUserStore } from '@/stores/user'
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
 
 // Collapsible sidebar state with persistence
 const collapsed = ref(false)
@@ -69,6 +73,17 @@ function onItemEnter(e, text) {
 
 function hideTooltip() {
   tooltipVisible.value = false
+}
+
+async function onLogout() {
+  try {
+    await axiosClient.post('/api/admin/logout')
+  } catch (e) {
+    // ignore errors; we'll still clear local state
+  } finally {
+    userStore.clearUser()
+    router.push('/admin/login')
+  }
 }
 
 </script>
@@ -165,7 +180,7 @@ function hideTooltip() {
             </div>
           </transition>
         </div>
-  <button class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white dark:text-white/80 dark:hover:bg-gray-800 dark:hover:text-white transition-colors">
+  <button @click="onLogout" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white dark:text-white/80 dark:hover:bg-gray-800 dark:hover:text-white transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           <span v-if="!collapsed">Logout</span>
         </button>

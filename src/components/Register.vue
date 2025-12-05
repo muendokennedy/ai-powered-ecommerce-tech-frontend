@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
+import axiosClient from '@/axiosClient'
 
 const router = useRouter()
 
@@ -77,31 +78,40 @@ const validateAllFields = () => {
 }
 
 const handleRegister = async () => {
-  // Reset messages
   errorMessage.value = ''
   successMessage.value = ''
-  
-  // Validate all fields
+  // reset field errors
+  fieldErrors.value = { email: '', password: '', confirmPassword: '' }
+
   if (!validateAllFields()) {
     return
   }
-  
+
   isLoading.value = true
-  
   try {
-    // Simulate API call - replace with actual registration
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Simulate successful registration
+    // Payload expected by Laravel (Fortify/Jetstream default): email, password, password_confirmation
+    const payload = {
+      email: registerForm.value.email,
+      password: registerForm.value.password,
+      password_confirmation: registerForm.value.confirmPassword,
+    }
+
+    // Axios client now handles CSRF cookie + header automatically
+    await axiosClient.post('/register', payload)
+
     successMessage.value = 'Account created successfully! Redirecting to login...'
-    
-    // Wait a moment then redirect to login
-    setTimeout(() => {
-      router.push('/login')
-    }, 2000)
-    
-  } catch (error) {
-    errorMessage.value = 'Registration failed. Please try again.'
+    setTimeout(() => router.push('/login'), 1200)
+  } catch (err) {
+    // Handle validation errors from Laravel (422)
+    const validation = err?.validation || err?.response?.data?.errors
+    if (validation) {
+      if (validation.email && validation.email[0]) fieldErrors.value.email = validation.email[0]
+      if (validation.password && validation.password[0]) fieldErrors.value.password = validation.password[0]
+      if (validation.password_confirmation && validation.password_confirmation[0]) fieldErrors.value.confirmPassword = validation.password_confirmation[0]
+      errorMessage.value = 'Please fix the highlighted fields.'
+    } else {
+      errorMessage.value = err?.response?.data?.message || 'Registration failed. Please try again.'
+    }
   } finally {
     isLoading.value = false
   }

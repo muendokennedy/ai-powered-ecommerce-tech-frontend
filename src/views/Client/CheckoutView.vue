@@ -509,10 +509,62 @@ const placingOrder = ref(false)
 async function placeOrder() {
   try {
     placingOrder.value = true
-    // Simulate payment processing
+    // Simulate payment processing delay
     await new Promise(r => setTimeout(r, 1200))
+
+    // Generate unique order id
+    const now = new Date()
+    const pad2 = (n) => String(n).padStart(2, '0')
+    const idSuffix = String(now.getTime()).slice(-6)
+    const id = `ORD-${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}-${idSuffix}`
+
+    // Compose delivery address from userLocation fields
+    const composeAddress = () => {
+      const v = userLocation.value || {}
+      return [v.address, v.apartment, v.landmark, v.city, v.state, v.postalCode, v.country]
+        .filter(p => p && String(p).trim()).join(', ')
+    }
+
+    // Normalize items
+    const items = orderItems.value.map(it => ({
+      id: it.id,
+      name: it.name,
+      price: it.price,
+      quantity: it.quantity || 1,
+      image: it.image || ''
+    }))
+
+    const order = {
+      id,
+      orderDate: now.toISOString(),
+      status: 'Pending',
+      items,
+      subtotal: Number(subtotal.value || 0),
+      deliveryFee: Number(shipping.value || 0),
+      tax: Number(tax.value || 0),
+      totalAmount: Number(total.value || 0),
+      deliveryAddress: composeAddress(),
+      paymentMethod: selectedPaymentMethod.value || 'unknown',
+      estimatedDelivery: new Date(now.getTime() + 4*24*60*60*1000).toISOString(),
+      trackingNumber: null
+    }
+
+    // Persist to localStorage 'orders'
+    let stored = []
+    try {
+      const raw = localStorage.getItem('orders')
+      if (raw) stored = JSON.parse(raw) || []
+    } catch { stored = [] }
+    if (!Array.isArray(stored)) stored = []
+    stored.push(order)
+    try { localStorage.setItem('orders', JSON.stringify(stored)) } catch {}
+
+    // Clear cart after successful order placement
+    try { sessionStorage.setItem('cartItems', JSON.stringify([])) } catch {}
+
     showOrderSummaryModal.value = false
-    router.push({ name: 'orders' })
+    // Navigate to orders page and auto-expand new order using query param
+    router.push({ name: 'orders', query: { newId: id } })
   } finally {
     placingOrder.value = false
   }

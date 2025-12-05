@@ -1,6 +1,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axiosClient from '@/axiosClient'
+import { useUserStore } from '@/stores/user'
 
 // Form state
 const form = reactive({
@@ -37,12 +39,33 @@ const validate = () => {
 const onSubmit = async () => {
   if (!validate()) return
   loading.value = true
-  // Simulate authentication
-  setTimeout(async () => {
-    loading.value = false
-    // Navigate to dashboard after success
+
+  const payload = {
+    email: form.email,
+    password: form.password,
+    remember: !!form.remember,
+  }
+
+  try {
+    await axiosClient.post('/admin/login', payload)
+    // Fetch the logged-in user from the store before redirecting
+    const userStore = useUserStore()
+    if (typeof userStore.fetchUser === 'function') {
+      try { await userStore.fetchUser() } catch (_) {}
+    }
     await router.push('/admin/dashboard')
-  }, 800)
+  } catch (err) {
+    const validation = err?.validation || err?.response?.data?.errors
+    if (validation && typeof validation === 'object') {
+      errors.email = validation.email ? (Array.isArray(validation.email) ? validation.email[0] : String(validation.email)) : ''
+      errors.password = validation.password ? (Array.isArray(validation.password) ? validation.password[0] : String(validation.password)) : ''
+    } else {
+      const msg = err?.response?.data?.message || 'Login failed. Please check your credentials.'
+      errors.email = msg
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {

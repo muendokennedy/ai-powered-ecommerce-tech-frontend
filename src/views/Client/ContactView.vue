@@ -12,42 +12,17 @@ import Footer from '@/components/Footer.vue'
         get in<span class="text-[#68A4FE] px-2">touch</span>
       </div>
         <div class="contact-text py-4 text-sm sm:text-base">
-          Lorem Ipsum Dolor, Sit Amet Consectetur Adipisicing Elit. Laboriosam,
-          Corrupti Numquam. Nemo Ducimus Voluptate Laboriosam Eaque Soluta
-          Nesciunt Nobis Commodi!
+          Have a question about an order, product compatibility, bulk pricing or partnership? Our support team is here to help. We aim to respond to all messages within 1 business hour (Mon–Sat, 8:00–18:00 EAT). Let us know how we can make your MoTech experience better.
         </div>
         <form action="#" method="POST">
           <div class="contact-form my-2">
             <div class="input-row flex flex-col sm:flex-row justify-between items-center">
-              <div class="input-box w-full sm:basis-[48%] my-2">
-                <label for="name" class="block mb-2 text-sm sm:text-base">Enter your name:</label>
-                <input
-                  type="text"
-                  name="name"
-                  autofocus
-                  id="name"
-                  class="text-sm sm:text-base px-4 py-2 outline-none border-2 rounded-md focus:border-[#68a4fe] w-full transition-all duration-300 ease-in-out"
-                />
-              </div>
-              <div class="input-box w-full sm:basis-[48%] my-2">
+                <div class="input-box w-full sm:basis-[48%] my-2">
                 <label for="email" class="block mb-2 text-sm sm:text-base">Enter your email:</label>
                 <input
                   type="text"
                   name="email"
                   id="email"
-                  class="text-sm sm:text-base px-4 py-2 outline-none border-2 rounded-md focus:border-[#68a4fe] w-full transition-all duration-300 ease-in-out"
-                />
-              </div>
-            </div>
-            <div class="input-row flex flex-col sm:flex-row justify-between items-center">
-              <div class="input-box w-full sm:basis-[48%] my-2">
-                <label for="number" class="block mb-2 text-sm sm:text-base"
-                  >Enter your number:</label
-                >
-                <input
-                  type="text"
-                  name="number"
-                  id="number"
                   class="text-sm sm:text-base px-4 py-2 outline-none border-2 rounded-md focus:border-[#68a4fe] w-full transition-all duration-300 ease-in-out"
                 />
               </div>
@@ -92,13 +67,7 @@ import Footer from '@/components/Footer.vue'
       </div>
         <div class="location-content my-4">
           <div class="location-text text-sm sm:text-base">
-            Iure omnis explicabo praesentium. Aut tenetur enim aperiam quibusdam
-            sunt enim quidem aperiam sit. Quos qui id. Vitae adipisci vitae
-            maxime architecto reiciendis nihil est. Sit maiores quibusdam.
-            Voluptatem dolorem omnis suscipit. Nulla id voluptatem. Sed fugit
-            explicabo dolores quaerat quod voluptatem eos sed. Consequatur optio
-            corporis provident. Sed voluptas mollitia magni expedita dolorem
-            quod qui necessitatibus. Reiciendis sequi est ev eniet sit.
+            Our Nairobi hub coordinates fulfillment, repairs and regional logistics. Walk‑in product demos and pickup are available by prior confirmation. We currently deliver nationwide across Kenya with next‑day service to most urban centers. Parking is available; public transport stops are a short walk away. Operational hours: Mon–Sat 08:00–18:00, limited Sunday support for urgent order issues. For hardware diagnostics, book a slot through support before visiting.
           </div>
           <div class="location-map my-4 h-[24rem] sm:h-[28.125rem]">
             <iframe
@@ -119,8 +88,9 @@ import Footer from '@/components/Footer.vue'
               <i class="fa-solid fa-address-book text-[#536474] text-4xl"></i>
             </div>
             <div class="address-content text-[#536474]">
-              PO BOX 45-78383, <br />
-              Nairobi, Kenya
+              Riverside Drive (Hurlingham),<br />
+              Nairobi, Kenya<br />
+              P.O. Box 4578 – 00300
             </div>
           </div>
           <div
@@ -133,8 +103,8 @@ import Footer from '@/components/Footer.vue'
               <i class="fa-solid fa-envelope text-[#536474] text-4xl"></i>
             </div>
             <div class="address-content text-[#536474]">
-              <p>motech@gmail.com</p>
-              <p>motech117@gmail.com</p>
+              <p>support@motech.co.ke</p>
+              <p>sales@motech.co.ke</p>
             </div>
           </div>
           <div
@@ -147,8 +117,8 @@ import Footer from '@/components/Footer.vue'
               <i class="fa-solid fa-phone text-[#536474] text-4xl"></i>
             </div>
             <div class="address-content text-[#536474]">
-              <p>+123-456-7890</p>
-              <p>+111-222-3333</p>
+              <p>+254 700 123456 (Support)</p>
+              <p>+254 711 654321 (Sales)</p>
             </div>
           </div>
         </div>
