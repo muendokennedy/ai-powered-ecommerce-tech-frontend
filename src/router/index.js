@@ -128,18 +128,24 @@ const router = createRouter({
   ],
 })
 
-// Global admin auth guard using Pinia user store
-router.beforeEach((to, from, next) => {
+// Global admin auth guard using Pinia user store with fetchUser hydration
+router.beforeEach(async (to) => {
   const isAdminRoute = to.path.startsWith('/admin')
   const isAuthException = to.path === '/admin/login' || to.path === '/admin/register'
 
   if (isAdminRoute && !isAuthException) {
     const userStore = useUserStore()
+
+    if (!userStore.user && typeof userStore.fetchUser === 'function') {
+      try { await userStore.fetchUser() } catch (_) {}
+    }
+
     if (!userStore.user) {
-      return next({ path: '/admin/login', query: { returnTo: to.fullPath } })
+      return { path: '/admin/login', query: { returnTo: to.fullPath } }
     }
   }
-  return next()
+
+  return true
 })
 
 export default router

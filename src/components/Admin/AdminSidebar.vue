@@ -77,7 +77,7 @@ function hideTooltip() {
 
 async function onLogout() {
   try {
-    await axiosClient.post('/admin/logout')
+    await axiosClient.post('/api/admin/logout')
   } catch (e) {
     // ignore errors; we'll still clear local state
   } finally {
