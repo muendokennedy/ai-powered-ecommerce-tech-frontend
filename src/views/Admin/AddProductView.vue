@@ -3,6 +3,7 @@ import { reactive, ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
+import axiosClient from '@/axiosClient.js'
 
 const router = useRouter()
 
@@ -264,6 +265,60 @@ const specificationTemplates = {
   }
 }
 
+// Map internal specification keys to human-readable labels per category
+const specificationLabels = {
+  Phones: {
+    storage: 'Storage',
+    ram: 'RAM',
+    displaySize: 'Display Size',
+    camera: 'Camera',
+    battery: 'Battery',
+    operatingSystem: 'Operating System',
+    color: 'Color'
+  },
+  Laptops: {
+    processor: 'Processor',
+    ram: 'RAM',
+    storageType: 'Storage Type',
+    storageSize: 'Storage Size',
+    graphicsCard: 'Graphics Card',
+    displaySize: 'Display Size',
+    operatingSystem: 'Operating System',
+    batteryLife: 'Battery Life'
+  },
+  Televisions: {
+    screenSize: 'Screen Size',
+    resolution: 'Resolution',
+    displayTechnology: 'Display Technology',
+    smartTvOs: 'Smart TV OS',
+    hdrSupport: 'HDR Support',
+    refreshRate: 'Refresh Rate',
+    audioOutput: 'Audio Output'
+  },
+  Smartwatches: {
+    displayType: 'Display Type',
+    caseSize: 'Case Size',
+    operatingSystem: 'Operating System',
+    batteryLife: 'Battery Life',
+    waterResistance: 'Water Resistance',
+    connectivity: 'Connectivity',
+    healthSensors: 'Health Sensors'
+  }
+}
+
+// Convert specs object to labeled key-value pairs for backend storage
+const toLabeledSpecifications = (category, specs) => {
+  const labels = specificationLabels[category] || {}
+  const result = {}
+  Object.entries(specs || {}).forEach(([key, value]) => {
+    const label = labels[key] || key
+    if (value !== undefined && value !== null && value !== '') {
+      result[label] = value
+    }
+  })
+  return result
+}
+
 const categories = ['Phones', 'Laptops', 'Televisions', 'Smartwatches']
 const brands = ['Apple', 'Samsung', 'Dell', 'LG', 'HP', 'Sony', 'Google', 'OnePlus']
 const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG Electronics', 'HP Inc.', 'Sony Corporation']
@@ -394,6 +449,7 @@ const resetForm = () => {
     discountedPrice: '',
     stock: '',
     lowStockThreshold: '10',
+    vatRate: '0.16',
     supplier: '',
     description: '',
     primaryImage: null,
@@ -451,39 +507,42 @@ const addProduct = async () => {
   isSubmitting.value = true
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Generate product data (in real app, this would be handled by backend)
-    const newId = `${newProduct.category.substring(0,2).toUpperCase()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
-    const sku = `${newProduct.brand.substring(0,3).toUpperCase()}-${newProduct.name.substring(0,5).toUpperCase()}-${Math.floor(Math.random() * 1000)}`
+    // Create FormData to handle file uploads
+    const formData = new FormData()
     
-    // Here you would typically send the data to your backend API
-    console.log('Adding product:', {
-      id: newId,
-      name: newProduct.name,
-      brand: newProduct.brand,
-      category: newProduct.category,
-      sku: sku,
-      originalPrice: parseFloat(newProduct.originalPrice),
-      discountedPrice: newProduct.discountedPrice ? parseFloat(newProduct.discountedPrice) : null,
-      finalPrice: parseFloat(finalPrice.value),
-      stock: parseInt(newProduct.stock),
-      lowStockThreshold: parseInt(newProduct.lowStockThreshold) || 10,
-      dateAdded: new Date().toISOString().split('T')[0],
-      supplier: newProduct.supplier,
-      description: newProduct.description,
-      primaryImage: newProduct.primaryImage,
-      secondaryImage: newProduct.secondaryImage,
-      tertiaryImage: newProduct.tertiaryImage,
-      specifications: newProduct.specifications
-    })
+    // Add product data
+    formData.append('name', newProduct.name)
+    formData.append('brand', newProduct.brand)
+    formData.append('description', newProduct.description || '')
+    formData.append('specifications', JSON.stringify(toLabeledSpecifications(newProduct.category, newProduct.specifications)))
+    formData.append('base_price', parseFloat(newProduct.originalPrice))
+    formData.append('discount_price', newProduct.discountedPrice ? parseFloat(newProduct.discountedPrice) : '')
+    formData.append('vat_rate', parseFloat(newProduct.vatRate || 0.16))
+    formData.append('status', 'active')
+    formData.append('stock_quantity', parseInt(newProduct.stock))
+    formData.append('low_stock_threshold', parseInt(newProduct.lowStockThreshold) || 10)
+    
+    // Add images if they exist
+    if (newProduct.primaryImage) {
+      formData.append('primary_image', newProduct.primaryImage)
+    }
+    if (newProduct.secondaryImage) {
+      formData.append('secondary_image', newProduct.secondaryImage)
+    }
+    if (newProduct.tertiaryImage) {
+      formData.append('tertiary_image', newProduct.tertiaryImage)
+    }
+
+    console.log(newProduct.primaryImage instanceof File)
+    
+    // Send POST request to backend
+    const response = await axiosClient.post('/api/admin/product/add', formData)
     
     alert('Product added successfully!')
     router.push('/admin/stock')
   } catch (error) {
     console.error('Error adding product:', error)
-    alert('Error adding product. Please try again.')
+    alert(error.response?.data?.message || 'Error adding product. Please try again.')
   } finally {
     isSubmitting.value = false
   }
@@ -653,6 +712,16 @@ const goBack = () => {
                       min="0"
                       class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
                       placeholder="10"
+                    >
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">VAT</label>
+                    <input 
+                      v-model="newProduct.vatRate"
+                      type="text" 
+                      min="0"
+                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      placeholder="0.16"
                     >
                   </div>
                 </div>
