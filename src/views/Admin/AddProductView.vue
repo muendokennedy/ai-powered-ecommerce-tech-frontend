@@ -513,12 +513,14 @@ const addProduct = async () => {
     // Add product data
     formData.append('name', newProduct.name)
     formData.append('brand', newProduct.brand)
+    formData.append('category', newProduct.category)
+    formData.append('supplier', newProduct.supplier)
     formData.append('description', newProduct.description || '')
     formData.append('specifications', JSON.stringify(toLabeledSpecifications(newProduct.category, newProduct.specifications)))
     formData.append('base_price', parseFloat(newProduct.originalPrice))
     formData.append('discount_price', newProduct.discountedPrice ? parseFloat(newProduct.discountedPrice) : '')
     formData.append('vat_rate', parseFloat(newProduct.vatRate || 0.16))
-    formData.append('status', 'active')
+    formData.append('status', 'in stock')
     formData.append('stock_quantity', parseInt(newProduct.stock))
     formData.append('low_stock_threshold', parseInt(newProduct.lowStockThreshold) || 10)
     
@@ -533,7 +535,6 @@ const addProduct = async () => {
       formData.append('tertiary_image', newProduct.tertiaryImage)
     }
 
-    console.log(newProduct.primaryImage instanceof File)
     
     // Send POST request to backend
     const response = await axiosClient.post('/api/admin/product/add', formData)
