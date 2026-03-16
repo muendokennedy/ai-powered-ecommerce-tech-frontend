@@ -600,6 +600,12 @@ function uniq(arr) {
 
 // Add to cart without navigating; uses sessionStorage 'cartItems'
 function addToCart(p) {
+  const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  isLoggedIn.value = loggedIn
+  if (!loggedIn) {
+    router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
+    return
+  }
   try {
     const raw = sessionStorage.getItem('cartItems')
     const cart = raw ? JSON.parse(raw) : []

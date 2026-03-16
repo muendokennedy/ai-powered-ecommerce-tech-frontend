@@ -105,6 +105,16 @@ function saveWishlist() {
   try { sessionStorage.setItem('wishlistItems', JSON.stringify(wishlistItems.value)) } catch {}
 }
 
+function requireLoginForCartAction() {
+  const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  isLoggedIn.value = loggedIn
+  if (!loggedIn) {
+    router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
+    return true
+  }
+  return false
+}
+
 function saveForLater(it) {
   // Move from cart to wishlist
   // Remove from cart
@@ -134,6 +144,7 @@ function wishlistRemove(it) {
 }
 
 function wishlistAddToCart(it) {
+  if (requireLoginForCartAction()) return
   // Add to cart (no duplicate increment)
   const idx = cartItems.value.findIndex(x => x.id === it.id)
   if (idx === -1) {
@@ -172,6 +183,7 @@ function hideToast() {
 
 // Quick add to cart from recommendations (no duplicate increment)
 function addToCartQuick(it) {
+  if (requireLoginForCartAction()) return
   const idx = cartItems.value.findIndex(x => x.id === it.id)
   if (idx >= 0) {
     showToast(`${it.name} is already in the cart`, 'warning')

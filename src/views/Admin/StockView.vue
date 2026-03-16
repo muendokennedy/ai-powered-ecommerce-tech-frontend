@@ -602,7 +602,7 @@ onMounted(() => {
                         <img :src="getPrimaryProductImage(product)" :alt="product.name" class="h-12 w-12 rounded-lg object-cover mr-4">
                         <div>
                           <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
-                          <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ product.id }}</div>
+                          <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ product.sku }}</div>
                         </div>
                       </div>
                     </td>

@@ -304,6 +304,11 @@ function hideToast() {
 
 // Add to cart: write to 'cartItems' (and mirror to 'cartproducts')
 const addToCart = (p) => {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  if (!isLoggedIn) {
+    router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
+    return
+  }
   try {
     // Primary cart
     const raw = sessionStorage.getItem('cartItems')

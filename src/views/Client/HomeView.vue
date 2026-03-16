@@ -287,6 +287,11 @@ function hideToast() {
 
 // Add to cart (identical logic to ProductsView)
 const addToCart = (p) => {
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+  if (!isLoggedIn) {
+    router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
+    return
+  }
   try {
     const raw = sessionStorage.getItem('cartItems')
     const cart = raw ? JSON.parse(raw) : []

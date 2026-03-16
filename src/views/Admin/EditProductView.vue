@@ -33,6 +33,51 @@ const specificationTemplates = {
   Smartwatches: { size: '', display: '', processor: '', storage: '', battery: '', features: '' }
 }
 
+const getImageUrl = (image) => {
+  if (!image) return ''
+  if (typeof image === 'string') return image
+
+  if (typeof image === 'object') {
+    return (
+      image.url ||
+      image.image ||
+      image.image_path ||
+      image.path ||
+      image.src ||
+      image.image_url ||
+      image.file_path ||
+      ''
+    )
+  }
+
+  return ''
+}
+
+const getImageType = (image) => {
+  if (!image || typeof image !== 'object') return ''
+  return String(image.type || image.image_type || '').trim().toLowerCase()
+}
+
+const getInitialImageSlots = (images) => {
+  const normalized = (Array.isArray(images) ? images : [])
+    .map((image) => ({
+      type: getImageType(image),
+      url: getImageUrl(image)
+    }))
+    .filter((image) => image.url)
+
+  if (!normalized.length) {
+    return [null, null, null]
+  }
+
+  const primary = normalized.find((image) => image.type === 'primary') || normalized[0]
+  const remaining = normalized.filter((image) => image !== primary)
+
+  return [primary?.url || null, remaining[0]?.url || null, remaining[1]?.url || null]
+}
+
+const initialImageSlots = getInitialImageSlots(originalProduct?.images)
+
 // Reactive form replicating AddProduct but prefilled
 const form = reactive({
   id: originalProduct?.id || '',
@@ -44,7 +89,7 @@ const form = reactive({
   lowStockThreshold: originalProduct?.lowStockThreshold || '',
   supplier: originalProduct?.supplier || '',
   description: originalProduct?.description || '',
-  images: Array.isArray(originalProduct?.images) ? [...originalProduct.images] : [],
+  images: [...initialImageSlots],
   specifications: { ...(originalProduct?.specifications || specificationTemplates[originalProduct?.category] || {}) }
 })
 
@@ -155,7 +200,7 @@ function removeImage(slot) {
           <div class="flex items-center justify-between mb-8">
             <div>
               <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center">Edit Product
-                <span class="ml-3 text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 uppercase tracking-wide">ID: {{ form.id }}</span>
+                <span class="ml-3 text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 uppercase tracking-wide">ID: {{ form.product_sku_id }}</span>
               </h1>
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Modify existing product details. Category is locked.</p>
             </div>
