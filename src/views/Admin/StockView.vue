@@ -1,291 +1,346 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axiosClient from '@/axiosClient'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 
 const router = useRouter()
 const searchQuery = ref('')
 const selectedCategory = ref('All')
+const isLoading = ref(false)
+const loadError = ref('')
 
-// Product modal state
 const showProductModal = ref(false)
 const selectedProduct = ref(null)
 const currentImageIndex = ref(0)
 
-// Stock overview by category
-const stockOverview = reactive([
-  { 
-    category: 'Phones', 
-    totalProducts: 45, 
-    inStock: 1247, 
-    lowStock: 5, 
-    outOfStock: 2,
-    totalValue: 523400,
+const products = ref([])
+const stockOverview = ref([])
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+const fallbackImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" fill="none"><rect width="600" height="600" fill="#F3F4F6"/><path d="M188 385l79-96 56 67 39-47 92 116H188z" fill="#D1D5DB"/><circle cx="247" cy="228" r="40" fill="#D1D5DB"/></svg>')}`
+
+const categoryMeta = {
+  phones: {
     color: 'bg-[#042EFF]',
-    icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z"/>`
+    icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z"/>'
   },
-  { 
-    category: 'Laptops', 
-    totalProducts: 32, 
-    inStock: 856, 
-    lowStock: 3, 
-    outOfStock: 1,
-    totalValue: 1234500,
+  laptops: {
     color: 'bg-green-500',
-    icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>`
+    icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>'
   },
-  { 
-    category: 'Televisions', 
-    totalProducts: 18, 
-    inStock: 423, 
-    lowStock: 2, 
-    outOfStock: 0,
-    totalValue: 845600,
+  televisions: {
     color: 'bg-purple-500',
-    icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>`
+    icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>'
   },
-  { 
-    category: 'Smartwatches', 
-    totalProducts: 25, 
-    inStock: 634, 
-    lowStock: 8, 
-    outOfStock: 1,
-    totalValue: 287300,
+  smartwatches: {
     color: 'bg-yellow-500',
-    icon: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>`
+    icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'
   }
-])
+}
 
-// Product inventory data
-const products = reactive([
-  {
-    id: 'PH-001',
-    name: 'iPhone 15 Pro Max',
-    brand: 'Apple',
-    category: 'Phones',
-    sku: 'IPH-15-PM-256',
-    price: 1199,
-    stock: 85,
-    lowStockThreshold: 10,
-    status: 'In Stock',
-    dateAdded: '2024-08-15',
-    supplier: 'Apple Inc.',
-    image: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1512499617640-c74ae3a79d37?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'The most advanced iPhone ever with titanium design, Action Button, and powerful Pro camera system.',
-    specifications: {
-      storage: '256GB',
-      color: 'Natural Titanium',
-      display: '6.7" Super Retina XDR',
-      processor: 'A17 Pro chip',
-      camera: '48MP Main + 12MP Ultra Wide + 12MP Telephoto',
-      battery: 'Up to 29 hours video playback'
-    }
-  },
-  {
-    id: 'PH-002',
-    name: 'Samsung Galaxy S24 Ultra',
-    brand: 'Samsung',
-    category: 'Phones',
-    sku: 'SAM-S24-U-512',
-    price: 1299,
-    stock: 5,
-    lowStockThreshold: 10,
-    status: 'Low Stock',
-    dateAdded: '2024-08-10',
-    supplier: 'Samsung Electronics',
-    image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Ultimate creativity and productivity with built-in S Pen, advanced AI features, and pro-grade camera.',
-    specifications: {
-      storage: '512GB',
-      color: 'Phantom Black',
-      display: '6.8" Dynamic AMOLED 2X',
-      processor: 'Snapdragon 8 Gen 3',
-      camera: '200MP Main + 50MP Periscope + 12MP Ultra Wide + 10MP Telephoto',
-      battery: '5000mAh with 45W fast charging'
-    }
-  },
-  {
-    id: 'LP-001',
-    name: 'MacBook Pro 14"',
-    brand: 'Apple',
-    category: 'Laptops',
-    sku: 'MBP-14-M3-512',
-    price: 2399,
-    stock: 42,
-    lowStockThreshold: 5,
-    status: 'In Stock',
-    dateAdded: '2024-08-20',
-    supplier: 'Apple Inc.',
-    image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Supercharged by M3 chip for incredible performance and all-day battery life in a stunning design.',
-    specifications: {
-      processor: 'Apple M3 chip',
-      memory: '16GB unified memory',
-      storage: '512GB SSD',
-      display: '14.2" Liquid Retina XDR',
-      battery: 'Up to 18 hours',
-      ports: '3x Thunderbolt 4, HDMI, SDXC, MagSafe 3'
-    }
-  },
-  {
-    id: 'LP-002',
-    name: 'Dell XPS 13',
-    brand: 'Dell',
-    category: 'Laptops',
-    sku: 'DELL-XPS-13-I7',
-    price: 1499,
-    stock: 3,
-    lowStockThreshold: 5,
-    status: 'Low Stock',
-    dateAdded: '2024-08-12',
-    supplier: 'Dell Technologies',
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1587614295999-6c1c3a7ebf67?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Ultra-portable laptop with InfinityEdge display and premium materials for professionals on the go.',
-    specifications: {
-      processor: 'Intel Core i7-1360P',
-      memory: '16GB LPDDR5',
-      storage: '512GB PCIe SSD',
-      display: '13.4" FHD+ InfinityEdge',
-      battery: 'Up to 12 hours',
-      weight: '2.59 lbs'
-    }
-  },
-  {
-    id: 'TV-001',
-    name: 'Samsung QLED 65"',
-    brand: 'Samsung',
-    category: 'Televisions',
-    sku: 'SAM-Q65-4K',
-    price: 1899,
-    stock: 2,
-    lowStockThreshold: 3,
-    status: 'Low Stock',
-    dateAdded: '2024-08-18',
-    supplier: 'Samsung Electronics',
-    image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1601944179066-29786cb9d32a?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Premium 4K QLED TV with Quantum Dot technology, HDR10+ support, and smart TV features.',
-    specifications: {
-      display: '65" 4K QLED',
-      resolution: '3840 x 2160',
-      hdr: 'HDR10+, Quantum HDR',
-      smartTV: 'Tizen OS with streaming apps',
-      audio: 'Dolby Atmos, Object Tracking Sound',
-      connectivity: '4x HDMI, 2x USB, Wi-Fi 6'
-    }
-  },
-  {
-    id: 'TV-002',
-    name: 'LG OLED 55"',
-    brand: 'LG',
-    category: 'Televisions',
-    sku: 'LG-OLED-55-C3',
-    price: 1599,
-    stock: 15,
-    lowStockThreshold: 3,
-    status: 'In Stock',
-    dateAdded: '2024-08-22',
-    supplier: 'LG Electronics',
-    image: 'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1593784991095-a205069470b6?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1601944179066-29786cb9d32a?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Self-lit OLED pixels deliver perfect blacks, infinite contrast, and stunning picture quality.',
-    specifications: {
-      display: '55" 4K OLED evo',
-      resolution: '3840 x 2160',
-      hdr: 'Dolby Vision IQ, HDR10 Pro',
-      smartTV: 'webOS 23 with Magic Remote',
-      gaming: 'NVIDIA G-SYNC, AMD FreeSync Premium',
-      audio: 'Dolby Atmos, AI Sound Pro'
-    }
-  },
-  {
-    id: 'SW-001',
-    name: 'Apple Watch Series 9',
-    brand: 'Apple',
-    category: 'Smartwatches',
-    sku: 'AW-S9-45-GPS',
-    price: 429,
-    stock: 78,
-    lowStockThreshold: 15,
-    status: 'In Stock',
-    dateAdded: '2024-08-25',
-    supplier: 'Apple Inc.',
-    image: 'https://images.unsplash.com/photo-1544117519-31a4b719223d?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1544117519-31a4b719223d?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Most advanced Apple Watch with new double tap gesture, brighter display, and powerful health features.',
-    specifications: {
-      size: '45mm case',
-      display: 'Always-On Retina LTPO OLED',
-      processor: 'S9 SiP with 4-core Neural Engine',
-      storage: '64GB',
-      battery: 'Up to 18 hours',
-      features: 'ECG, Blood Oxygen, Temperature sensing, Crash Detection'
-    }
-  },
-  {
-    id: 'SW-002',
-    name: 'Samsung Galaxy Watch 6',
-    brand: 'Samsung',
-    category: 'Smartwatches',
-    sku: 'SAM-GW6-44-BT',
-    price: 329,
-    stock: 0,
-    lowStockThreshold: 15,
-    status: 'Out of Stock',
-    dateAdded: '2024-08-14',
-    supplier: 'Samsung Electronics',
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=150&h=150&fit=crop&crop=center',
-    images: [
-      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1544117519-31a4b719223d?w=600&h=600&fit=crop&crop=center',
-      'https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&h=600&fit=crop&crop=center'
-    ],
-    description: 'Advanced smartwatch with comprehensive health monitoring, sleep coaching, and personalized insights.',
-    specifications: {
-      size: '44mm case',
-      display: '1.5" Super AMOLED Always On',
-      processor: 'Exynos W930 Dual Core',
-      memory: '2GB RAM, 16GB storage',
-      battery: 'Up to 40 hours',
-      features: 'Body composition analysis, Sleep score, SpO2, ECG'
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const toAbsoluteUrl = (value) => {
+  if (!value || typeof value !== 'string') {
+    return fallbackImage
+  }
+
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith('data:')) {
+    return value
+  }
+
+  const normalizedPath = value.startsWith('/') ? value : `/${value}`
+  const storageReadyPath = /^\/storage\//i.test(normalizedPath)
+    ? normalizedPath
+    : /^\/(products|product_images)\//i.test(normalizedPath)
+      ? `/storage${normalizedPath}`
+      : normalizedPath
+
+  return `${apiBaseUrl}${storageReadyPath}`
+}
+
+const parseSpecifications = (specifications) => {
+  if (!specifications) {
+    return {}
+  }
+
+  if (typeof specifications === 'object' && !Array.isArray(specifications)) {
+    return specifications
+  }
+
+  if (typeof specifications === 'string') {
+    try {
+      const parsed = JSON.parse(specifications)
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+    } catch {
+      return {}
     }
   }
-])
 
-const categories = ['All', 'Phones', 'Laptops', 'Televisions', 'Smartwatches']
+  return {}
+}
+
+const normalizeStatus = (status, stock, threshold) => {
+  const normalizedStatus = String(status || '').trim().toLowerCase()
+
+  if (normalizedStatus.includes('out')) return 'Out of Stock'
+  if (normalizedStatus.includes('low')) return 'Low Stock'
+  if (normalizedStatus.includes('in')) return 'In Stock'
+
+  if (stock === 0) return 'Out of Stock'
+  if (stock <= threshold) return 'Low Stock'
+  return 'In Stock'
+}
+
+const getCategoryMeta = (category) => {
+  const key = String(category || '').trim().toLowerCase()
+  return categoryMeta[key] || {
+    color: 'bg-slate-500',
+    icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"/>'
+  }
+}
+
+const extractImageUrl = (image) => {
+  if (!image) {
+    return ''
+  }
+
+  if (typeof image === 'string') {
+    return image
+  }
+
+  if (typeof image === 'object') {
+    return (
+      image.url ||
+      image.image ||
+      image.image_path ||
+      image.path ||
+      image.src ||
+      image.image_url ||
+      image.imageUrl ||
+      image.file_path ||
+      image.filePath ||
+      ''
+    )
+  }
+
+  return ''
+}
+
+const getImageType = (image) => {
+  if (!image || typeof image !== 'object') {
+    return ''
+  }
+
+  return String(image.image_type || image.type || '').trim().toLowerCase()
+}
+
+const normalizeImages = (product) => {
+  const productImages = Array.isArray(product.images)
+    ? product.images
+    : Array.isArray(product.product_images)
+      ? product.product_images
+      : []
+
+  const mappedProductImages = productImages
+    .flatMap((image, index) => {
+      if (typeof image === 'string') {
+        return [{
+          type: index === 0 ? 'primary' : '',
+          url: image
+        }]
+      }
+
+      if (!image || typeof image !== 'object') {
+        return []
+      }
+
+      const directUrl = extractImageUrl(image)
+      const entries = []
+
+      if (directUrl) {
+        entries.push({
+          type: getImageType(image),
+          url: directUrl
+        })
+      }
+
+      if (image.primary_image) {
+        entries.push({ type: 'primary', url: image.primary_image })
+      }
+
+      if (image.second_image) {
+        entries.push({ type: 'secondary', url: image.second_image })
+      }
+
+      if (image.third_image) {
+        entries.push({ type: 'tertiary', url: image.third_image })
+      }
+
+      return entries
+    })
+    .filter((image) => image.url)
+
+  const additionalImages = [
+    product.primary_image,
+    product.secondary_image,
+    product.second_image,
+    product.tertiary_image,
+    product.third_image,
+    product.image,
+    product.primaryImage,
+    product.secondaryImage,
+    product.tertiaryImage
+  ]
+
+  const allImages = [
+    ...mappedProductImages,
+    ...additionalImages
+      .map((imageUrl, index) => ({
+        type: index === 0 ? 'primary' : '',
+        url: extractImageUrl(imageUrl)
+      }))
+      .filter((image) => image.url)
+  ]
+
+  const dedupedImages = []
+  const seen = new Set()
+
+  allImages.forEach((image) => {
+    const absoluteUrl = toAbsoluteUrl(image.url)
+
+    if (!seen.has(absoluteUrl)) {
+      seen.add(absoluteUrl)
+      dedupedImages.push({
+        type: image.type,
+        url: absoluteUrl
+      })
+    }
+  })
+
+  const orderedImages = [
+    ...dedupedImages.filter((image) => image.type === 'primary'),
+    ...dedupedImages.filter((image) => image.type !== 'primary')
+  ]
+
+  return orderedImages.length
+    ? orderedImages
+    : [{ type: 'primary', url: fallbackImage }]
+}
+
+const getPrimaryProductImage = (product) => {
+  if (!product || !Array.isArray(product.images) || !product.images.length) {
+    return fallbackImage
+  }
+
+  const primaryImage = product.images.find((image) => image.type === 'primary')
+  return (primaryImage || product.images[0]).url
+}
+
+const normalizeProduct = (product) => {
+  const stock = toNumber(product.stock ?? product.stock_quantity)
+  const lowStockThreshold = toNumber(
+    product.lowStockThreshold ?? product.low_stock_threshold ?? product.low_stock_alert,
+    10
+  )
+  const images = normalizeImages(product)
+  const status = normalizeStatus(product.status, stock, lowStockThreshold)
+  const specifications = parseSpecifications(product.specifications)
+  const rawPrice = product.discount_price ?? product.discounted_price ?? product.price ?? product.base_price
+
+  return {
+    id: product.id ?? product.product_id ?? product.product_sku_id ?? crypto.randomUUID(),
+    name: product.name ?? product.product_name ?? 'Unnamed Product',
+    brand: product.brand ?? 'Unknown Brand',
+    category: product.category ?? 'Uncategorized',
+    sku: product.sku ?? product.product_sku ?? product.product_sku_id ?? 'N/A',
+    price: toNumber(rawPrice),
+    stock,
+    lowStockThreshold,
+    status,
+    dateAdded: product.dateAdded ?? product.date_added ?? product.created_at ?? new Date().toISOString(),
+    supplier: product.supplier ?? 'Not provided',
+    images,
+    description: product.description ?? 'No description available for this product.',
+    specifications,
+  }
+}
+
+const buildStockOverviewFromProducts = (items) => {
+  const grouped = items.reduce((accumulator, product) => {
+    const category = product.category || 'Uncategorized'
+
+    if (!accumulator[category]) {
+      accumulator[category] = {
+        category,
+        totalProducts: 0,
+        inStock: 0,
+        lowStock: 0,
+        outOfStock: 0,
+        totalValue: 0
+      }
+    }
+
+    accumulator[category].totalProducts += 1
+    accumulator[category].inStock += product.stock
+    accumulator[category].totalValue += product.price * product.stock
+
+    if (product.status === 'Out of Stock') {
+      accumulator[category].outOfStock += 1
+    } else if (product.status === 'Low Stock') {
+      accumulator[category].lowStock += 1
+    }
+
+    return accumulator
+  }, {})
+
+  return Object.values(grouped).map((overview) => ({
+    ...overview,
+    ...getCategoryMeta(overview.category)
+  }))
+}
+
+const normalizeStockOverview = (overview, items) => {
+  if (Array.isArray(overview)) {
+    return overview.map((entry, index) => {
+      const category = entry.category ?? entry.name ?? entry.label ?? `Category ${index + 1}`
+
+      return {
+        category,
+        totalProducts: toNumber(entry.totalProducts ?? entry.total_products ?? entry.products_count),
+        inStock: toNumber(entry.inStock ?? entry.in_stock ?? entry.totalStock ?? entry.total_stock ?? entry.stock),
+        lowStock: toNumber(entry.lowStock ?? entry.low_stock),
+        outOfStock: toNumber(entry.outOfStock ?? entry.out_of_stock),
+        totalValue: toNumber(entry.totalValue ?? entry.total_value ?? entry.value),
+        ...getCategoryMeta(category)
+      }
+    })
+  }
+
+  if (overview && typeof overview === 'object') {
+    return Object.entries(overview).map(([category, entry]) => ({
+      category,
+      totalProducts: toNumber(entry.totalProducts ?? entry.total_products ?? entry.products_count),
+      inStock: toNumber(entry.inStock ?? entry.in_stock ?? entry.totalStock ?? entry.total_stock ?? entry.stock),
+      lowStock: toNumber(entry.lowStock ?? entry.low_stock),
+      outOfStock: toNumber(entry.outOfStock ?? entry.out_of_stock),
+      totalValue: toNumber(entry.totalValue ?? entry.total_value ?? entry.value),
+      ...getCategoryMeta(category)
+    }))
+  }
+
+  return buildStockOverviewFromProducts(items)
+}
+
+const categories = computed(() => [
+  'All',
+  ...new Set(products.value.map((product) => product.category).filter(Boolean))
+])
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -302,8 +357,8 @@ const getStockLevel = (stock, threshold) => {
   return 'In Stock'
 }
 
-const filteredProducts = () => {
-  let filtered = products
+const filteredProducts = computed(() => {
+  let filtered = products.value
   
   if (selectedCategory.value !== 'All') {
     filtered = filtered.filter(product => product.category === selectedCategory.value)
@@ -319,6 +374,28 @@ const filteredProducts = () => {
   }
   
   return filtered
+})
+
+const fetchStockData = async () => {
+  isLoading.value = true
+  loadError.value = ''
+
+  try {
+    const response = await axiosClient.get('api/admin/stock')
+    const normalizedProducts = (Array.isArray(response.data?.products) ? response.data.products : []).map(normalizeProduct)
+
+    products.value = normalizedProducts
+    stockOverview.value = normalizeStockOverview(response.data?.stockOverview, normalizedProducts)
+
+    if (!categories.value.includes(selectedCategory.value)) {
+      selectedCategory.value = 'All'
+    }
+  } catch (error) {
+    console.error('Failed to fetch stock data:', error)
+    loadError.value = error.response?.data?.message || 'Failed to load stock data.'
+  } finally {
+    isLoading.value = false
+  }
 }
 
 const navigateToAddProduct = () => {
@@ -369,13 +446,18 @@ const editProduct = (product) => {
 
 const deleteProduct = (productId) => {
   if (confirm('Are you sure you want to delete this product?')) {
-    const index = products.findIndex(p => p.id === productId)
+    const index = products.value.findIndex(p => p.id === productId)
     if (index > -1) {
-      products.splice(index, 1)
+      products.value.splice(index, 1)
+      stockOverview.value = buildStockOverviewFromProducts(products.value)
     }
     showProductModal.value = false
   }
 }
+
+onMounted(() => {
+  fetchStockData()
+})
 </script>
 
 <template>
@@ -403,6 +485,18 @@ const deleteProduct = (productId) => {
               </button>
             </div>
           </div>
+          <div v-if="loadError" class="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>{{ loadError }}</span>
+            <button @click="fetchStockData" class="rounded-lg border border-red-300 px-3 py-1.5 font-medium text-red-700 transition-colors hover:bg-red-100">
+              Retry
+            </button>
+          </div>
+
+          <div v-if="isLoading && !products.length" class="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            Loading stock data...
+          </div>
+
+          <template v-else>
 
           <!-- Stock Overview Cards -->
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -445,8 +539,9 @@ const deleteProduct = (productId) => {
               </div>
             </div>
           </div>
+
           <!-- Products Table -->
-          <div v-if="filteredProducts().length" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div v-if="filteredProducts.length" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Product Inventory</h3>
@@ -492,10 +587,10 @@ const deleteProduct = (productId) => {
                   </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr  v-for="product in filteredProducts()" :key="product.id" @click.stop="viewProduct(product)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
+                  <tr  v-for="product in filteredProducts" :key="product.id" @click.stop="viewProduct(product)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
-                        <img :src="product.image" :alt="product.name" class="h-12 w-12 rounded-lg object-cover mr-4">
+                        <img :src="getPrimaryProductImage(product)" :alt="product.name" class="h-12 w-12 rounded-lg object-cover mr-4">
                         <div>
                           <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
                           <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ product.id }}</div>
@@ -544,6 +639,7 @@ const deleteProduct = (productId) => {
           <div v-else class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
             <p class="px-6 py-4 border-b  border-gray-200 dark:border-gray-700 text-center text-gray-700 dark:text-gray-300">There are no products in the store</p>
           </div>
+          </template>
         </div>
       </main>
     </div>
@@ -573,7 +669,7 @@ const deleteProduct = (productId) => {
             <div class="space-y-4">
               <div class="relative bg-gray-100 dark:bg-gray-900 rounded-xl overflow-hidden aspect-square">
                 <img 
-                  :src="selectedProduct.images[currentImageIndex]" 
+                  :src="selectedProduct.images[currentImageIndex]?.url" 
                   :alt="selectedProduct.name"
                   class="w-full h-full object-contain"
                 >
@@ -622,7 +718,7 @@ const deleteProduct = (productId) => {
                     currentImageIndex === index ? 'border-[#042EFF] ring-2 ring-[#042EFF]/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                   ]"
                 >
-                  <img :src="image" :alt="`${selectedProduct.name} view ${index + 1}`" class="w-full h-full object-contain bg-gray-50 dark:bg-gray-900">
+                  <img :src="image.url" :alt="`${selectedProduct.name} view ${index + 1}`" class="w-full h-full object-contain bg-gray-50 dark:bg-gray-900">
                 </button>
               </div>
             </div>
