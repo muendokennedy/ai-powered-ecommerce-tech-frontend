@@ -342,6 +342,15 @@ const categories = computed(() => [
   ...new Set(products.value.map((product) => product.category).filter(Boolean))
 ])
 
+const formatKes = (value) => {
+  const amount = toNumber(value)
+  return new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency: 'KES',
+    maximumFractionDigits: 0
+  }).format(amount)
+}
+
 const getStatusColor = (status) => {
   switch (status) {
     case 'In Stock': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
@@ -534,7 +543,7 @@ onMounted(() => {
                 </div>
                 <div class="flex items-center justify-between text-sm pt-2 border-t border-gray-200 dark:border-gray-700">
                   <span class="text-gray-600 dark:text-gray-400">Total Value:</span>
-                  <span class="font-medium text-gray-900 dark:text-gray-100">${{ overview.totalValue.toLocaleString() }}</span>
+                  <span class="font-medium text-gray-900 dark:text-gray-100">{{ formatKes(overview.totalValue) }}</span>
                 </div>
               </div>
             </div>
@@ -604,7 +613,7 @@ onMounted(() => {
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ product.sku }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">${{ product.price.toLocaleString() }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ formatKes(product.price) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ product.stock }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(product.status)]">
@@ -729,7 +738,7 @@ onMounted(() => {
               <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
                 <div class="flex items-center justify-between mb-4">
                   <div>
-                    <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">${{ selectedProduct.price.toLocaleString() }}</p>
+                    <p class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ formatKes(selectedProduct.price) }}</p>
                     <p class="text-sm text-gray-500 dark:text-gray-400">SKU: {{ selectedProduct.sku }}</p>
                   </div>
                   <span 
