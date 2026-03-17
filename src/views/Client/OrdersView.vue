@@ -28,11 +28,6 @@ const qrcodeRef = ref(null)
 // Orders now loaded dynamically from localStorage 'orders'.
 
 onMounted(async () => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  if (!isLoggedIn) {
-    router.push({ path: '/login', query: { returnTo: '/orders' } })
-    return
-  }
   await loadOrders()
   const newId = route?.query?.newId
   if (newId && typeof newId === 'string') {

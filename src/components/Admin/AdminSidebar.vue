@@ -2,11 +2,11 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
-import { useUserStore } from '@/stores/user'
+import { useAdminUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
 
 // Collapsible sidebar state with persistence
 const collapsed = ref(false)
@@ -81,7 +81,7 @@ async function onLogout() {
   } catch (e) {
     // ignore errors; we'll still clear local state
   } finally {
-    userStore.clearUser()
+    adminUserStore.clearAdminUser()
     router.push('/admin/login')
   }
 }

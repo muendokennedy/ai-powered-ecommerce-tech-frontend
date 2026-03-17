@@ -4,13 +4,16 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { StarIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
 const showLocationModal = ref(false) // legacy – no longer used for UX, kept to avoid breakage
 const showOrderSummaryModal = ref(false)
 const showErrorMessage = ref(false)
-const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true') // Check login status from localStorage
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
+const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
 const userLocation = ref({
   address: '',
   apartment: '',

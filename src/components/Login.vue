@@ -1,11 +1,24 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
+import axiosClient from '@/axiosClient'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
+
+const getReturnTo = () => {
+  return route.query.returnTo || sessionStorage.getItem('authReturnTo') || '/'
+}
+
+const clearReturnTo = () => {
+  sessionStorage.removeItem('authReturnTo')
+}
 
 // Reactive data
 const loginForm = ref({
@@ -58,6 +71,11 @@ const validateAllFields = () => {
   return !fieldErrors.value.email && !fieldErrors.value.password
 }
 
+const clearFieldError = (field) => {
+  fieldErrors.value[field] = ''
+  errorMessage.value = ''
+}
+
 const handleLogin = async () => {
   // Reset error message
   errorMessage.value = ''
@@ -70,21 +88,37 @@ const handleLogin = async () => {
   isLoading.value = true
   
   try {
-    // Simulate API call - replace with actual authentication
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Simulate successful login
-    // In real app, you would validate against backend and store auth token
-    localStorage.setItem('isLoggedIn', 'true')
-    localStorage.setItem('userEmail', loginForm.value.email)
-    
-    // Redirect to checkout or return to previous page
-    const returnTo = router.currentRoute.value.query.returnTo
+    const payload = {
+      email: loginForm.value.email,
+      password: loginForm.value.password,
+    }
 
-    router.push(returnTo)
+    const response = await axiosClient.post('/login', payload)
+
+    const loggedInUser =
+      response?.data?.user ||
+      response?.data?.data?.user ||
+      response?.data?.data ||
+      { email: loginForm.value.email }
+
+    adminUserStore.clearAdminUser()
+    if (typeof userStore.setUser === 'function') {
+      userStore.setUser(loggedInUser)
+    }
+    
+    const returnTo = getReturnTo()
+    clearReturnTo()
+    router.replace(returnTo)
     
   } catch (error) {
-    errorMessage.value = 'Login failed. Please try again.'
+    const validation = error?.validation || error?.response?.data?.errors
+    if (validation && typeof validation === 'object') {
+      if (validation.email && validation.email[0]) fieldErrors.value.email = validation.email[0]
+      if (validation.password && validation.password[0]) fieldErrors.value.password = validation.password[0]
+      errorMessage.value = 'Please fix the highlighted fields.'
+    } else {
+      errorMessage.value = error?.response?.data?.message || 'Login failed. Please try again.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -97,8 +131,21 @@ const handleSocialLogin = (provider) => {
 }
 
 const goToRegister = () => {
-  router.push('/register')
+  const returnTo = getReturnTo()
+  router.push({ path: '/register', query: returnTo ? { returnTo } : {} })
 }
+
+onMounted(() => {
+  if (route.query.returnTo) {
+    sessionStorage.setItem('authReturnTo', String(route.query.returnTo))
+  }
+
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch {
+    window.scrollTo(0, 0)
+  }
+})
 </script>
 
 <template>

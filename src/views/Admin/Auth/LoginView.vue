@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
-import { useUserStore } from '@/stores/user'
+import { useAdminUserStore, useUserStore } from '@/stores/user'
 
 // Form state
 const form = reactive({
@@ -47,12 +47,23 @@ const onSubmit = async () => {
   }
 
   try {
-    await axiosClient.post('/admin/login', payload)
-    // Fetch the logged-in user from the store before redirecting
+    const response = await axiosClient.post('/admin/login', payload)
+
+    const adminUserStore = useAdminUserStore()
     const userStore = useUserStore()
-    if (typeof userStore.fetchUser === 'function') {
-      try { await userStore.fetchUser() } catch (_) {}
+    const loggedInAdmin =
+      response?.data?.admin ||
+      response?.data?.user ||
+      response?.data?.data?.admin ||
+      response?.data?.data?.user ||
+      response?.data?.data ||
+      { email: form.email }
+
+    userStore.clearUser()
+    if (typeof adminUserStore.setAdminUser === 'function') {
+      adminUserStore.setAdminUser(loggedInAdmin)
     }
+
     await router.push('/admin/dashboard')
   } catch (err) {
     const validation = err?.validation || err?.response?.data?.errors

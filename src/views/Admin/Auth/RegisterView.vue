@@ -2,7 +2,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
-import { useUserStore } from '@/stores/user'
+import { useAdminUserStore, useUserStore } from '@/stores/user'
 
 // Departments aligned with SettingsView
 const departments = ['Operations','Customer Service','Inventory','Marketing']
@@ -135,7 +135,6 @@ const onSubmit = async () => {
   if (!isValid) return
 
   loading.value = true
-  const userStore = useUserStore()
   // Build payload expected by backend
   const payload = {
     fullName: form.name,
@@ -149,11 +148,21 @@ const onSubmit = async () => {
   }
 
   try {
-    const res = await axiosClient.post('/admin/register', payload)
+    const response = await axiosClient.post('/admin/register', payload)
 
+    const adminUserStore = useAdminUserStore()
     const userStore = useUserStore()
-    if (typeof userStore.fetchUser === 'function') {
-      try { await userStore.fetchUser() } catch (_) {}
+    const registeredAdmin =
+      response?.data?.admin ||
+      response?.data?.user ||
+      response?.data?.data?.admin ||
+      response?.data?.data?.user ||
+      response?.data?.data ||
+      { fullName: form.name, email: form.email }
+
+    userStore.clearUser()
+    if (typeof adminUserStore.setAdminUser === 'function') {
+      adminUserStore.setAdminUser(registeredAdmin)
     }
     
     await router.push('/admin/dashboard')

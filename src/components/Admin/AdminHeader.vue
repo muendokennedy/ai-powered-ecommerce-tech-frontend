@@ -1,17 +1,9 @@
 <script setup>
-import { onMounted } from 'vue'
-import { useUserStore } from '@/stores/user'
+import { useAdminUserStore } from '@/stores/user'
 import axiosClient from '@/axiosClient'
 
 
-const storedUser = useUserStore()
-
-
-onMounted(() => {
-  storedUser.fetchUser()
-})
-
-
+const storedUser = useAdminUserStore()
 
 </script>
 <template>
@@ -35,8 +27,8 @@ onMounted(() => {
           <!-- Profile -->
           <div class="flex items-center space-x-4">
             <div class="text-right">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ storedUser.user?.fullName }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ storedUser.user?.email }}</p>
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ storedUser.adminUser?.fullName }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ storedUser.adminUser?.email }}</p>
             </div>
             <img
               class="h-10 w-10 rounded-full border-2 border-[#042EFF]"

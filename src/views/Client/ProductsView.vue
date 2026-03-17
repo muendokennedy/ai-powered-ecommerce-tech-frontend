@@ -4,6 +4,7 @@ import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/
 import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 // Centralized products list with category field
 const products = ref([
@@ -212,6 +213,8 @@ const products = ref([
 const selectedCategory = ref('All')
 const selectedCategoryKey = computed(() => selectedCategory.value.toLowerCase())
 const router = useRouter()
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
 
 const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
 
@@ -304,8 +307,8 @@ function hideToast() {
 
 // Add to cart: write to 'cartItems' (and mirror to 'cartproducts')
 const addToCart = (p) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  if (!isLoggedIn) {
+  const hasClientUser = !!userStore.user && !adminUserStore.adminUser
+  if (!hasClientUser) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return
   }

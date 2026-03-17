@@ -5,11 +5,13 @@ import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
 const product = ref(null)
-const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
 const activeImage = ref('')
 const galleryImages = ref([])
 
@@ -600,9 +602,8 @@ function uniq(arr) {
 
 // Add to cart without navigating; uses sessionStorage 'cartItems'
 function addToCart(p) {
-  const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  isLoggedIn.value = loggedIn
-  if (!loggedIn) {
+  const hasClientUser = !!userStore.user && !adminUserStore.adminUser
+  if (!hasClientUser) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return
   }

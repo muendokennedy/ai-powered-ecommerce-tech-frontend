@@ -4,11 +4,14 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { PlusIcon, MinusIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
 
-// Check if user is logged in
-const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true')
+// A cart action is allowed only for a normal user session, never an admin session.
+const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
 
 // Reactive cart and wishlist loaded from sessionStorage
 const cartItems = ref([])
@@ -106,9 +109,7 @@ function saveWishlist() {
 }
 
 function requireLoginForCartAction() {
-  const loggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  isLoggedIn.value = loggedIn
-  if (!loggedIn) {
+  if (!isLoggedIn.value) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return true
   }

@@ -3,7 +3,7 @@
 import { reactive, ref } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
-import { useUserStore } from '@/stores/user'
+import { useAdminUserStore } from '@/stores/user'
 
 const dashboardStats = reactive({
   products: { count: 1247, change: 12.5, trend: 'up' },
@@ -27,8 +27,8 @@ const lowStockProducts = reactive([
 ])
 
 // Admin user from Pinia store
-const userStore = useUserStore()
-const adminUser = userStore.user
+const adminUserStore = useAdminUserStore()
+const adminUser = adminUserStore.adminUser
 
 const getStatusColor = (status) => {
   switch (status) {

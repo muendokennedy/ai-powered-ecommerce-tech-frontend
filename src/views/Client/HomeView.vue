@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { ChevronRightIcon, ChevronLeftIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 // Products data (same structure as ProductsView.vue)
 const products = ref([
@@ -263,6 +264,8 @@ const promoDellProduct = computed(() =>
 
 // Navigation to product page (same pattern as ProductsView.vue)
 const router = useRouter()
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
 const gotoProduct = (p) => {
   try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
   router.push({ name: 'product-page', params: { id: p.id } })
@@ -287,8 +290,8 @@ function hideToast() {
 
 // Add to cart (identical logic to ProductsView)
 const addToCart = (p) => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
-  if (!isLoggedIn) {
+  const hasClientUser = !!userStore.user && !adminUserStore.adminUser
+  if (!hasClientUser) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return
   }
