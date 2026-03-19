@@ -10,10 +10,15 @@ const searchQuery = ref('')
 const selectedCategory = ref('All')
 const isLoading = ref(false)
 const loadError = ref('')
+const successMessage = ref('')
 
 const showProductModal = ref(false)
 const selectedProduct = ref(null)
 const currentImageIndex = ref(0)
+const showDeleteDialog = ref(false)
+const pendingDeleteProductId = ref(null)
+const pendingDeleteProductName = ref('')
+const isDeletingProduct = ref(false)
 
 const products = ref([])
 const stockOverview = ref([])
@@ -456,15 +461,68 @@ const editProduct = (product) => {
   router.push({ name: 'admin-edit-product', params: { id: product.id  }})
 }
 
+const requestDeleteProduct = (product) => {
+  if (!product?.id) {
+    loadError.value = 'Cannot delete product: missing product id.'
+    return
+  }
 
-const deleteProduct = (productId) => {
-  if (confirm('Are you sure you want to delete this product?')) {
-    const index = products.value.findIndex(p => p.id === productId)
+  pendingDeleteProductId.value = product.id
+  pendingDeleteProductName.value = product.name || 'this product'
+  showDeleteDialog.value = true
+}
+
+const closeDeleteDialog = () => {
+  showDeleteDialog.value = false
+  pendingDeleteProductId.value = null
+  pendingDeleteProductName.value = ''
+}
+
+const confirmDeleteProduct = async () => {
+  if (!pendingDeleteProductId.value) {
+    closeDeleteDialog()
+    return
+  }
+
+  isDeletingProduct.value = true
+  await deleteProduct(pendingDeleteProductId.value)
+  isDeletingProduct.value = false
+  closeDeleteDialog()
+}
+
+
+const deleteProduct = async (productId) => {
+  if (!productId) {
+    loadError.value = 'Cannot delete product: missing product id.'
+    return
+  }
+
+  loadError.value = ''
+  successMessage.value = ''
+
+  try {
+    const response = await axiosClient.delete(`/api/admin/product/delete/${productId}`)
+
+    const index = products.value.findIndex((product) => product.id === productId)
     if (index > -1) {
       products.value.splice(index, 1)
       stockOverview.value = buildStockOverviewFromProducts(products.value)
     }
-    showProductModal.value = false
+
+    if (selectedProduct.value?.id === productId) {
+      showProductModal.value = false
+      selectedProduct.value = null
+      currentImageIndex.value = 0
+    }
+
+    successMessage.value = response?.data?.message || ''
+    setTimeout(() => {
+      successMessage.value = ''
+    }, 3000)
+  } catch (error) {
+    console.error('Failed to delete product:', error)
+    successMessage.value = ''
+    loadError.value = error.response?.data?.message || 'Failed to delete product.'
   }
 }
 
@@ -475,6 +533,15 @@ onMounted(() => {
 
 <template>
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <Transition name="success-toast">
+      <div v-if="successMessage" class="fixed top-5 right-5 z-[70] max-w-sm w-[calc(100%-2rem)] md:w-full rounded-xl border border-green-200 bg-green-50 shadow-xl px-4 py-3 text-sm text-green-700">
+        <div class="flex items-start gap-3">
+          <span class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-white text-[11px] font-bold">✓</span>
+          <div class="leading-5">{{ successMessage }}</div>
+        </div>
+      </div>
+    </Transition>
+
     <admin-sidebar></admin-sidebar>
     
     <!-- Main Content -->
@@ -504,7 +571,6 @@ onMounted(() => {
               Retry
             </button>
           </div>
-
           <div v-if="isLoading && !products.length" class="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
             Loading stock data...
           </div>
@@ -637,7 +703,7 @@ onMounted(() => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                           </svg>
                         </button>
-                        <button @click.stop="deleteProduct(product.id)" class="text-red-600 hover:text-red-800" title="Delete Product">
+                        <button @click.stop="requestDeleteProduct(product)" class="text-red-600 hover:text-red-800" title="Delete Product">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                           </svg>
@@ -810,7 +876,7 @@ onMounted(() => {
                   Edit Product
                 </button>
                 <button 
-                  @click="deleteProduct(selectedProduct.id)"
+                  @click="requestDeleteProduct(selectedProduct)"
                   class="px-4 py-3 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium flex items-center justify-center"
                 >
                   <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -821,6 +887,53 @@ onMounted(() => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <div v-if="showDeleteDialog" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 backdrop-blur-sm p-4">
+      <div class="w-full max-w-md rounded-2xl border border-red-200 dark:border-red-900/50 bg-white dark:bg-gray-900 shadow-2xl overflow-hidden">
+        <div class="px-6 py-5 border-b border-red-100 dark:border-red-900/40 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-950/40 dark:to-rose-950/20">
+          <div class="flex items-start gap-4">
+            <div class="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M4.938 19h14.124c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.206 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-red-700 dark:text-red-300">Delete Product</h3>
+              <p class="mt-1 text-sm text-red-700/90 dark:text-red-200/90">This action cannot be undone.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-5">
+          <p class="text-sm text-gray-700 dark:text-gray-300">
+            Are you sure you want to delete
+            <span class="font-semibold text-gray-900 dark:text-gray-100">{{ pendingDeleteProductName }}</span>?
+          </p>
+        </div>
+
+        <div class="px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-950/40">
+          <button
+            @click="closeDeleteDialog"
+            :disabled="isDeletingProduct"
+            class="px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            Cancel
+          </button>
+          <button
+            @click="confirmDeleteProduct"
+            :disabled="isDeletingProduct"
+            class="px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center"
+          >
+            <svg v-if="isDeletingProduct" class="animate-spin -ml-0.5 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            {{ isDeletingProduct ? 'Deleting...' : 'Delete Product' }}
+          </button>
         </div>
       </div>
     </div>
@@ -923,6 +1036,24 @@ button {
 .product-overlay::-webkit-scrollbar{
   display: none;
 }
+
+.success-toast-enter-active,
+.success-toast-leave-active {
+  transition: all 0.35s ease;
+}
+
+.success-toast-enter-from,
+.success-toast-leave-to {
+  opacity: 0;
+  transform: translateX(40px) scale(0.98);
+}
+
+.success-toast-enter-to,
+.success-toast-leave-from {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+
 .bg-white.rounded-2xl {
   animation: modalSlideIn 0.3s ease-out;
 }
