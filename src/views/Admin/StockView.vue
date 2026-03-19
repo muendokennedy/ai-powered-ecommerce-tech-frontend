@@ -251,6 +251,8 @@ const normalizeProduct = (product) => {
   const images = normalizeImages(product)
   const status = normalizeStatus(product.status, stock, lowStockThreshold)
   const specifications = parseSpecifications(product.specifications)
+  const basePrice = toNumber(product.base_price ?? product.basePrice ?? product.original_price ?? product.originalPrice)
+  const discountPrice = toNumber(product.discount_price ?? product.discounted_price ?? product.discountPrice ?? product.discountedPrice)
   const rawPrice = product.discount_price ?? product.discounted_price ?? product.price ?? product.base_price
 
   return {
@@ -260,6 +262,8 @@ const normalizeProduct = (product) => {
     category: product.category ?? 'Uncategorized',
     sku: product.sku ?? product.product_sku ?? product.product_sku_id ?? 'N/A',
     price: toNumber(rawPrice),
+    basePrice: basePrice || toNumber(product.price ?? rawPrice),
+    discountPrice: discountPrice || toNumber(rawPrice),
     stock,
     lowStockThreshold,
     status,

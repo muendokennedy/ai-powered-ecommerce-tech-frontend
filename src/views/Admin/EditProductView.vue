@@ -1,8 +1,9 @@
 <script setup>
-import { reactive, ref, watch, computed, nextTick, onMounted } from 'vue'
+import { reactive, ref, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
+import axiosClient from '@/axiosClient'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,6 +78,8 @@ const getInitialImageSlots = (images) => {
 }
 
 const initialImageSlots = getInitialImageSlots(originalProduct?.images)
+const initialBasePrice = originalProduct?.base_price ?? originalProduct?.basePrice ?? originalProduct?.original_price ?? originalProduct?.originalPrice ?? ''
+const initialDiscountPrice = originalProduct?.discount_price ?? originalProduct?.discounted_price ?? originalProduct?.discountPrice ?? originalProduct?.discountedPrice ?? originalProduct?.price ?? ''
 
 // Reactive form replicating AddProduct but prefilled
 const form = reactive({
@@ -84,7 +87,9 @@ const form = reactive({
   name: originalProduct?.name || '',
   brand: originalProduct?.brand || '',
   category: originalProduct?.category || '', // locked
-  price: originalProduct?.price || '',
+  price: initialBasePrice,
+  discountPrice: initialDiscountPrice,
+  vatRate: originalProduct?.vat_rate ?? originalProduct?.vatRate ?? 0.16,
   stock: originalProduct?.stock || '',
   lowStockThreshold: originalProduct?.lowStockThreshold || '',
   supplier: originalProduct?.supplier || '',
@@ -144,28 +149,130 @@ function triggerFileDialog(id) {
 
 const isSaving = ref(false)
 const saveMessage = ref('')
+const validationErrors = ref({})
+
+const fieldErrorMap = {
+  price: 'base_price',
+  discountPrice: 'discount_price',
+  vatRate: 'vat_rate',
+  stock: 'stock_quantity',
+  lowStockThreshold: 'low_stock_threshold'
+}
+
+const backendFieldMap = {
+  base_price: 'price',
+  discount_price: 'discountPrice',
+  vat_rate: 'vatRate',
+  stock_quantity: 'stock',
+  low_stock_threshold: 'lowStockThreshold'
+}
+
+const getFieldError = (field) => {
+  const backendField = fieldErrorMap[field] || field
+  const fieldErrors = validationErrors.value?.[backendField]
+  if (Array.isArray(fieldErrors) && fieldErrors.length) {
+    return fieldErrors[0]
+  }
+  return ''
+}
+
+const hasFieldError = (field) => Boolean(getFieldError(field))
+
+const inputClasses = (field) => [
+  'w-full px-4 py-3 border dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 transition-colors',
+  hasFieldError(field)
+    ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500'
+    : 'border-gray-300 dark:border-gray-700 focus:ring-[#042EFF] focus:border-[#042EFF]'
+]
+
+const textAreaClasses = (field) => [
+  'w-full px-4 py-3 border dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 transition-colors',
+  hasFieldError(field)
+    ? 'border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500'
+    : 'border-gray-300 dark:border-gray-700 focus:ring-[#042EFF] focus:border-[#042EFF]'
+]
+
+const scrollToFirstErrorField = () => {
+  const errorKeys = Object.keys(validationErrors.value || {})
+  if (!errorKeys.length) return
+
+  const firstBackendField = errorKeys[0]
+  const firstFormField = backendFieldMap[firstBackendField] || firstBackendField
+  const selector = `[data-field="${firstFormField}"]`
+  const firstErrorElement = document.querySelector(selector)
+
+  if (firstErrorElement) {
+    firstErrorElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (typeof firstErrorElement.focus === 'function') {
+      firstErrorElement.focus({ preventScroll: true })
+    }
+  }
+}
 
 const specEntries = computed(() => {
   return Object.entries(form.specifications || {})
 })
 
-console.log(specEntries.value, form.specifications)
+async function updateProduct() {
+  if (isSaving.value) return
 
-function updateProduct() {
+  const productId = originalProduct?.id || route.params.id
+
+  if (!productId) {
+    return
+  }
+
   isSaving.value = true
-  // Simulated async request
-  setTimeout(() => {
-    console.log('Updated product payload:', {
-      ...form,
-      images: form.images,
-      specifications: form.specifications
-    })
-    saveMessage.value = 'Product updated successfully'
-    isSaving.value = false
+  saveMessage.value = ''
+  validationErrors.value = {}
+
+  try {
+    const formData = new FormData()
+
+    formData.append('name', form.name)
+    formData.append('brand', form.brand)
+    formData.append('category', form.category)
+    formData.append('supplier', form.supplier || '')
+    formData.append('description', form.description || '')
+    formData.append('specifications', JSON.stringify(form.specifications || {}))
+    formData.append('base_price', parseFloat(form.price || 0))
+    formData.append('discount_price', parseFloat(form.discountPrice || 0))
+    formData.append('vat_rate', parseFloat(form.vatRate || 0))
+    formData.append('status', 'in stock')
+    formData.append('stock_quantity', parseInt(form.stock || 0, 10))
+    formData.append('low_stock_threshold', parseInt(form.lowStockThreshold || 0, 10))
+
+    // Only append image fields when admin selected new files for replacement.
+    if (form.images[0] instanceof File) {
+      formData.append('primary_image', form.images[0])
+    }
+    if (form.images[1] instanceof File) {
+      formData.append('secondary_image', form.images[1])
+    }
+    if (form.images[2] instanceof File) {
+      formData.append('tertiary_image', form.images[2])
+    }
+
+    const response = await axiosClient.post(`/api/admin/product/update/${productId}`, formData)
+
+    saveMessage.value = response?.data?.message || ''
     setTimeout(() => {
       saveMessage.value = ''
     }, 3000)
-  }, 800)
+
+    setTimeout(() => {
+      router.push('/admin/stock')
+    }, 500)
+  } catch (error) {
+    const backendErrors = error?.response?.data?.errors
+    if (backendErrors && typeof backendErrors === 'object') {
+      validationErrors.value = backendErrors
+      await nextTick()
+      scrollToFirstErrorField()
+    }
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function cancelEdit() {
@@ -177,9 +284,26 @@ const categoryLocked = computed(() => {
   return true
 })
 
-// Form validation minimal
-const isValid = computed(() => {
-  return form.name && form.brand && form.price
+const formatDateTime = (value) => {
+  if (!value) return '—'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return String(value)
+  }
+
+  const pad = (num) => String(num).padStart(2, '0')
+  const day = pad(date.getDate())
+  const month = pad(date.getMonth() + 1)
+  const year = date.getFullYear()
+  const hours = pad(date.getHours())
+  const minutes = pad(date.getMinutes())
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`
+}
+
+const formattedOriginalAdded = computed(() => {
+  return formatDateTime(originalProduct?.dateAdded || originalProduct?.date_added || originalProduct?.created_at)
 })
 
 function removeImage(slot) {
@@ -200,17 +324,12 @@ function removeImage(slot) {
           <div class="flex items-center justify-between mb-8">
             <div>
               <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center">Edit Product
-                <span class="ml-3 text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 uppercase tracking-wide">ID: {{ form.product_sku_id }}</span>
+                <span class="ml-3 text-xs px-2 py-1 rounded bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 uppercase tracking-wide">ID: {{ originalProduct.sku }}</span>
               </h1>
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Modify existing product details. Category is locked.</p>
             </div>
             <div class="flex space-x-3">
               <button @click="cancelEdit" class="px-5 py-3 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium">Back to Stock</button>
-              <button :disabled="!isValid || isSaving" @click="updateProduct" class="px-6 py-3 rounded-lg text-sm font-medium flex items-center bg-[#042EFF] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors">
-                <svg v-if="!isSaving" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                <svg v-else class="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle><path class="opacity-75" stroke-width="4" d="M4 12a8 8 0 018-8"/></svg>
-                {{ isSaving ? 'Saving...' : 'Save Changes' }}
-              </button>
             </div>
           </div>
 
@@ -225,11 +344,13 @@ function removeImage(slot) {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name *</label>
-                    <input v-model="form.name" type="text" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]" />
+                    <input v-model="form.name" type="text" :class="inputClasses('name')" data-field="name" />
+                    <p v-if="getFieldError('name')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('name') }}</p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand *</label>
-                    <input v-model="form.brand" type="text" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]" />
+                    <input v-model="form.brand" type="text" :class="inputClasses('brand')" data-field="brand" />
+                    <p v-if="getFieldError('brand')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('brand') }}</p>
                   </div>
                   <div>
                     <label class="flex text-sm font-medium text-gray-700 mb-2 items-center">Category
@@ -243,19 +364,33 @@ function removeImage(slot) {
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Price *</label>
-                    <input v-model.number="form.price" type="number" min="0" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]" />
+                    <input v-model.number="form.price" type="number" min="0" :class="inputClasses('price')" data-field="price" />
+                    <p v-if="getFieldError('price')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('price') }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Discount Price *</label>
+                    <input v-model.number="form.discountPrice" type="number" min="0" :class="inputClasses('discountPrice')" data-field="discountPrice" />
+                    <p v-if="getFieldError('discountPrice')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('discountPrice') }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">VAT Rate *</label>
+                    <input v-model.number="form.vatRate" type="number" min="0" step="0.01" :class="inputClasses('vatRate')" data-field="vatRate" />
+                    <p v-if="getFieldError('vatRate')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('vatRate') }}</p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Quantity *</label>
-                    <input v-model.number="form.stock" type="number" min="0" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]" />
+                    <input v-model.number="form.stock" type="number" min="0" :class="inputClasses('stock')" data-field="stock" />
+                    <p v-if="getFieldError('stock')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('stock') }}</p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Low Stock Threshold</label>
-                    <input v-model.number="form.lowStockThreshold" type="number" min="0" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]" />
+                    <input v-model.number="form.lowStockThreshold" type="number" min="0" :class="inputClasses('lowStockThreshold')" data-field="lowStockThreshold" />
+                    <p v-if="getFieldError('lowStockThreshold')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('lowStockThreshold') }}</p>
                   </div>
-                  <div class="md:col-span-2">
+                  <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supplier</label>
-                    <input v-model="form.supplier" type="text" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]" />
+                    <input v-model="form.supplier" type="text" :class="inputClasses('supplier')" data-field="supplier" />
+                    <p v-if="getFieldError('supplier')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('supplier') }}</p>
                   </div>
                 </div>
               </div>
@@ -324,7 +459,8 @@ function removeImage(slot) {
               <!-- Description -->
               <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Description</h2>
-                <textarea v-model="form.description" rows="5" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF]"></textarea>
+                <textarea v-model="form.description" rows="5" :class="textAreaClasses('description')" data-field="description"></textarea>
+                <p v-if="getFieldError('description')" class="mt-1 text-xs text-red-600 dark:text-red-400">{{ getFieldError('description') }}</p>
               </div>
             </div>
 
@@ -354,7 +490,7 @@ function removeImage(slot) {
                 <div class="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p class="text-gray-500 dark:text-gray-400">Original Added</p>
-                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ originalProduct?.dateAdded || '—' }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ formattedOriginalAdded }}</p>
                   </div>
                   <div>
                     <p class="text-gray-500 dark:text-gray-400">SKU</p>
@@ -377,6 +513,14 @@ function removeImage(slot) {
                 <button class="w-full py-3 rounded-lg text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors">Archive Product</button>
               </div>
             </div>
+          </div>
+
+          <div class="mt-8 flex justify-end">
+            <button :disabled="isSaving" @click="updateProduct" class="px-6 py-3 rounded-lg text-sm font-medium flex items-center bg-[#042EFF] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors">
+              <svg v-if="!isSaving" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              <svg v-else class="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke-width="4"></circle><path class="opacity-75" stroke-width="4" d="M4 12a8 8 0 018-8"/></svg>
+              {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            </button>
           </div>
         </div>
       </main>

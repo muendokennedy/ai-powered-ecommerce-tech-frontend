@@ -561,7 +561,6 @@ const goBack = () => {
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
       <admin-header></admin-header>
-      
       <!-- Add Product Content -->
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-4xl mx-auto">
