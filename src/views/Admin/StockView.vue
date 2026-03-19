@@ -571,8 +571,15 @@ onMounted(() => {
               Retry
             </button>
           </div>
-          <div v-if="isLoading && !products.length" class="rounded-xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            Loading stock data...
+          <div v-if="isLoading && !products.length" class="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+            <div class="mx-auto mb-4 relative h-14 w-14">
+              <span class="absolute inset-0 rounded-full border-2 border-[#042EFF]/20"></span>
+              <span class="absolute inset-0 rounded-full border-2 border-transparent border-t-[#042EFF] border-r-[#042EFF] loader-orbit"></span>
+              <span class="absolute inset-[10px] rounded-full border-2 border-transparent border-b-blue-400 border-l-blue-400 loader-orbit-reverse"></span>
+              <span class="absolute inset-[22px] rounded-full bg-[#042EFF] loader-pulse"></span>
+            </div>
+            <p class="text-base font-semibold text-gray-900 dark:text-gray-100">Loading products</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Fetching latest stock details...</p>
           </div>
 
           <template v-else>
@@ -1052,6 +1059,39 @@ button {
 .success-toast-leave-from {
   opacity: 1;
   transform: translateX(0) scale(1);
+}
+
+.loader-orbit {
+  animation: loaderOrbit 1.1s linear infinite;
+}
+
+.loader-orbit-reverse {
+  animation: loaderOrbitReverse 1.5s linear infinite;
+}
+
+.loader-pulse {
+  animation: loaderPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes loaderOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loaderOrbitReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes loaderPulse {
+  0%, 100% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
 }
 
 .bg-white.rounded-2xl {
