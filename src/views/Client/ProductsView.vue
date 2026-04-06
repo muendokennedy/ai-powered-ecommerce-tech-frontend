@@ -9,6 +9,7 @@ import axiosClient from '@/axiosClient'
 
 const products = ref([])
 const isLoadingProducts = ref(false)
+const isAddingToCart = ref(false)
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 const normalizeCategory = (value) => String(value || '').trim().toLowerCase()
@@ -248,44 +249,45 @@ function hideToast() {
   toast.value.visible = false
 }
 
-// Add to cart: write to 'cartItems' (and mirror to 'cartproducts')
-const addToCart = (p) => {
+// Add to cart: backend handles cart existence check
+const addToCart = async (p) => {
+  if (isAddingToCart.value) return
+  
   const hasClientUser = !!userStore.user && !adminUserStore.adminUser
   if (!hasClientUser) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return
   }
+
+  isAddingToCart.value = true
   try {
-    // Primary cart
-    const raw = sessionStorage.getItem('cartItems')
-    const cart = raw ? JSON.parse(raw) : []
-    const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
-    if (idx >= 0) {
-      // Do not increment; show info toast
-      showToast(`${p.name} is already in the cart`, 'warning')
-      // Keep cart unchanged
-      sessionStorage.setItem('cartItems', JSON.stringify(cart))
-    } else {
-      cart.push({
-        id: p.id,
-        name: p.name,
-        brand: p.brand,
-        price: p.price,
-        oldPrice: p.oldPrice ?? null,
-        image: p.image,
-        quantity: 1,
-      })
-      sessionStorage.setItem('cartItems', JSON.stringify(cart))
-      showToast(`${p.name} added to cart`, 'success')
-    }
-    // Mirror to 'cartproducts' without incrementing duplicates
-    try {
-      const raw2 = sessionStorage.getItem('cartproducts')
-      const cart2 = raw2 ? JSON.parse(raw2) : []
-      const idx2 = Array.isArray(cart2) ? cart2.findIndex(it => it.id === p.id) : -1
-      if (idx2 === -1) {
-        // add only when newly added to cartItems
-        if (idx === -1) {
+    // Make backend request to add product to cart with quantity
+    const response = await axiosClient.post(`/api/cart/product/add/${p.id}`, {
+      quantity: 1
+    })
+    if (response.status === 200 || response.status === 201) {
+      // Backend request successful
+      const raw = sessionStorage.getItem('cartItems')
+      const cart = raw ? JSON.parse(raw) : []
+      
+      // Add to local cart
+      const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
+      if (idx === -1) {
+        cart.push({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          price: p.price,
+          oldPrice: p.oldPrice ?? null,
+          image: p.image,
+          quantity: 1,
+        })
+        sessionStorage.setItem('cartItems', JSON.stringify(cart))
+        
+        // Mirror to 'cartproducts'
+        try {
+          const raw2 = sessionStorage.getItem('cartproducts')
+          const cart2 = raw2 ? JSON.parse(raw2) : []
           cart2.push({
             id: p.id,
             name: p.name,
@@ -295,13 +297,24 @@ const addToCart = (p) => {
             image: p.image,
             quantity: 1,
           })
-        }
+          sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
+        } catch {}
       }
-      sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
-    } catch {}
+      
+      showToast(`${p.name} added to cart`, 'success')
+    }
     // Notify header to refresh cart count
     try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
-  } catch {}
+  } catch (error) {
+    // Check if error is unauthenticated
+    if (error.response?.data?.error === 'unauthenticated') {
+      router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
+    } else {
+      showToast(error.response?.data?.message || 'Failed to add item to cart', 'error')
+    }
+  } finally {
+    isAddingToCart.value = false
+  }
 }
 
 onMounted(() => {
@@ -423,7 +436,7 @@ onMounted(() => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="isAddingToCart">{{ isAddingToCart ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -455,7 +468,7 @@ onMounted(() => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="isAddingToCart">{{ isAddingToCart ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -487,7 +500,7 @@ onMounted(() => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="isAddingToCart">{{ isAddingToCart ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -519,7 +532,7 @@ onMounted(() => {
               <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
               <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
+            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="isAddingToCart">{{ isAddingToCart ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
