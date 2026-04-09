@@ -119,7 +119,10 @@ onMounted(() => {
 
 const itemCount = computed(() => cartItems.value.reduce((sum, it) => sum + (it.quantity || 0), 0))
 const subtotal = computed(() => cartItems.value.reduce((sum, it) => sum + (it.price || 0) * (it.quantity || 0), 0))
-const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
+const formatCurrency = (n) => {
+  const num = Number(n);
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+};
 
 function increment(it) {
   axiosClient.post(`/api/cart/items/${it.id}/update-quantity`, {
@@ -347,73 +350,104 @@ const proceedToCheckout = () => {
       >
         shopping<span class="text-[#68A4FE] px-2"> cart</span>
       </div>
-      <div class="cart-section flex flex-col lg:flex-row justify-between w-full">
+      <div class="cart-section flex flex-col lg:flex-row justify-between w-full gap-6">
         <div class="shopping-cart-container text-[#384857] w-full lg:w-3/5">
-          <template v-if="!isLoadingCart">
+          <!-- Loading Skeleton -->
+          <div v-if="isLoadingCart" class="space-y-2 sm:space-y-3">
+            <div v-for="i in 3" :key="`skeleton-${i}`" class="flex flex-col sm:flex-row gap-3 p-3 sm:p-4 rounded-lg bg-white border border-gray-200 shadow-sm animate-pulse" :style="{ animationDelay: `${i * 0.1}s` }">
+              <!-- Image Skeleton -->
+              <div class="w-24 h-20 sm:w-40 sm:h-32 rounded-md bg-white border-2 border-gray-300 overflow-hidden relative skeleton-shimmer">
+                <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
+              </div>
+              <!-- Info Skeleton -->
+              <div class="flex-1 space-y-2">
+                <div class="h-4 sm:h-5 bg-white border-2 border-gray-300 rounded w-3/4 relative overflow-hidden">
+                  <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
+                </div>
+                <div class="h-3 sm:h-4 bg-white border-2 border-gray-300 rounded w-1/2 relative overflow-hidden">
+                  <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
+                </div>
+                <div class="h-3 sm:h-4 bg-white border-2 border-gray-300 rounded w-2/3 relative overflow-hidden">
+                  <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
+                </div>
+              </div>
+              <!-- Price Skeleton -->
+              <div class="w-16 sm:w-24 h-8 sm:h-10 bg-white border-2 border-gray-300 rounded relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actual Cart Items -->
+          <template v-else-if="cartItems.length > 0">
             <div
             v-for="item in cartItems"
             :key="item.id"
-            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
+            class="shopping-cart-box flex flex-col sm:flex-row gap-3 p-3 sm:p-4 rounded-lg bg-white border border-gray-200 shadow-md hover:shadow-lg transition-all duration-300 my-2 sm:my-3"
             >
-              <div class="cart-image h-full w-40">
+              <div class="cart-image h-24 w-32 sm:h-32 sm:w-40 rounded-md bg-gray-50 flex items-center justify-center">
                 <img
                   :src="resolveImg(item.image)"
                   :alt="item.name"
-                  class="md:-translate-y-4 h-auto scale-30 sm:h-full object-contain"
+                  class="h-auto w-auto max-h-full max-w-full object-contain"
                 />
               </div>
-              <div class="cart-info h-full flex flex-col justify-between">
-                <div class="space-y-2">
-                  <div class="product-name font-semibold text-base sm:text-xl capitalize">
+              <div class="cart-info flex-1 flex flex-col justify-between">
+                <div class="space-y-1">
+                  <div class="product-name font-semibold text-xs sm:text-base md:text-lg capitalize text-gray-900">
                     {{ item.name }}
                   </div>
-                  <div class="product-text text-sm">From {{ item.brand }}</div>
-                  <div class="rating-box flex gap-2 items-center">
-                    <div class="star-box text-sm text-[#FFCF10]">
-                      <StarIcon class="size-4 inline"></StarIcon>
-                      <StarIcon class="size-4 inline"></StarIcon>
-                      <StarIcon class="size-4 inline"></StarIcon>
-                      <StarIcon class="size-4 inline"></StarIcon>
-                      <StarIcon class="size-4 inline"></StarIcon>
+                  <div class="product-text text-xs sm:text-sm text-gray-600">From <span class="font-medium">{{ item.brand }}</span></div>
+                  <div class="rating-box flex gap-2 items-center mt-1 sm:mt-2">
+                    <div class="star-box text-xs sm:text-sm text-[#FFCF10]">
+                      <StarIcon class="size-3 sm:size-4 inline"></StarIcon>
+                      <StarIcon class="size-3 sm:size-4 inline"></StarIcon>
+                      <StarIcon class="size-3 sm:size-4 inline"></StarIcon>
+                      <StarIcon class="size-3 sm:size-4 inline"></StarIcon>
+                      <StarIcon class="size-3 sm:size-4 inline"></StarIcon>
                     </div>
-                    <div class="rating-text text-xs text-[#68A4FE]">
+                    <div class="rating-text text-xs text-[#68A4FE] font-medium hidden sm:block">
                       100,450 Ratings
                     </div>
                   </div>
                 </div>
-                <div class="quantity-box mt-4 sm:mt-0 flex gap-4 items-center">
-                  <PlusIcon @click="increment(item)" class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></PlusIcon>
+                <div class="quantity-box mt-2 sm:mt-3 flex gap-2 sm:gap-3 items-center">
+                  <button @click="decrement(item)" class="p-1 rounded hover:bg-gray-100 transition-colors">
+                    <MinusIcon class="size-4 sm:size-5 text-gray-600 hover:text-[#68a4fe]"></MinusIcon>
+                  </button>
                   <input
                     v-model.number="item.quantity"
                     @keyup.enter="updateQuantityOnEnter(item)"
                     type="number"
                     min="1"
-                    class="p-2 border-2 rounded-md outline-none w-24"
+                    class="p-1 sm:p-2 border border-gray-300 rounded-md outline-none w-12 sm:w-16 text-center text-xs sm:text-base"
                   />
-                  <MinusIcon @click="decrement(item)" class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></MinusIcon>
+                  <button @click="increment(item)" class="p-1 rounded hover:bg-gray-100 transition-colors">
+                    <PlusIcon class="size-4 sm:size-5 text-gray-600 hover:text-[#68a4fe]"></PlusIcon>
+                  </button>
                 </div>
               </div>
-              <div class="action-box h-full flex flex-col justify-between">
-                <div class="self-end text-right">
-                  <div class="text-[#384857] text-sm font-medium">
+              <div class="action-box flex flex-col justify-between items-end sm:w-32">
+                <div class="text-right">
+                  <div class="text-[#384857] text-xs sm:text-sm font-medium mb-1">
                     {{ item.quantity }} x {{ formatCurrency(item.price) }}
                   </div>
-                  <div class="product-price text-[#FF412C] text-lg font-semibold">
+                  <div class="product-price text-[#FF412C] text-base sm:text-xl font-bold bg-gradient-to-r from-blue-50 to-gray-50 px-2 sm:px-3 py-1 sm:py-2 rounded-lg border border-red-100">
                     {{ formatCurrency(item.price * item.quantity) }}
                   </div>
                 </div>
-                <div class="action-button mt-4 sm:mt-0 flex items-center gap-4">
+                <div class="action-button mt-2 sm:mt-4 flex flex-col gap-1 sm:gap-2 w-full">
                   <button
                     type="button"
                     @click="removeItem(item)"
-                    class="px-4 py-2 bg-[#ffcf10] rounded-md text-white text-center"
+                    class="px-2 sm:px-3 py-1 sm:py-2 bg-red-500 hover:bg-red-600 rounded-md text-white text-xs sm:text-sm font-medium transition-colors duration-300"
                   >
                     Remove
                   </button>
                   <button
                     type="button"
                     @click="saveForLater(item)"
-                    class="px-4 py-2 bg-[#68a4fe] rounded-md text-white text-center"
+                    class="px-2 sm:px-3 py-1 sm:py-2 bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:shadow-md rounded-md text-white text-xs sm:text-sm font-medium transition-all duration-300"
                   >
                     Save for later
                   </button>
@@ -421,35 +455,52 @@ const proceedToCheckout = () => {
               </div>
             </div>
           </template>
-          <div v-if="isLoadingCart" class="p-6 text-center text-sm text-gray-500">Loading cart...</div>
-          <div v-else-if="cartItems.length === 0" class="p-6 text-center text-sm text-gray-500">Your cart is empty.</div>
-          </div>
-          <div class="cart-total border-2 border-gray-300  h-52 sm:h-56 lg:h-64 xl:h-56 w-full md:w-3/5 lg:w-1/3 my-2">
-            <h2
-              class="cart-total-title capitalize border-b-2 border-gray-300 px-1 py-4 text-center space-x-2 sm:space-x-4 text-base sm:text-xl font-semibold text-black"
-            >
-              <i class="fa-solid fa-check font-extrabold text-2xl"></i>
-              <span>order items</span>
-            </h2>
-            <div class="cart-total-content flex flex-col gap-4 p-2">
-              <div class="content-title space-y-2">
-                <h2 class="p-2 text-base sm:text-xl text-[#384857] font-semibold">
-                  subtotal({{ itemCount }} items):
-                </h2>
-                <div class="price px-2 text-[#FF412C] text-sm sm:text-xl font-semibold">
-                  {{ formatCurrency(subtotal) }}
-                </div>
-              </div>
-              <button
-                @click="proceedToCheckout"
-                type="button"
-                class="self-end px-4 py-2 bg-[#68a4fe] hover:bg-[#5496f8] rounded-md text-white text-center transition-colors duration-300"
-              >
-                Proceed to checkout
-              </button>
-            </div>
+
+          <!-- Empty Cart Message -->
+          <div v-else class="text-center py-12">
+            <div class="text-6xl mb-4">🛒</div>
+            <p class="text-lg text-gray-600 font-medium">Your cart is empty</p>
+            <p class="text-gray-500 text-sm mt-2">Start shopping to add items to your cart</p>
           </div>
         </div>
+
+        <!-- Cart Summary Card -->
+        <div class="cart-total rounded-lg sm:rounded-xl shadow-lg border border-gray-100 bg-gradient-to-b from-white to-gray-50 p-3 sm:p-6 h-fit w-full lg:w-1/3 my-2 sm:my-3 lg:my-0">
+          <div class="cart-total-title mb-2 sm:mb-4 pb-2 sm:pb-4 border-b-2 border-gray-200">
+            <h2 class="flex items-center gap-2 text-base sm:text-xl font-bold text-gray-900">
+              <i class="fa-solid fa-check text-xl sm:text-2xl text-emerald-500"></i>
+              <span>Order Summary</span>
+            </h2>
+          </div>
+          <div class="cart-total-content space-y-2 sm:space-y-4">
+            <div class="content-item flex justify-between items-center">
+              <span class="text-xs sm:text-sm md:text-base text-gray-700 font-medium">Subtotal ({{ itemCount }} items):</span>
+              <span class="text-sm sm:text-base md:text-lg font-semibold text-gray-900">{{ formatCurrency(subtotal) }}</span>
+            </div>
+            <div class="content-item flex justify-between items-center pb-4 border-b-2 border-gray-200">
+              <span class="text-xs sm:text-sm md:text-base text-gray-700 font-medium">VAT (16%):</span>
+              <span class="text-sm sm:text-base md:text-lg font-semibold text-gray-900">{{ formatCurrency(subtotal * 0.16) }}</span>
+            </div>
+            <div class="content-total flex justify-between items-center pt-2 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 rounded-lg">
+              <span class="text-xs sm:text-sm md:text-base font-bold text-gray-900">Total:</span>
+              <span class="text-lg sm:text-xl md:text-2xl font-bold text-[#FF412C]">{{ formatCurrency(subtotal * 1.16) }}</span>
+            </div>
+            <button
+              @click="proceedToCheckout"
+              type="button"
+              class="w-full mt-4 sm:mt-6 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:shadow-lg rounded-lg text-white text-center text-sm sm:text-base font-semibold transition-all duration-300 transform hover:scale-105"
+            >
+              Proceed to Checkout
+            </button>
+            <button
+              type="button"
+              class="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 text-center text-sm sm:text-base font-semibold transition-all duration-300"
+            >
+              Continue Shopping
+            </button>
+          </div>
+        </div>
+      </div>
       </section>
       <section class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
         <div
@@ -580,3 +631,44 @@ const proceedToCheckout = () => {
     </div>
     <Footer/>
 </template>
+
+<style scoped>
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+    background-color: rgb(229, 231, 235);
+  }
+  50% {
+    opacity: 0.6;
+    background-color: rgb(209, 213, 219);
+  }
+}
+
+@keyframes skeleton-wave {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgb(229, 231, 235) 0%, rgb(243, 244, 246) 20%, rgb(229, 231, 235) 40%);
+  background-size: 1000px 100%;
+  animation: skeleton-wave 2s infinite;
+}
+</style>
