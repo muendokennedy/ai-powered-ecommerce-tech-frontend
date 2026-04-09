@@ -331,6 +331,21 @@ onMounted(() => {
 })
 </script>
 
+<style scoped>
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+</style>
+
 <template>
     <Header/>
     <main class="menu-toggle">
@@ -340,7 +355,29 @@ onMounted(() => {
       >
         What we <span class="text-[#68A4FE] px-2">sell</span>
       </div>
-        <p v-if="isLoadingProducts" class="text-sm text-gray-600 mt-3">Loading products...</p>
+        <div v-if="isLoadingProducts" class="w-full py-12">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+            <div v-for="i in 6" :key="i" class="product-box bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden py-4 px-3 animate-pulse">
+              <div class="relative bg-gray-200 h-40 rounded-lg mb-3 overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-shimmer"></div>
+              </div>
+              <div class="bg-gray-200 h-4 rounded mb-2 w-3/4"></div>
+              <div class="bg-gray-200 h-3 rounded mb-3 w-1/2"></div>
+              <div class="flex justify-center gap-1 mb-3">
+                <div class="bg-gray-300 h-3 w-3 rounded-full"></div>
+                <div class="bg-gray-300 h-3 w-3 rounded-full"></div>
+                <div class="bg-gray-300 h-3 w-3 rounded-full"></div>
+                <div class="bg-gray-300 h-3 w-3 rounded-full"></div>
+                <div class="bg-gray-300 h-3 w-3 rounded-full"></div>
+              </div>
+              <div class="bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+                <div class="bg-gray-300 h-4 rounded mb-1"></div>
+                <div class="bg-gray-300 h-5 rounded w-3/4"></div>
+              </div>
+              <div class="bg-gray-300 h-10 rounded-lg w-full"></div>
+            </div>
+          </div>
+        </div>
         <p v-else-if="!products.length" class="text-sm text-gray-600 mt-3">No products available right now.</p>
         <div class="product-search flex w-full relative my-4">
           <input
