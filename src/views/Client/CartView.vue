@@ -5,10 +5,43 @@ import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { PlusIcon, MinusIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 import { useUserStore, useAdminUserStore } from '@/stores/user'
+import axiosClient from '@/axiosClient'
 
 const router = useRouter()
 const userStore = useUserStore()
 const adminUserStore = useAdminUserStore()
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+
+const getImagePath = (path) => {
+  if (!path || typeof path !== 'string') return ''
+
+  const value = path.trim()
+  if (!value) return ''
+
+  // Force storage URLs to backend host (http://localhost:8000/storage/...)
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const parsed = new URL(value)
+      if (/^\/storage\//i.test(parsed.pathname)) {
+        return `${apiBaseUrl}${parsed.pathname}`
+      }
+      return value
+    } catch {
+      return value
+    }
+  }
+
+  const normalized = value.replace(/^\/+/, '')
+  if (/^storage\//i.test(normalized)) {
+    return `${apiBaseUrl}/${normalized}`
+  }
+  if (/^(products|product_images)\//i.test(normalized)) {
+    return `${apiBaseUrl}/storage/${normalized}`
+  }
+
+  return value
+}
 
 // A cart action is allowed only for a normal user session, never an admin session.
 const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
@@ -16,6 +49,7 @@ const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
 // Reactive cart and wishlist loaded from sessionStorage
 const cartItems = ref([])
 const wishlistItems = ref([])
+const isLoadingCart = ref(false)
 // Recommendations for "you may also like"
 const recommendations = ref([
   { id: 'rec-ph-1', name: 'infinix hot 12', brand: 'Infinix', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
@@ -31,23 +65,45 @@ const showRecommendations = computed(() => {
 })
 
 function loadCart() {
+  isLoadingCart.value = true
   try {
-    const raw = sessionStorage.getItem('cartItems')
-    const parsed = raw ? JSON.parse(raw) : []
-    // Ensure quantity and basic fields
-    cartItems.value = Array.isArray(parsed)
-      ? parsed.map(it => ({
-          id: it.id,
+    axiosClient.post('/api/cart/products')
+      .then(response => {
+        const payload = response.data
+        const list = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : Array.isArray(payload?.cartItems)
+                ? payload.cartItems
+                : []
+        
+        // Ensure quantity and basic fields
+        cartItems.value = list.map(it => ({
+          id: it.cart_item_id || it.id || it.product_id,
+          productId: it.product_id,
           name: it.name,
           brand: it.brand,
-          price: Number(it.price) || 0,
+          price: Number(it.discount_price || it.price) || 0,
           oldPrice: it.oldPrice ?? null,
-          image: it.image,
+          image: getImagePath(it.image),
           quantity: Number(it.quantity) > 0 ? Number(it.quantity) : 1,
         }))
-      : []
-  } catch {
+      })
+      .catch(error => {
+        console.error('Failed to load cart:', error)
+        cartItems.value = []
+        showToast(error.response?.data?.message || 'Failed to load cart', 'error')
+      })
+      .finally(() => {
+        isLoadingCart.value = false
+      })
+  } catch (error) {
+    console.error('Error loading cart:', error)
     cartItems.value = []
+    isLoadingCart.value = false
   }
 }
 
@@ -66,23 +122,69 @@ const subtotal = computed(() => cartItems.value.reduce((sum, it) => sum + (it.pr
 const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
 
 function increment(it) {
-  it.quantity = (it.quantity || 1) + 1
-  saveCart()
+  axiosClient.post(`/api/cart/items/${it.id}/update-quantity`, {
+    quantity: 1,
+    action: 'increment'
+  })
+    .then(response => {
+      it.quantity = (it.quantity || 1) + 1
+      saveCart()
+      showToast(response.data?.message || `${it.name} quantity updated`, 'success')
+    })
+    .catch(error => {
+      showToast(error.response?.data?.message || 'Failed to update quantity', 'error')
+    })
 }
 
 function decrement(it) {
-  if ((it.quantity || 1) > 1) {
-    it.quantity -= 1
-  } else {
-    removeItem(it)
+  const currentQuantity = it.quantity || 1
+  // Don't go below 1
+  if (currentQuantity > 1) {
+    axiosClient.post(`/api/cart/items/${it.id}/update-quantity`, {
+      quantity: 1,
+      action: 'decrement'
+    })
+      .then(response => {
+        it.quantity = currentQuantity - 1
+        saveCart()
+        showToast(response.data?.message || `${it.name} quantity updated`, 'success')
+      })
+      .catch(error => {
+        showToast(error.response?.data?.message || 'Failed to update quantity', 'error')
+      })
+  }
+}
+
+function updateQuantityOnEnter(it) {
+  const newQuantity = it.quantity || 1
+  if (newQuantity < 1) {
+    it.quantity = 1
     return
   }
-  saveCart()
+  axiosClient.post(`/api/cart/items/${it.id}/update-quantity`, {
+    quantity: newQuantity,
+    action: null
+  })
+    .then(response => {
+      saveCart()
+      showToast(response.data?.message || `${it.name} quantity updated`, 'success')
+    })
+    .catch(error => {
+      showToast(error.response?.data?.message || 'Failed to update quantity', 'error')
+    })
 }
 
 function removeItem(it) {
-  cartItems.value = cartItems.value.filter(x => x.id !== it.id)
-  saveCart()
+  axiosClient.delete(`/api/cart/items/${it.id}`)
+    .then(response => {
+      cartItems.value = cartItems.value.filter(x => x.id !== it.id)
+      saveCart()
+      showToast(response.data?.message || `${it.name} removed from cart`, 'success')
+      try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
+    })
+    .catch(error => {
+      showToast(error.response?.data?.message || 'Failed to remove item from cart', 'error')
+    })
 }
 
 function loadWishlist() {
@@ -247,11 +349,12 @@ const proceedToCheckout = () => {
       </div>
       <div class="cart-section flex flex-col lg:flex-row justify-between w-full">
         <div class="shopping-cart-container text-[#384857] w-full lg:w-3/5">
-          <div
-          v-for="item in cartItems"
-          :key="item.id"
-          class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
-          >
+          <template v-if="!isLoadingCart">
+            <div
+            v-for="item in cartItems"
+            :key="item.id"
+            class="shopping-cart-box flex flex-col sm:flex-row justify-between items-center sm:items-start p-4 h-auto sm:h-48 w-full border-b-2 border-gray-300 my-4"
+            >
               <div class="cart-image h-full w-40">
                 <img
                   :src="resolveImg(item.image)"
@@ -282,7 +385,7 @@ const proceedToCheckout = () => {
                   <PlusIcon @click="increment(item)" class="size-6 inline cursor-pointer hover:text-[#68a4fe] transition-all duration-300 ease-in-out"></PlusIcon>
                   <input
                     v-model.number="item.quantity"
-                    @change="saveCart()"
+                    @keyup.enter="updateQuantityOnEnter(item)"
                     type="number"
                     min="1"
                     class="p-2 border-2 rounded-md outline-none w-24"
@@ -317,7 +420,9 @@ const proceedToCheckout = () => {
                 </div>
               </div>
             </div>
-            <div v-if="cartItems.length === 0" class="p-6 text-center text-sm text-gray-500">Your cart is empty.</div>
+          </template>
+          <div v-if="isLoadingCart" class="p-6 text-center text-sm text-gray-500">Loading cart...</div>
+          <div v-else-if="cartItems.length === 0" class="p-6 text-center text-sm text-gray-500">Your cart is empty.</div>
           </div>
           <div class="cart-total border-2 border-gray-300  h-52 sm:h-56 lg:h-64 xl:h-56 w-full md:w-3/5 lg:w-1/3 my-2">
             <h2
