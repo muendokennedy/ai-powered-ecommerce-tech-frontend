@@ -569,32 +569,33 @@ const proceedToCheckout = () => {
         </div>
       </section>
       <section v-if="showRecommendations" class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
-        <div
-        class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
-      >
-        you may also<span class="text-[#68A4FE] px-2"> like</span>
-      </div>
-      <div class="top-sales-container grid mx-auto w-[95%]">
-        <div
-          v-for="rec in recommendations"
-          :key="rec.id"
-          class="product-box text-center my-2 sm:my-4"
-        >
-          <div class="flex justify-center items-center">
-            <div class="product-image">
-              <img :src="resolveImg(rec.image)" :alt="rec.name" />
-            </div>
-          </div>
-          <div class="product-title text-sm font-normal sm:font-semibold capitalize">
-            {{ rec.name }}
-          </div>
-          <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-            <i v-for="i in (rec.rating || 0)" :key="`r-${rec.id}-${i}`" class="fa-solid fa-star"></i>
-          </div>
-          <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(rec.price) }}</div>
-          <button class="add-cart-btn text-xs" @click="addToCartQuick(rec)">add to cart</button>
+        <div class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize">
+          you may also<span class="text-[#68A4FE] px-2"> like</span>
         </div>
-      </div>
+        <div class="top-sales-container flex flex-wrap justify-center gap-2 mx-auto w-full">
+          <div v-for="rec in recommendations" :key="rec.id" class="product-box group flex-shrink-0 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-2" style="min-width: 230px; max-width: 280px;">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300">
+                <img :src="resolveImg(rec.image)" :alt="rec.name" class="h-full object-contain" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="rec.oldPrice && rec.price < rec.oldPrice">
+                -{{ Math.round((1 - rec.price / rec.oldPrice) * 100) }}%
+              </div>
+            </div>
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800">
+              {{ rec.name }}
+            </div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ rec.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in (rec.rating || 0)" :key="`r-${rec.id}-${i}`" class="fa-solid fa-star text-[#FFCF10]"></i>
+            </div>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="rec.oldPrice && rec.price < rec.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(rec.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(rec.price) }}</div>
+            </div>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm transform hover:scale-105 active:scale-95" @click="addToCartQuick(rec)">add to cart</button>
+          </div>
+        </div>
       </section>
     </main>
     <!-- Toast (slides near top, below header) -->
