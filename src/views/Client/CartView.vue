@@ -646,11 +646,9 @@ const proceedToCheckout = () => {
 @keyframes skeleton-pulse {
   0%, 100% {
     opacity: 1;
-    background-color: rgb(229, 231, 235);
   }
   50% {
-    opacity: 0.6;
-    background-color: rgb(209, 213, 219);
+    opacity: 0.7;
   }
 }
 
