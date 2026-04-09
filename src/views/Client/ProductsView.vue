@@ -160,7 +160,10 @@ const router = useRouter()
 const userStore = useUserStore()
 const adminUserStore = useAdminUserStore()
 
-const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
+const formatCurrency = (n) => {
+  const num = Number(n)
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
 
 // Brand filter per-category
 const selectedBrandByCategory = ref({
@@ -427,22 +430,26 @@ onMounted(() => {
             <a href="#" @click.prevent="setBrand('phones','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.phones==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in getFiltered('phones')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
-            <div class="flex justify-center items-center">
-              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
-                <img :src="p.image" :alt="p.name" />
+        <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-for="p in getFiltered('phones')" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
+                <img :src="p.image" :alt="p.name" class="h-full object-contain" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="p.oldPrice && p.price < p.oldPrice">
+                -{{ Math.round((1 - p.price / p.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800" @click="gotoProduct(p)">{{ p.name }}</div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ p.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star text-[#FFCF10]"></i>
             </div>
-            <div class="flex justify-between w-20 sm:w-24 mx-auto">
-              <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
-              <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="p.oldPrice && p.price < p.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(p.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -459,22 +466,26 @@ onMounted(() => {
             <a href="#" @click.prevent="setBrand('laptops','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.laptops==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in getFiltered('laptops')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
-            <div class="flex justify-center items-center">
-              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
-                <img :src="p.image" :alt="p.name" />
+        <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-for="p in getFiltered('laptops')" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
+                <img :src="p.image" :alt="p.name" class="h-full object-contain" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="p.oldPrice && p.price < p.oldPrice">
+                -{{ Math.round((1 - p.price / p.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800" @click="gotoProduct(p)">{{ p.name }}</div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ p.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star text-[#FFCF10]"></i>
             </div>
-            <div class="flex justify-between w-20 sm:w-24 mx-auto">
-              <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
-              <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="p.oldPrice && p.price < p.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(p.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -491,22 +502,26 @@ onMounted(() => {
             <a href="#" @click.prevent="setBrand('smartwatches','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.smartwatches==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in getFiltered('smartwatches')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
-            <div class="flex justify-center items-center">
-              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
-                <img :src="p.image" :alt="p.name" />
+        <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-for="p in getFiltered('smartwatches')" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
+                <img :src="p.image" :alt="p.name" class="h-full object-contain" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="p.oldPrice && p.price < p.oldPrice">
+                -{{ Math.round((1 - p.price / p.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800" @click="gotoProduct(p)">{{ p.name }}</div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ p.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star text-[#FFCF10]"></i>
             </div>
-            <div class="flex justify-between w-20 sm:w-24 mx-auto">
-              <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
-              <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="p.oldPrice && p.price < p.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(p.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -523,22 +538,26 @@ onMounted(() => {
             <a href="#" @click.prevent="setBrand('televisions','redmi')" :class="{'text-[#68A4FE] font-semibold': selectedBrandByCategory.televisions==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
           </div>
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in getFiltered('televisions')" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
-            <div class="flex justify-center items-center">
-              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
-                <img :src="p.image" :alt="p.name" />
+        <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-for="p in getFiltered('televisions')" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
+                <img :src="p.image" :alt="p.name" class="h-full object-contain" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="p.oldPrice && p.price < p.oldPrice">
+                -{{ Math.round((1 - p.price / p.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star"></i>
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800" @click="gotoProduct(p)">{{ p.name }}</div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ p.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star text-[#FFCF10]"></i>
             </div>
-            <div class="flex justify-between w-20 sm:w-24 mx-auto">
-              <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50">{{ formatCurrency(p.oldPrice) }}</div>
-              <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="p.oldPrice && p.price < p.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(p.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(p.price) }}</div>
             </div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
