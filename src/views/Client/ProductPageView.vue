@@ -60,7 +60,10 @@ const brand = computed(() => product.value?.brand ?? '—')
 const image = computed(() => activeImage.value || product.value?.image || '../../assets/images/redmi note 12.png')
 const price = computed(() => product.value?.price ?? 0)
 const oldPrice = computed(() => product.value?.oldPrice ?? null)
-const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
+const formatCurrency = (n) => {
+  const num = Number(n);
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+};
 
 // Delivery window: start = tomorrow, end = start + 4 days
 const deliveryWindow = computed(() => {
@@ -755,7 +758,7 @@ function saveForLaterFromProduct() {
       </div>
       <div class="product flex items-center flex-col md:flex-row justify-between w-full">
         <div class="w-full md:basis-[48%] p-2 sm:p-4 flex flex-col items-center">
-          <div class="master-image w-[15rem] md:w-[16rem] h-[15rem] md:h-[20rem] flex justify-center items-center my-6">
+          <div class="master-image w-[15rem] md:w-[16rem] h-[15rem] md:h-[20rem] flex justify-center items-center my-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-4 hover:shadow-2xl transition-all duration-300">
             <img :src="resolveImg(image)" :alt="title" class="m-auto w-full h-full object-contain">
           </div>
           <div class="w-full sm:w-4/5 flex justify-between gap-2 md:gap-4 mx-auto">
@@ -763,44 +766,50 @@ function saveForLaterFromProduct() {
               v-for="(img, idx) in galleryImages"
               :key="idx"
               type="button"
-              class="small-image h-20 border-2 p-1 sm:p-2 rounded-md cursor-pointer focus:outline-none"
-              :class="{ 'border-[#68a4fe]': img === image }"
+              class="small-image h-20 border-2 p-1 sm:p-2 rounded-lg cursor-pointer focus:outline-none transition-all duration-300 hover:shadow-lg bg-white hover:bg-gradient-to-br hover:from-blue-50 hover:to-gray-50"
+              :class="{ 'border-[#68A4FE] shadow-lg bg-gradient-to-br from-blue-50 to-gray-50': img === image, 'border-gray-300': img !== image }"
               @click="activeImage = img"
             >
               <img :src="resolveImg(img)" :alt="`thumb-${idx}`" class="h-full object-contain">
             </button>
           </div>
-          <div class="action-button-container my-4 sm:my-8 flex w-full justify-between">
-            <button type="button" @click="proceedToBuy" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#ffcf10] basis-[48%] capitalize">Proceed to buy</button>
-            <button type="button" @click="saveForLaterFromProduct" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-md w-40 bg-[#68a4fe] basis-[48%] text-white capitalize">save for later</button>
+          <div class="action-button-container my-4 sm:my-8 flex w-full gap-3">
+            <button type="button" @click="proceedToBuy" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-lg flex-1 bg-gradient-to-r from-[#FFCF10] to-yellow-400 hover:shadow-lg font-semibold capitalize transition-all duration-300 transform hover:scale-105 active:scale-95 text-gray-900">Proceed to buy</button>
+            <button type="button" @click="saveForLaterFromProduct" class="text-sm sm:text-base px-2 sm:px-4 py-3 rounded-lg flex-1 bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:shadow-lg font-semibold capitalize transition-all duration-300 transform hover:scale-105 active:scale-95 text-white">Save for later</button>
           </div>
         </div>
-        <div class="product-content-details w-full md:basis-[48%] p-2 sm:p-4 my-2 md:my-4">
-          <div class="product-title font-semibold text-lg sm:text-xl mb-4 text-[#384857] capitalize">{{ title }}</div>
-          <div class="product-manufacturer text-sm text-[#384857]">Brand: <span class="capitalize">{{ brand }}</span></div>
-          <div class="flex gap-4 items-center my-2 border-b-2 py-4">
-            <div class="text-xs text-[#ffcf10] flex items-center">
-              <svg v-for="i in (product?.rating || 5)" :key="`star-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mr-0.5">
+        <div class="product-content-details w-full md:basis-[48%] p-4 sm:p-6 md:p-8 my-2 md:my-4 bg-white rounded-xl shadow-lg border border-gray-100">
+          <div class="product-title font-bold text-2xl sm:text-3xl mb-2 text-gray-900 capitalize">{{ title }}</div>
+          <div class="product-manufacturer text-sm text-gray-600 mb-4">By <span class="capitalize text-[#68A4FE] font-semibold">{{ brand }}</span></div>
+          <div class="flex gap-2 items-center my-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg p-3 border border-yellow-200">
+            <div class="text-sm text-[#FFCF10] flex items-center">
+              <svg v-for="i in (product?.rating || 5)" :key="`star-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-0.5">
                 <polygon points="12,17.27 18.18,21 16.54,13.97 22,9.24 14.81,8.62 12,2 9.19,8.62 2,9.24 7.46,13.97 5.82,21" />
               </svg>
             </div>
-            <div class="rating-text text-xs text-[#68a4fe]">
-              100,450+ ratings | over 100k delivered
+            <div class="rating-text text-xs text-gray-700 font-medium">
+              <span class="font-bold text-gray-900">4.8/5</span> • 100,450+ ratings • 100k+ delivered
             </div>
           </div>
-          <div class="price-details my-2 border-b-2">
-            <p class="first-price text-sm py-2 text-[#384857]" v-if="oldPrice">Most recent price: <span>{{ formatCurrency(oldPrice) }}</span></p>
-            <p class="deal-price text-sm py-2 text-[#384857]">Deal price: <span class="text-[#FF412C]">{{ formatCurrency(price) }}</span> inclusive of <span class="inline font-semibold text-[#384857]">VAT</span></p>
-            <p class="save-amount text-sm py-2 capitalize text-[#384857]" v-if="oldPrice && price">save: <span class="text-[#FF412C]">{{ formatCurrency(oldPrice - price) }}</span></p>
+          <div class="price-details my-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+            <p class="first-price text-xs text-gray-600 py-1" v-if="oldPrice">Original price: <span class="line-through">{{ formatCurrency(oldPrice) }}</span></p>
+            <p class="deal-price text-lg sm:text-2xl py-2 font-bold">Special Price: <span class="text-[#FF412C] bg-gradient-to-r from-red-100 to-pink-100 px-2 rounded">{{ formatCurrency(price) }}</span></p>
+            <p class="save-amount text-sm py-1 capitalize text-emerald-700 font-semibold" v-if="oldPrice && price">💰 You save: {{ formatCurrency(oldPrice - price) }}</p>
           </div>
-          <div class="delivery-timeline text-sm my-4">Delivery by: <span class="font-bold">{{ deliveryWindow }}</span></div>
-          <div class="vendor-name text-sm my-4">
-            <span>Sold by MoTech electronics</span> <span>(250 out of 300 already sold)</span>
+          <div class="delivery-timeline text-sm my-4 bg-emerald-50 p-3 rounded-lg border border-emerald-200 flex items-center gap-2">
+            <span class="text-lg">📦</span>
+            <div>
+              <span class="text-gray-700">Expected Delivery:</span> <span class="font-bold text-emerald-700">{{ deliveryWindow }}</span>
+            </div>
           </div>
-          <div class="product-specification-details grid grid-cols-3 gap-3 my-6 text-[#384857] mb-auto">
+          <div class="vendor-name text-sm my-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <span class="font-semibold text-gray-900">✓ Sold by MoTech Electronics</span>
+            <span class="text-gray-600 ml-2">• 250 out of 300 sold</span>
+          </div>
+          <div class="product-specification-details grid grid-cols-3 gap-3 my-6 mb-auto">
             <div class="spec flex flex-col gap-2" v-for="(spec, idx) in displaySpecs" :key="`spec-${idx}`">
-              <span class="block font-semibold text-[#384857] text-base sm:text-xl">{{ spec.label }}:</span>
-              <span class="border-2 px-2 sm:px-6 md:px-3 py-2 rounded-md font-normal sm:font-semibold text-base sm:text-xl">{{ spec.value }}</span>
+              <span class="block font-semibold text-gray-700 text-sm">{{ spec.label }}</span>
+              <span class="bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] text-white px-3 py-2 rounded-lg font-semibold text-center text-sm hover:shadow-md transition-all">{{ spec.value }}</span>
             </div>
           </div>
         </div>
@@ -812,7 +821,12 @@ function saveForLaterFromProduct() {
       >
         product description
       </div>
-      <p class="description-text text-sm my-4">{{ descriptionText }}</p>
+      <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+        <p class="description-text text-sm sm:text-base leading-relaxed text-gray-700 mb-4">{{ descriptionText }}</p>
+        <div class="flex items-center gap-2 text-emerald-700 font-semibold">
+          <span class="text-xl">✓</span> Premium quality guaranteed
+        </div>
+      </div>
       </section>
       <!-- Toast (slides near top, below header) -->
       <div
@@ -852,11 +866,11 @@ function saveForLaterFromProduct() {
       >
         <span class="text-[#68A4FE] px-2">related</span> products
       </div>
-      <div class="top-sales-container grid mx-auto w-[95%] gap-3">
+      <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mx-auto w-full gap-3">
         <div
           v-for="rp in relatedProducts"
           :key="rp.id"
-          class="product-box text-center my-2 sm:my-4 border-2 py-4"
+          class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3"
         >
           <RouterLink
             class="product-box block"
@@ -864,30 +878,57 @@ function saveForLaterFromProduct() {
             :aria-label="`View details for ${rp.name}`"
             @click="setSelectedProduct(rp)"
           >
-            <div class="flex justify-center items-center">
-              <div class="product-image">
-                <img :src="resolveImg(rp.image)" :alt="rp.name" />
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-32 sm:h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300">
+                <img :src="resolveImg(rp.image)" :alt="rp.name" class="h-full object-contain" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="rp.oldPrice && rp.price < rp.oldPrice">
+                -{{ Math.round((1 - rp.price / rp.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize hover:text-[#68A4FE]">
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800">
               {{ rp.name }}
             </div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4 flex justify-center">
-              <svg v-for="i in (rp.rating || 5)" :key="`rp-star-${rp.id}-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mx-0.5">
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ rp.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <svg v-for="i in (rp.rating || 5)" :key="`rp-star-${rp.id}-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
                 <polygon points="12,17.27 18.18,21 16.54,13.97 22,9.24 14.81,8.62 12,2 9.19,8.62 2,9.24 7.46,13.97 5.82,21" />
               </svg>
             </div>
-            <div class="flex justify-between w-20 sm:w-24 mx-auto">
-              <div class="deal-price my-1 text-xs sm:text-base sm:my-3 font-semibold line-through opacity-50" v-if="rp.oldPrice">
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div class="deal-price text-xs text-gray-500 font-semibold line-through mb-1" v-if="rp.oldPrice">
                 {{ formatCurrency(rp.oldPrice) }}
               </div>
-              <div class="first-price my-1 text-xs sm:text-base sm:my-3 font-semibold">{{ formatCurrency(rp.price) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">
+                {{ formatCurrency(rp.price) }}
+              </div>
             </div>
           </RouterLink>
-          <button class="add-cart-btn text-xs mt-2" @click.stop.prevent="addToCart(rp)">add to cart</button>
+          <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm transform hover:scale-105 active:scale-95" @click.stop.prevent="addToCart(rp)">add to cart</button>
         </div>
       </div>
       </section>
     </main>
     <Footer/>
 </template>
+
+<style scoped>
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Enhanced hover states */
+button {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Image zoom effect */
+.master-image img {
+  transition: transform 0.3s ease-in-out;
+}
+
+.master-image:hover img {
+  transform: scale(1.05);
+}
+</style>
