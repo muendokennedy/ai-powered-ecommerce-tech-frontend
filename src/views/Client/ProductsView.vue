@@ -48,17 +48,7 @@ const getImageUrlFromEntry = (entry) => {
   if (!entry) return ''
   if (typeof entry === 'string') return entry
   if (typeof entry === 'object') {
-    return (
-      entry.url ||
-      entry.path ||
-      entry.image_path ||
-      entry.file_path ||
-      entry.image ||
-      entry.image_url ||
-      entry.imageUrl ||
-      entry.src ||
-      ''
-    )
+    return (entry.image_path || '')
   }
   return ''
 }
@@ -78,8 +68,8 @@ const parseSpecifications = (value) => {
 }
 
 const normalizeProduct = (p, index = 0) => {
-  const originalPrice = Number(p.base_price ?? p.originalPrice ?? p.original_price ?? p.price ?? 0)
-  const discountRaw = p.discount_price ?? p.discountedPrice ?? p.discounted_price
+  const originalPrice = Number(p.base_price ?? 0)
+  const discountRaw = p.discount_price
   const discountedPrice = discountRaw === '' || discountRaw === null || discountRaw === undefined
     ? null
     : Number(discountRaw)
@@ -91,18 +81,6 @@ const normalizeProduct = (p, index = 0) => {
   ]
 
   const imageCandidates = [
-    p.primary_image,
-    p.primaryImage,
-    p.secondary_image,
-    p.second_image,
-    p.secondaryImage,
-    p.tertiary_image,
-    p.third_image,
-    p.tertiaryImage,
-    p.image,
-    p.image_url,
-    p.imageUrl,
-    p.thumbnail,
     ...listImages
   ]
 
@@ -116,16 +94,13 @@ const normalizeProduct = (p, index = 0) => {
   const primaryImage = images[0] || ''
 
   return {
-    id: String(p.id ?? p.product_id ?? p.uuid ?? p.slug ?? `product-${index}`),
-    category: normalizeCategory(p.category || p.product_category || 'phones'),
-    brand: p.brand || 'Unknown',
-    name: p.name || p.title || 'Unnamed Product',
+    id: String(p.id),
+    category: normalizeCategory(p.category),
+    brand: p.brand,
+    name: p.name,
     image: primaryImage,
     price,
     oldPrice: discountedPrice !== null ? originalPrice : null,
-    rating: Number(p.rating || 5),
-    originalPrice,
-    discountedPrice,
     description: p.description || '',
     images,
     specifications: parseSpecifications(p.specifications)

@@ -77,10 +77,10 @@
     background-image: radial-gradient(#ffff 5%, #536474 50%);
   }
   .home-2 {
-    background-image: radial-gradient(#ffff 5%, #28a9c9 50%);
+    background-image: radial-gradient(#ffff 5%, #536474 50%);
   }
   .home-3 {
-    background-image: radial-gradient(#ffff 5%, #b237be 50%);
+    background-image: radial-gradient(#ffff 5%, #536474 50%);
   }
 
   @media only screen and (max-width: 768px) {

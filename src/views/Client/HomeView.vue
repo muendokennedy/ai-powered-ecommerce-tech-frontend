@@ -5,214 +5,158 @@ import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { ChevronRightIcon, ChevronLeftIcon, StarIcon, CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 import { useUserStore, useAdminUserStore } from '@/stores/user'
+import axiosClient from '@/axiosClient'
 
-// Products data (same structure as ProductsView.vue)
-const products = ref([
-  // Phones
-  { id: 'ph-1', category: 'phones', brand: 'Infinix', name: 'infinix hot 12', image: '/src/assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5,
-    originalPrice: 206, discountedPrice: 136,
-    description: 'A dependable smartphone with a bright display, capable camera, and long battery for everyday use.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/iphone12.png'],
-    specifications: { storage: '128GB', ram: '6GB', displaySize: '6.5"', camera: '48MP', battery: '5000mAh', operatingSystem: 'Android', color: 'Black' }
-  },
-  { id: 'ph-2', category: 'phones', brand: 'Xiaomi', name: 'redmi note 12', image: '/src/assets/images/redmi note 12.png', price: 136, oldPrice: 206, rating: 5,
-    originalPrice: 206, discountedPrice: 136,
-    description: 'Vivid display and smooth performance with a versatile camera system, ideal for social and streaming.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/iphone12.png'],
-    specifications: { storage: '128GB', ram: '6GB', displaySize: '6.6"', camera: '50MP', battery: '5000mAh', operatingSystem: 'Android', color: 'Blue' }
-  },
-  { id: 'ph-3', category: 'phones', brand: 'Apple', name: 'iphone 12', image: '/src/assets/images/iphone12.png', price: 699, oldPrice: 799, rating: 5,
-    originalPrice: 799, discountedPrice: 699,
-    description: 'Fast performance and a great dual‑camera system in a sleek, durable design.',
-    images: ['/src/assets/images/iphone12.png','/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png'],
-    specifications: { storage: '128GB', ram: '4GB', displaySize: '6.1"', camera: '12MP Dual', battery: '2815mAh', operatingSystem: 'iOS', color: 'Black' }
-  },
-  { id: 'ph-4', category: 'phones', brand: 'Apple', name: 'iphone 14', image: '/src/assets/images/iphone14.png', price: 899, oldPrice: 999, rating: 5,
-    originalPrice: 999, discountedPrice: 899,
-    description: 'Advanced camera, vibrant display, and strong battery life for a premium iPhone experience.',
-    images: ['/src/assets/images/iphone14.png','/src/assets/images/iphone12.png','/src/assets/images/redmi note 12.png'],
-    specifications: { storage: '256GB', ram: '6GB', displaySize: '6.1"', camera: '12MP Dual', battery: '3279mAh', operatingSystem: 'iOS', color: 'Midnight' }
-  },
-  { id: 'ph-5', category: 'phones', brand: 'Tecno', name: 'tecno camon 18p', image: '/src/assets/images/techno camon 18p.png', price: 249, oldPrice: 299, rating: 5,
-    originalPrice: 299, discountedPrice: 249,
-    description: 'Balanced performance with a sharp display and reliable battery for daily tasks.',
-    images: ['/src/assets/images/techno camon 18p.png','/src/assets/images/techno spark 5.png','/src/assets/images/redmi note 12.png'],
-    specifications: { storage: '128GB', ram: '6GB', displaySize: '6.8"', camera: '48MP Triple', battery: '5000mAh', operatingSystem: 'Android', color: 'Gray' }
-  },
-  { id: 'ph-6', category: 'phones', brand: 'Infinix', name: 'infinix smart 7 plus', image: '/src/assets/images/infinix smart 7 plus.png', price: 129, oldPrice: 169, rating: 5,
-    originalPrice: 169, discountedPrice: 129,
-    description: 'Entry-level smartphone with a large display and long-lasting battery.',
-    images: ['/src/assets/images/infinix smart 7 plus.png','/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png'],
-    specifications: { storage: '64GB', ram: '4GB', displaySize: '6.6"', camera: '13MP', battery: '6000mAh', operatingSystem: 'Android', color: 'Green' }
-  },
-  { id: 'ph-7', category: 'phones', brand: 'Tecno', name: 'tecno spark 5', image: '/src/assets/images/techno spark 5.png', price: 159, oldPrice: 189, rating: 5,
-    originalPrice: 189, discountedPrice: 159,
-    description: 'Affordable smartphone with a big screen and battery for everyday essentials.',
-    images: ['/src/assets/images/techno spark 5.png','/src/assets/images/redmi note 12.png','/src/assets/images/iphone12.png'],
-    specifications: { storage: '64GB', ram: '4GB', displaySize: '6.6"', camera: '13MP', battery: '5000mAh', operatingSystem: 'Android', color: 'Black' }
-  },
-  { id: 'ph-8', category: 'phones', brand: 'Xiaomi', name: 'xiaomi redmi 10 2022 pro', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, oldPrice: 269, rating: 5,
-    originalPrice: 269, discountedPrice: 219,
-    description: 'Smooth performance, capable cameras, and a vibrant display for great value.',
-    images: ['/src/assets/images/xiaomi redmi 10 2022 pro.png','/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png'],
-    specifications: { storage: '128GB', ram: '6GB', displaySize: '6.5"', camera: '50MP Quad', battery: '5000mAh', operatingSystem: 'Android', color: 'Silver' }
-  },
+const products = ref([])
+const topSalesProducts = ref([])
+const newArrivalsProducts = ref([])
+const isLoadingProducts = ref(false)
+const addingToCartIds = ref(new Set())
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 
-  // Laptops
-  { id: 'lp-1', category: 'laptops', brand: 'Dell', name: 'dell inspiron', image: '/src/assets/images/dell inspiron.png', price: 749, oldPrice: 899, rating: 5,
-    originalPrice: 899, discountedPrice: 749,
-    description: 'A reliable productivity laptop with FHD display, fast SSD, and all-day efficiency.',
-    images: ['/src/assets/images/dell inspiron.png','/src/assets/images/hp laptop 15 ci7.png','/src/assets/images/dell latitude 5320.png'],
-    specifications: { processor: 'Intel Core i7', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '15.6"', operatingSystem: 'Windows 11', batteryLife: '10 hours' }
-  },
-  { id: 'lp-2', category: 'laptops', brand: 'Dell', name: 'dell latitude 5320', image: '/src/assets/images/dell latitude 5320.png', price: 999, oldPrice: 1149, rating: 5,
-    originalPrice: 1149, discountedPrice: 999,
-    description: 'Premium build quality with sharp display, fast performance, and great portability.',
-    images: ['/src/assets/images/dell latitude 5320.png','/src/assets/images/dell inspiron.png','/src/assets/images/hp laptop 15 ci7.png'],
-    specifications: { processor: 'Intel Core i7', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '13.3"', operatingSystem: 'Windows 11', batteryLife: '12 hours' }
-  },
-  { id: 'lp-3', category: 'laptops', brand: 'HP', name: 'hp laptop 15 ci7', image: '/src/assets/images/hp laptop 15 ci7.png', price: 1099, oldPrice: 1299, rating: 5,
-    originalPrice: 1299, discountedPrice: 1099,
-    description: 'Powerful laptop for work and study with bright display and speedy SSD storage.',
-    images: ['/src/assets/images/hp laptop 15 ci7.png','/src/assets/images/dell inspiron.png','/src/assets/images/dell latitude 5320.png'],
-    specifications: { processor: 'Intel Core i7', ram: '16GB', storageType: 'SSD', storageSize: '1TB', graphicsCard: 'Integrated', displaySize: '15.6"', operatingSystem: 'Windows 11', batteryLife: '9 hours' }
-  },
-  { id: 'lp-4', category: 'laptops', brand: 'Dell', name: 'dell inspiron (2024)', image: '/src/assets/images/dell inspiron.png', price: 799, oldPrice: 949, rating: 5,
-    originalPrice: 949, discountedPrice: 799,
-    description: 'Updated Inspiron with efficient performance and solid thermals for everyday tasks.',
-    images: ['/src/assets/images/dell inspiron.png','/src/assets/images/dell latitude 5320.png','/src/assets/images/hp laptop 15 ci7.png'],
-    specifications: { processor: 'Intel Core i5', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '15.6"', operatingSystem: 'Windows 11', batteryLife: '11 hours' }
-  },
-  { id: 'lp-5', category: 'laptops', brand: 'HP', name: 'hp laptop 15 ci7 (2024)', image: '/src/assets/images/hp laptop 15 ci7.png', price: 1029, oldPrice: 1249, rating: 5,
-    originalPrice: 1249, discountedPrice: 1029,
-    description: 'Thin-and-light design with a fast processor and vivid screen for modern workflows.',
-    images: ['/src/assets/images/hp laptop 15 ci7.png','/src/assets/images/dell inspiron.png','/src/assets/images/dell latitude 5320.png'],
-    specifications: { processor: 'Intel Core i7', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '15.6"', operatingSystem: 'Windows 11', batteryLife: '10 hours' }
-  },
-  { id: 'lp-6', category: 'laptops', brand: 'Dell', name: 'dell inspiron plus', image: '/src/assets/images/dell inspiron.png', price: 899, oldPrice: 1049, rating: 5,
-    originalPrice: 1049, discountedPrice: 899,
-    description: 'Enhanced Inspiron variant with better cooling and performance headroom.',
-    images: ['/src/assets/images/dell inspiron.png','/src/assets/images/hp laptop 15 ci7.png','/src/assets/images/dell latitude 5320.png'],
-    specifications: { processor: 'Intel Core i7', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '15.6"', operatingSystem: 'Windows 11', batteryLife: '10 hours' }
-  },
-  { id: 'lp-7', category: 'laptops', brand: 'Dell', name: 'dell latitude 5320 pro', image: '/src/assets/images/dell latitude 5320.png', price: 1049, oldPrice: 1199, rating: 5,
-    originalPrice: 1199, discountedPrice: 1049,
-    description: 'Business-class ultrabook with excellent keyboard, battery, and build quality.',
-    images: ['/src/assets/images/dell latitude 5320.png','/src/assets/images/dell inspiron.png','/src/assets/images/hp laptop 15 ci7.png'],
-    specifications: { processor: 'Intel Core i7', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '13.3"', operatingSystem: 'Windows 11 Pro', batteryLife: '12 hours' }
-  },
-  { id: 'lp-8', category: 'laptops', brand: 'HP', name: 'hp laptop 15 business', image: '/src/assets/images/hp laptop 15 ci7.png', price: 999, oldPrice: 1149, rating: 5,
-    originalPrice: 1149, discountedPrice: 999,
-    description: 'Balanced performance and value for office tasks, browsing, and conferencing.',
-    images: ['/src/assets/images/hp laptop 15 ci7.png','/src/assets/images/dell inspiron.png','/src/assets/images/dell latitude 5320.png'],
-    specifications: { processor: 'Intel Core i5', ram: '16GB', storageType: 'SSD', storageSize: '512GB', graphicsCard: 'Integrated', displaySize: '15.6"', operatingSystem: 'Windows 11', batteryLife: '9 hours' }
-  },
+const normalizeCategory = (value) => String(value || '').trim().toLowerCase()
 
-  // Smartwatches
-  { id: 'sw-1', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch S1', image: '/src/assets/images/redmi note 12.png', price: 99, oldPrice: 129, rating: 5,
-    originalPrice: 129, discountedPrice: 99,
-    description: 'Track your fitness, notifications, and sleep with a bright display and long battery life.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '44mm', operatingSystem: 'Wear OS', batteryLife: '24 hours', waterResistance: '5ATM', connectivity: 'Bluetooth + Wi‑Fi', healthSensors: 'Heart Rate, SpO2' }
-  },
-  { id: 'sw-2', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch Pro', image: '/src/assets/images/redmi note 12.png', price: 149, oldPrice: 199, rating: 5,
-    originalPrice: 199, discountedPrice: 149,
-    description: 'Enhanced smartwatch with advanced health metrics and durable design.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '46mm', operatingSystem: 'Wear OS', batteryLife: '36 hours', waterResistance: '5ATM', connectivity: 'Bluetooth + Wi‑Fi', healthSensors: 'Heart Rate, SpO2' }
-  },
-  { id: 'sw-3', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Band 5', image: '/src/assets/images/redmi note 12.png', price: 49, oldPrice: 69, rating: 5,
-    originalPrice: 69, discountedPrice: 49,
-    description: 'Lightweight fitness band for daily activity and sleep tracking.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '—', operatingSystem: 'Proprietary', batteryLife: '7 days', waterResistance: '5ATM', connectivity: 'Bluetooth', healthSensors: 'Heart Rate, SpO2' }
-  },
-  { id: 'sw-4', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch X', image: '/src/assets/images/redmi note 12.png', price: 179, oldPrice: 229, rating: 5,
-    originalPrice: 229, discountedPrice: 179,
-    description: 'Rugged smartwatch built for outdoor adventures with GPS and water resistance.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '47mm', operatingSystem: 'Wear OS', batteryLife: '48 hours', waterResistance: '5ATM', connectivity: 'Bluetooth + Wi‑Fi + GPS', healthSensors: 'Heart Rate, SpO2' }
-  },
-  { id: 'sw-5', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch Lite', image: '/src/assets/images/redmi note 12.png', price: 79, oldPrice: 109, rating: 5,
-    originalPrice: 109, discountedPrice: 79,
-    description: 'Essential features in a compact watch with dependable battery life.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'LCD', caseSize: '40mm', operatingSystem: 'Proprietary', batteryLife: '3 days', waterResistance: '3ATM', connectivity: 'Bluetooth', healthSensors: 'Heart Rate' }
-  },
-  { id: 'sw-6', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Band 6', image: '/src/assets/images/redmi note 12.png', price: 59, oldPrice: 79, rating: 5,
-    originalPrice: 79, discountedPrice: 59,
-    description: 'Affordable fitness band with smart notifications and basic health tracking.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '—', operatingSystem: 'Proprietary', batteryLife: '10 days', waterResistance: '5ATM', connectivity: 'Bluetooth', healthSensors: 'Heart Rate' }
-  },
-  { id: 'sw-7', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch S2', image: '/src/assets/images/redmi note 12.png', price: 129, oldPrice: 159, rating: 5,
-    originalPrice: 159, discountedPrice: 129,
-    description: 'Comfortable smartwatch with reliable activity tracking and app notifications.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '44mm', operatingSystem: 'Wear OS', batteryLife: '36 hours', waterResistance: '5ATM', connectivity: 'Bluetooth + Wi‑Fi', healthSensors: 'Heart Rate, SpO2' }
-  },
-  { id: 'sw-8', category: 'smartwatches', brand: 'MoTech', name: 'MoTech Watch Ultra', image: '/src/assets/images/redmi note 12.png', price: 249, oldPrice: 299, rating: 5,
-    originalPrice: 299, discountedPrice: 249,
-    description: 'Premium watch with advanced health tracking, GPS, and premium build quality.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { displayType: 'AMOLED', caseSize: '49mm', operatingSystem: 'Wear OS', batteryLife: '2 days', waterResistance: '5ATM', connectivity: 'Bluetooth + Wi‑Fi + GPS', healthSensors: 'Heart Rate, SpO2' }
-  },
+const getImagePath = (path) => {
+  if (!path || typeof path !== 'string') return ''
 
-  // Televisions
-  { id: 'tv-1', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 43" FHD', image: '/src/assets/images/redmi note 12.png', price: 299, oldPrice: 349, rating: 5,
-    originalPrice: 349, discountedPrice: 299,
-    description: 'Full HD smart TV with vivid colors and built-in streaming apps for everyday entertainment.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/xiaomi redmi 10 2022 pro.png','/src/assets/images/techno spark 5.png'],
-    specifications: { screenSize: '43"', resolution: '1080p', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: 'HDR10', refreshRate: '60Hz', audioOutput: '20W' }
-  },
-  { id: 'tv-2', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 55" 4K', image: '/src/assets/images/redmi note 12.png', price: 499, oldPrice: 599, rating: 5,
-    originalPrice: 599, discountedPrice: 499,
-    description: 'Sharp 4K resolution with smart features and multiple HDMI ports for devices and consoles.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { screenSize: '55"', resolution: '4K Ultra HD', displayTechnology: 'QLED', smartTvOs: 'Android TV', hdrSupport: 'HDR10+', refreshRate: '60Hz', audioOutput: '20W' }
-  },
-  { id: 'tv-3', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 65" 4K', image: '/src/assets/images/redmi note 12.png', price: 699, oldPrice: 799, rating: 5,
-    originalPrice: 799, discountedPrice: 699,
-    description: 'Large-screen 4K TV with great contrast and crisp upscaling for movies and sports.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/xiaomi redmi 10 2022 pro.png','/src/assets/images/techno spark 5.png'],
-    specifications: { screenSize: '65"', resolution: '4K Ultra HD', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: 'Dolby Vision', refreshRate: '120Hz', audioOutput: '30W' }
-  },
-  { id: 'tv-4', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 75" 4K', image: '/src/assets/images/redmi note 12.png', price: 999, oldPrice: 1199, rating: 5,
-    originalPrice: 1199, discountedPrice: 999,
-    description: 'Ultra-large 4K TV for immersive viewing with smart OS and smooth motion handling.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { screenSize: '75"', resolution: '4K Ultra HD', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: 'HDR10+', refreshRate: '120Hz', audioOutput: '40W' }
-  },
-  { id: 'tv-5', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 32" HD', image: '/src/assets/images/redmi note 12.png', price: 199, oldPrice: 249, rating: 5,
-    originalPrice: 249, discountedPrice: 199,
-    description: 'Compact HD TV ideal for bedrooms and kitchens with built-in streaming.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { screenSize: '32"', resolution: '720p', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: '—', refreshRate: '60Hz', audioOutput: '16W' }
-  },
-  { id: 'tv-6', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 50" 4K', image: '/src/assets/images/redmi note 12.png', price: 399, oldPrice: 499, rating: 5,
-    originalPrice: 499, discountedPrice: 399,
-    description: 'Feature-packed 4K TV with rich colors and smart connectivity for streaming.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/xiaomi redmi 10 2022 pro.png','/src/assets/images/techno spark 5.png'],
-    specifications: { screenSize: '50"', resolution: '4K Ultra HD', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: 'HDR10', refreshRate: '60Hz', audioOutput: '20W' }
-  },
-  { id: 'tv-7', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 58" 4K', image: '/src/assets/images/redmi note 12.png', price: 449, oldPrice: 549, rating: 5,
-    originalPrice: 549, discountedPrice: 449,
-    description: 'Balanced 4K TV with good brightness and sharp detail for movies and TV.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/techno spark 5.png','/src/assets/images/xiaomi redmi 10 2022 pro.png'],
-    specifications: { screenSize: '58"', resolution: '4K Ultra HD', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: 'HDR10', refreshRate: '60Hz', audioOutput: '20W' }
-  },
-  { id: 'tv-8', category: 'televisions', brand: 'MoTech', name: 'MoTech TV 85" 4K', image: '/src/assets/images/redmi note 12.png', price: 1499, oldPrice: 1699, rating: 5,
-    originalPrice: 1699, discountedPrice: 1499,
-    description: 'Massive 4K screen for cinematic viewing with smart OS and advanced HDR.',
-    images: ['/src/assets/images/redmi note 12.png','/src/assets/images/xiaomi redmi 10 2022 pro.png','/src/assets/images/techno spark 5.png'],
-    specifications: { screenSize: '85"', resolution: '4K Ultra HD', displayTechnology: 'LED', smartTvOs: 'Android TV', hdrSupport: 'Dolby Vision', refreshRate: '120Hz', audioOutput: '60W' }
+  const value = path.trim()
+  if (!value) return ''
+
+  // Force storage URLs to backend host (http://localhost:8000/storage/...)
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const parsed = new URL(value)
+      if (/^\/storage\//i.test(parsed.pathname)) {
+        return `${apiBaseUrl}${parsed.pathname}`
+      }
+      return value
+    } catch {
+      return value
+    }
   }
-])
+
+  const normalized = value.replace(/^\/+/, '')
+  if (/^storage\//i.test(normalized)) {
+    return `${apiBaseUrl}/${normalized}`
+  }
+  if (/^(products|product_images)\//i.test(normalized)) {
+    return `${apiBaseUrl}/storage/${normalized}`
+  }
+
+  return value
+}
+
+const getImageUrlFromEntry = (entry) => {
+  if (!entry) return ''
+  if (typeof entry === 'string') return entry
+  if (typeof entry === 'object') {
+    return (entry.image_path || '')
+  }
+  return ''
+}
+
+const parseSpecifications = (value) => {
+  if (!value) return {}
+  if (typeof value === 'object') return value
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value)
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
+const normalizeProduct = (p) => {
+  const originalPrice = Number(p.base_price ?? 0)
+  const discountRaw = p.discount_price
+  const discountedPrice = discountRaw === '' || discountRaw === null || discountRaw === undefined
+    ? null
+    : Number(discountRaw)
+  const price = discountedPrice ?? originalPrice
+  const listImages = [
+    ...(Array.isArray(p.images) ? p.images : []),
+    ...(Array.isArray(p.product_images) ? p.product_images : []),
+    ...(Array.isArray(p.gallery) ? p.gallery : [])
+  ]
+
+  const imageCandidates = [
+    ...listImages
+  ]
+
+  const images = [...new Set(
+    imageCandidates
+      .map(getImageUrlFromEntry)
+      .filter(Boolean)
+      .map(getImagePath)
+  )].slice(0, 3)
+
+  const primaryImage = images[0] || ''
+
+  return {
+    id: String(p.id),
+    category: normalizeCategory(p.category),
+    brand: p.brand,
+    name: p.name,
+    image: primaryImage,
+    price,
+    oldPrice: discountedPrice !== null ? originalPrice : null,
+    description: p.description || '',
+    images,
+    specifications: parseSpecifications(p.specifications)
+  }
+}
+
+
+  const fetchProducts = async () => {
+  isLoadingProducts.value = true
+  try {
+    const response = await axiosClient.get('/api/index')
+    const payload = response.data
+
+    const topSalesProductsList = payload.topSales
+    const newArrivalsProductsList = payload.newArrivals
+  
+    topSalesProducts.value = topSalesProductsList.map((item, index) => normalizeProduct(item, index))
+    newArrivalsProducts.value = newArrivalsProductsList.map((item, index) => normalizeProduct(item, index))
+
+  } catch (error) {
+    topSalesProducts.value = []
+    newArrivalsProducts.value = []
+    
+  } finally {
+    isLoadingProducts.value = false
+  }
+}
+
+console.log('products ', topSalesProducts.value)
+
+const gotoProduct = (p) => {
+  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
+  router.push({ name: 'product-page', params: { id: p.id } })
+}
+
+// Toast utilities
+const toast = ref({ visible: false, message: '', type: 'success' })
+let toastTimer
+function showToast(message, type = 'success', duration = 2500) {
+  toast.value = { visible: true, message, type }
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.value.visible = false
+  }, duration)
+}
+function hideToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value.visible = false
+}
+
 
 // Hero slider products: Dell Latitude 5320, Redmi Note 12, iPhone 14
 const heroSlides = computed(() => {
   const order = ['dell latitude 5320','redmi note 12','iphone 14']
-  const colors = ['bg-[#536474]','bg-[#28a9c9]','bg-[#b237be]']
   return order.map((name, idx) => {
     const prod = products.value.find(p => (p.name || '').toLowerCase() === name)
     if (!prod) return null
@@ -221,7 +165,7 @@ const heroSlides = computed(() => {
       productName: prod.name,
       description: prod.description,
       image: prod.image,
-      bgColor: colors[idx] || 'bg-[#536474]',
+      bgColor: 'bg-[#536474]',
       product: prod
     }
   }).filter(Boolean)
@@ -266,62 +210,41 @@ const promoDellProduct = computed(() =>
 const router = useRouter()
 const userStore = useUserStore()
 const adminUserStore = useAdminUserStore()
-const gotoProduct = (p) => {
-  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
-  router.push({ name: 'product-page', params: { id: p.id } })
-}
 
-const formatCurrency = (n) => `$${Number(n).toFixed(0)}`
+const formatCurrency = (n) => {
+  const num = Number(n)
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
 
 const shopSlide = (slide) => { if (slide?.product) gotoProduct(slide.product) }
 
-// Toast utilities (match ProductsView behavior)
-const toast = ref({ visible: false, message: '', type: 'success' })
-let toastTimer
-function showToast(message, type = 'success', duration = 2500) {
-  toast.value = { visible: true, message, type }
-  if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toast.value.visible = false }, duration)
-}
-function hideToast() {
-  if (toastTimer) clearTimeout(toastTimer)
-  toast.value.visible = false
-}
-
 // Add to cart (identical logic to ProductsView)
-const addToCart = (p) => {
+const addToCart = async (p) => {
+  // Check if this specific product is already being added
+  if (addingToCartIds.value.has(p.id)) return
+  
   const hasClientUser = !!userStore.user && !adminUserStore.adminUser
   if (!hasClientUser) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return
   }
+
+  // Mark this product as being added
+  addingToCartIds.value.add(p.id)
   try {
-    const raw = sessionStorage.getItem('cartItems')
-    const cart = raw ? JSON.parse(raw) : []
-    const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
-    if (idx >= 0) {
-      showToast(`${p.name} is already in the cart`, 'warning')
-      sessionStorage.setItem('cartItems', JSON.stringify(cart))
-    } else {
-      cart.push({
-        id: p.id,
-        name: p.name,
-        brand: p.brand,
-        price: p.price,
-        oldPrice: p.oldPrice ?? null,
-        image: p.image,
-        quantity: 1,
-      })
-      sessionStorage.setItem('cartItems', JSON.stringify(cart))
-      showToast(`${p.name} added to cart`, 'success')
-    }
-    // Mirror to 'cartproducts' when newly added
-    try {
-      const raw2 = sessionStorage.getItem('cartproducts')
-      const cart2 = raw2 ? JSON.parse(raw2) : []
-      const idx2 = Array.isArray(cart2) ? cart2.findIndex(it => it.id === p.id) : -1
-      if (idx2 === -1 && idx === -1) {
-        cart2.push({
+    // Make backend request to add product to cart with quantity
+    const response = await axiosClient.post(`/api/cart/product/add/${p.id}`, {
+      quantity: 1
+    })
+    if (response.status === 200 || response.status === 201) {
+      // Backend request successful
+      const raw = sessionStorage.getItem('cartItems')
+      const cart = raw ? JSON.parse(raw) : []
+      
+      // Add to local cart
+      const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
+      if (idx === -1) {
+        cart.push({
           id: p.id,
           name: p.name,
           brand: p.brand,
@@ -330,12 +253,49 @@ const addToCart = (p) => {
           image: p.image,
           quantity: 1,
         })
+        sessionStorage.setItem('cartItems', JSON.stringify(cart))
+        
+        // Mirror to 'cartproducts'
+        try {
+          const raw2 = sessionStorage.getItem('cartproducts')
+          const cart2 = raw2 ? JSON.parse(raw2) : []
+          cart2.push({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            price: p.price,
+            oldPrice: p.oldPrice ?? null,
+            image: p.image,
+            quantity: 1,
+          })
+          sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
+        } catch {}
       }
-      sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
-    } catch {}
+      
+      showToast(`${p.name} added to cart`, 'success')
+    }
+    // Notify header to refresh cart count
     try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
-  } catch {}
+  } catch (error) {
+    // Check if error is unauthenticated
+    if (error.response?.data?.error === 'unauthenticated') {
+      router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
+    } else if (error.response?.data?.error === 'duplicate_quantity') {
+      // Show warning for duplicate quantity
+      showToast(error.response?.data?.message || 'Product is already added in the cart with the same quantity.', 'warning')
+    } else {
+      showToast(error.response?.data?.message || 'Failed to add item to cart', 'error')
+    }
+  } finally {
+    // Remove this product from the adding set
+    addingToCartIds.value.delete(p.id)
+  }
 }
+
+
+onMounted(() => {
+  fetchProducts()
+})
 
 </script>
 
@@ -398,25 +358,32 @@ const addToCart = (p) => {
   </div>
 
       <!-- The top sales section -->
-      <section class="top-sales px-[4%] mx-auto lg:max-w-[1500px]">
+      <section class="top-sales pt-16 px-[4%] mx-auto lg:max-w-[1500px]">
         <div
           class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4"
         >
           Top<span class="text-[#68A4FE] px-2">Sales</span>
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in topSales" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
-            <div class="flex justify-center items-center">
-              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
-                <img :src="p.image" :alt="p.name" />
+          <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-for="p in topSalesProducts" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
+                <img :src="p.image" :alt="p.name" class="h-full scale-150 object-cover" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="p.oldPrice && p.price < p.oldPrice">
+                -{{ Math.round((1 - p.price / p.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-              <StarIcon class="inline size-4 sm:size-5 text-[#FFCF10]" v-for="i in p.rating" :key="i" />
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800" @click="gotoProduct(p)">{{ p.name }}</div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ p.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star text-[#FFCF10]"></i>
             </div>
-            <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="p.oldPrice && p.price < p.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(p.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(p.price) }}</div>
+            </div>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
@@ -426,14 +393,6 @@ const addToCart = (p) => {
           class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize"
         >
           on<span class="text-[#68A4FE] px-2">special</span> offer
-        </div>
-        <div class="filter-bar flex justify-between sm:justify-end items-center my-2 sm:my-4">
-          <div class="filter-tags space-x-4 capitalize text-xs sm:text-sm">
-            <a href="#" @click.prevent="setOfferBrand('All brands')" :class="{'text-[#68A4FE] font-semibold': selectedOfferBrand==='All brands'}" class="hover:text-[#68A4FE]">All brands</a>
-            <a href="#" @click.prevent="setOfferBrand('Apple')" :class="{'text-[#68A4FE] font-semibold': selectedOfferBrand==='Apple'}" class="hover:text-[#68A4FE]">Apple</a>
-            <a href="#" @click.prevent="setOfferBrand('Samsung')" :class="{'text-[#68A4FE] font-semibold': selectedOfferBrand==='Samsung'}" class="hover:text-[#68A4FE]">Samsung</a>
-            <a href="#" @click.prevent="setOfferBrand('redmi')" :class="{'text-[#68A4FE] font-semibold': selectedOfferBrand==='redmi'}" class="hover:text-[#68A4FE]">redmi</a>
-          </div>
         </div>
         <div class="top-sales-container grid mx-auto w-[95%] gap-3">
           <div v-for="p in specialOffersFiltered" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
@@ -506,19 +465,27 @@ const addToCart = (p) => {
         >
           New<span class="text-[#68A4FE] px-2">Arrivals</span>
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
-          <div v-for="p in newArrivals" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
-            <div class="flex justify-center items-center">
-              <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
-                <img :src="p.image" :alt="p.name"/>
+
+            <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-for="p in newArrivalsProducts" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+              <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
+                <img :src="p.image" :alt="p.name" class="h-full scale-150 object-cover" />
+              </div>
+              <div class="absolute top-2 right-2 bg-[#68A4FE] text-white px-2 py-1 rounded text-xs font-semibold" v-if="p.oldPrice && p.price < p.oldPrice">
+                -{{ Math.round((1 - p.price / p.oldPrice) * 100) }}%
               </div>
             </div>
-            <div class="product-title text-sm font-normal sm:font-semibold capitalize cursor-pointer hover:text-[#68A4FE]" @click="gotoProduct(p)">{{ p.name }}</div>
-            <div class="star-box text-center text-xs sm:text-base text-[#FFCF10] my-2 sm:my-4">
-              <StarIcon class="inline size-4 sm:size-5 text-[#FFCF10]" v-for="i in p.rating" :key="i" />
+            <div class="product-title text-sm font-semibold capitalize cursor-pointer hover:text-[#68A4FE] line-clamp-2 mb-2 text-gray-800" @click="gotoProduct(p)">{{ p.name }}</div>
+            <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ p.brand }}</div>
+            <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
+              <i v-for="i in p.rating" :key="i" class="fa-solid fa-star text-[#FFCF10]"></i>
             </div>
-            <div class="first-price my-1 sm:my-3 font-semibold">{{ formatCurrency(p.price) }}</div>
-            <button class="add-cart-btn text-xs" @click="addToCart(p)">add to cart</button>
+            <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
+              <div v-if="p.oldPrice && p.price < p.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(p.oldPrice) }}</div>
+              <div class="first-price text-lg font-bold text-[#FF412C]">{{ formatCurrency(p.price) }}</div>
+            </div>
+            <button class="add-cart-btn w-full bg-gradient-to-r from-[#68A4FE] to-[#4A90D9] hover:from-[#4A90D9] hover:to-[#356BA8] text-white font-semibold py-2 px-3 rounded-lg transition-all duration-300 ease-in-out text-xs sm:text-sm disabled:opacity-60 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95" @click="addToCart(p)" :disabled="addingToCartIds.has(p.id)">{{ addingToCartIds.has(p.id) ? 'adding...' : 'add to cart' }}</button>
           </div>
         </div>
       </section>
