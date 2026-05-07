@@ -15,21 +15,31 @@ const userStore = useUserStore()
 const adminUserStore = useAdminUserStore()
 const activeImage = ref('')
 const galleryImages = ref([])
+const isLoadingProduct = ref(false)
 
-function initProductFromSession() {
+const fetchProduct = async () => {
+  isLoadingProduct.value = true
   try {
-    const raw = sessionStorage.getItem('selectedProduct')
-    const parsed = raw ? JSON.parse(raw) : null
-    if (parsed && parsed.id === route.params.id) {
-      product.value = parsed
-    }
-  } catch {}
+    const response = await axiosClient.get(`/api/product/page/${route.params.id}`)
+    // product.value = normalizeProduct(response.data.product)
+    product.value = response.data.product
+
+  } catch (error) {
+    product.value = []
+    showToast(error.response?.data?.message || 'Failed to load the product', 'error')
+  } finally {
+    isLoadingProduct.value = false
+  }
   // Initialize gallery and active image
   const imgs = Array.isArray(product.value?.images) ? product.value.images : []
+
   if (imgs.length > 0) {
-    const capped = uniq(imgs).slice(0, 3)
+    const imagePaths = imgs.map(img => img.image_path).filter(Boolean)
+    const capped = uniq(imagePaths).slice(0, 3)
     galleryImages.value = capped
-    activeImage.value = capped[0]
+    activeImage.value = capped[0] || ''
+
+  
   } else {
     const fallback = product.value?.image ? [product.value.image] : []
     const capped = uniq(fallback).slice(0, 3)
@@ -38,8 +48,10 @@ function initProductFromSession() {
   }
 }
 
+
+
 onMounted(() => {
-  initProductFromSession()
+   fetchProduct()
   try {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch {}
@@ -49,7 +61,7 @@ onMounted(() => {
 watch(
   () => route.params.id,
   () => {
-    initProductFromSession()
+     fetchProduct()
     try {
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {}
@@ -58,9 +70,9 @@ watch(
 
 const title = computed(() => product.value?.name ?? 'Product')
 const brand = computed(() => product.value?.brand ?? '—')
-const image = computed(() => activeImage.value || product.value?.image || '../../assets/images/redmi note 12.png')
-const price = computed(() => product.value?.price ?? 0)
-const oldPrice = computed(() => product.value?.oldPrice ?? null)
+const image = computed(() => activeImage.value || product.value?.images[0] || '../../assets/images/redmi note 12.png')
+const price = computed(() => product.value?.discount_price ?? 0)
+const oldPrice = computed(() => product.value?.base_price ?? null)
 const formatCurrency = (n) => {
   const num = Number(n);
   return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
@@ -77,100 +89,47 @@ const deliveryWindow = computed(() => {
   return `${fmt(start)} - ${fmt(end)}`
 })
 
-function resolveImg(p) {
-  if (!p) return ''
-  // External or data URLs
-  if (/^(https?:)?\/\//.test(p) || /^data:/.test(p)) return p
-    if (typeof p !== 'string') return ''
-    // Already absolute (http/https or data URIs)
-    if (/^(https?:)?\/\//.test(p) || p.startsWith('data:')) return p
-    // Normalize slashes
-    let path = p.replace(/\\/g, '/').trim()
-    // Remove leading './' or '../'
-    path = path.replace(/^\.\/+/, '')
-    while (path.startsWith('../')) path = path.slice(3)
+const apiBaseUrl = 'http://localhost:8000'
 
-    // Unify common aliases/prefixes to /src/assets
-    // Examples we may see:
-    // - '@/assets/...'
-    // - 'src/assets/...'
-    // - '/src/assets/...'
-    // - 'assets/...'
-    // - '/assets/...'
-    // - erroneously '/src/views/assets/...'
-    if (path.startsWith('@/')) path = path.replace('@/', 'src/')
-    // Fix erroneous '/src/views/...'
-    path = path.replace(/^src\/views\//, 'src/')
-    path = path.replace(/^\/src\/views\//, '/src/')
+const resolveImg = (path) => {
+  if(!path || typeof path !== 'string'){
+    return ''
+  }
 
-    // Ensure we end up under src/assets
-    if (path.startsWith('/src/assets/')) {
-      // ok
-    } else if (path.startsWith('src/assets/')) {
-      path = '/' + path
-    } else if (path.startsWith('/assets/')) {
-      path = '/src' + path
-    } else if (path.startsWith('assets/')) {
-      path = '/src/' + path
-    } else if (path.startsWith('/src/')) {
-      // already under /src but not assets — leave as-is
-    } else if (path.startsWith('src/')) {
-      path = '/' + path
-    } else {
-      // bare filename or unknown: assume under /src/assets/images or /src/assets root
-      // Prefer placing under /src/assets/ without forcing images/ to avoid wrong subdirs
-      path = '/src/assets/' + path.replace(/^\//, '')
-    }
+  const cleaned = path.trim()
 
-    try {
-      return new URL(path, import.meta.url).href
-    } catch (e) {
-      return path
-    }
+  if(/^https?:\/\//i.test(cleaned)){
+    return cleaned
+  }
+
+  const normalized = cleaned.replace(/^\/+/, '')
+
+  return `${apiBaseUrl}/storage/${normalized}`
 }
 
-
-const specs = computed(() => {
-  const cat = (product.value?.category || '').toLowerCase()
-  if (cat === 'laptops') {
-    return { ram: '16GB', resolution: '1920 × 1080 (FHD)', camera: '720p HD' }
-  }
-  if (cat === 'smartwatches') {
-    return { ram: '512MB', resolution: '390 × 390', camera: '—' }
-  }
-  if (cat === 'televisions') {
-    return { ram: '—', resolution: '3840 × 2160 (4K)', camera: '—' }
-  }
-  // phones default
-  return { ram: '6GB', resolution: '1080 × 2400 (FHD+)', camera: '48MP' }
-})
-
 const descriptionText = computed(() => {
-  const desc = product.value?.description
-  if (desc && String(desc).trim().length > 0) return desc
-  const cat = (product.value?.category || '').toLowerCase()
-  if (cat === 'laptops') {
-    return `${title.value} is a reliable productivity laptop with a sharp ${specs.value.resolution} display, fast ${specs.value.ram} memory, and an efficient processor for everyday multitasking. Ideal for work, study, and light creative tasks, with long battery life and quiet thermals.`
-  }
-  if (cat === 'smartwatches') {
-    return `${title.value} keeps you on top of your day with health tracking, notifications, and multi‑day battery life. The crisp ${specs.value.resolution} display and water‑resistant design make it perfect for workouts and daily wear.`
-  }
-  if (cat === 'televisions') {
-    return `${title.value} delivers stunning ${specs.value.resolution} visuals with vivid colors and deep contrast. Enjoy smart streaming apps, multiple HDMI ports, and smooth motion for sports, movies, and gaming.`
-  }
-  // phones default
-  return `${title.value} offers a vibrant ${specs.value.resolution} display, capable ${specs.value.camera} camera system, and smooth performance with ${specs.value.ram} RAM. A great all‑rounder for social, streaming, and photography.`
+  return product.value?.description
 })
 
 // Display specs tailored per category using product.specifications when available
 const displaySpecs = computed(() => {
   const cat = (product.value?.category || '').toLowerCase()
-  const s = product.value?.specifications || {}
+  let s =  {}
+
+  try{
+    s = typeof product.value?.specifications === 'string' ? JSON.parse(product.value.specifications) : (product.value?.specifications || {})
+  } catch(e){
+    s = {}
+  }
   if (cat === 'laptops') {
     return [
-      { label: 'RAM', value: s.ram || '16GB' },
-      { label: 'Processor', value: s.processor || 'Intel Core i7 (11th Gen)' },
-      { label: 'Storage', value: s.storage || '512GB SSD' },
+      { label: 'Processor', value: s.Processor || 'Intel Core i7 (11th Gen)' },
+      { label: 'RAM', value: s.RAM || '16GB' },
+      { label: 'Storage', value: `${s['Storage Size'] || '512GB'} ${s['Storage Type'] || 'SSD'}` },
+      { label: 'Graphics', value: s['Graphics Card'] || 'Integrated Graphics'},
+      {label: 'Display', value: s['Display Size'] || '15.6'},
+      {label: 'Operating System', value: s['Operating System'] || 'Windows 11'},
+      {label: 'Battery Life', value: s['Battery Life'] || '10 hours'}
     ]
   }
   if (cat === 'televisions') {

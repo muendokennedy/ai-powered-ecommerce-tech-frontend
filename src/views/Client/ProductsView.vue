@@ -201,14 +201,14 @@ const onEnter = () => {
 }
 const selectSuggestion = (p) => {
   // Persist a lightweight snapshot for the detail page
-  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
+  // try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
   searchTerm.value = p.name
   isSearchOpen.value = false
   router.push({ name: 'product-page', params: { id: p.id } })
 }
 
 const gotoProduct = (p) => {
-  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
+  // try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
   router.push({ name: 'product-page', params: { id: p.id } })
 }
 
