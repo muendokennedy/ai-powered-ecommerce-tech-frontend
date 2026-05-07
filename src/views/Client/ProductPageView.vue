@@ -6,6 +6,7 @@ import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { CheckCircleIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
 import { useUserStore, useAdminUserStore } from '@/stores/user'
+import axiosClient from '@/axiosClient'
 
 const route = useRoute()
 const router = useRouter()
@@ -589,10 +590,10 @@ const relatedProducts = computed(() => {
   ]
 })
 
-const gotoProduct = (p) => {
-  try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
-  router.push({ name: 'product-page', params: { id: p.id } })
-}
+// const gotoProduct = (p) => {
+//   try { sessionStorage.setItem('selectedProduct', JSON.stringify(p)) } catch {}
+//   router.push({ name: 'product-page', params: { id: p.id } })
+// }
 
 // For RouterLink-based navigation: set selection and let the link handle routing
 function setSelectedProduct(p) {
@@ -603,59 +604,41 @@ function uniq(arr) {
   return arr.filter((v, i, a) => a.indexOf(v) === i)
 }
 
-// Add to cart without navigating; uses sessionStorage 'cartItems'
-function addToCart(p) {
+const addToCart = async (p) => {
   const hasClientUser = !!userStore.user && !adminUserStore.adminUser
   if (!hasClientUser) {
     router.push({ path: '/login', query: { returnTo: router.currentRoute.value.fullPath } })
     return
   }
   try {
-    const raw = sessionStorage.getItem('cartItems')
-    const cart = raw ? JSON.parse(raw) : []
-    const exists = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) >= 0 : false
-    if (exists) {
-      showToast(`${p.name} is already in the cart`, 'warning')
-      return
-    }
-    cart.push({
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      price: p.price,
-      oldPrice: p.oldPrice || null,
-      image: p.image,
-      quantity: 1,
-    })
-    sessionStorage.setItem('cartItems', JSON.stringify(cart))
-    // Mirror to 'cartproducts' if newly added (match ProductsView/HomeView behavior)
-    try {
-      const raw2 = sessionStorage.getItem('cartproducts')
-      const cart2 = raw2 ? JSON.parse(raw2) : []
-      const exists2 = Array.isArray(cart2) ? cart2.findIndex(it => it.id === p.id) >= 0 : false
-      if (!exists2) {
-        cart2.push({
-          id: p.id,
-          name: p.name,
-          brand: p.brand,
-          price: p.price,
-          oldPrice: p.oldPrice || null,
-          image: p.image,
-          quantity: 1,
-        })
-        sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
+
+    const response = await axiosClient.post(`/api/cart/product/add/${p.id}`, { quantity: 1})
+    if(response.status === 200 || response.status === 201){
+      const raw = sessionStorage.getItem('cartItems')
+      const cart = raw ? JSON.parse(raw) : []
+      const exists = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) >= 0 : false
+      if (!exists) {
+      cart.push({
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        price: p.price,
+        oldPrice: p.oldPrice || null,
+        image: p.image,
+        quantity: 1,
+      })
+      sessionStorage.setItem('cartItems', JSON.stringify(cart))
       }
-    } catch {}
-    // Dispatch custom event so Header updates live
-    try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
-    showToast(`${p.name} added to cart`, 'success')
+      // Dispatch custom event so Header updates live
+      try { window.dispatchEvent(new CustomEvent('cart-updated')) } catch {}
+      showToast(`${p.name} added to cart`, 'success')
+    }
+
   } catch {}
 }
 
 function proceedToBuy() {
   if (!product.value) return
-  // Behave exactly like add to cart (no navigation)
-  // Capture name before mutation for message
   const name = product.value.name || 'Item'
   // Check current cart for duplicates before adding
   try {

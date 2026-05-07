@@ -251,8 +251,8 @@ const addToCart = async (p) => {
       const cart = raw ? JSON.parse(raw) : []
       
       // Add to local cart
-      const idx = Array.isArray(cart) ? cart.findIndex(it => it.id === p.id) : -1
-      if (idx === -1) {
+      const exists = Array.isArray(cart) ? cart.findIndex((it) => it.id === p.id) >= 0 : false
+      if (!exists) {
         cart.push({
           id: p.id,
           name: p.name,
@@ -263,22 +263,6 @@ const addToCart = async (p) => {
           quantity: 1,
         })
         sessionStorage.setItem('cartItems', JSON.stringify(cart))
-        
-        // Mirror to 'cartproducts'
-        try {
-          const raw2 = sessionStorage.getItem('cartproducts')
-          const cart2 = raw2 ? JSON.parse(raw2) : []
-          cart2.push({
-            id: p.id,
-            name: p.name,
-            brand: p.brand,
-            price: p.price,
-            oldPrice: p.oldPrice ?? null,
-            image: p.image,
-            quantity: 1,
-          })
-          sessionStorage.setItem('cartproducts', JSON.stringify(cart2))
-        } catch {}
       }
       
       showToast(`${p.name} added to cart`, 'success')
