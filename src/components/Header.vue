@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import axiosClient from '@/axiosClient'
 import { Bars3BottomLeftIcon, ShoppingCartIcon } from '@heroicons/vue/24/solid'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore, useAdminUserStore } from '@/stores/user'
@@ -31,6 +32,18 @@ const handleLogout = () => {
 onMounted(() => {
   // Initialize cart count and subscribe to updates
   updateCartCount()
+  // If there's no session cart stored but the client is logged in,
+  // hydrate the cart from the backend so count survives browser sessions.
+  try {
+    const hasSessionCart = !!sessionStorage.getItem('cartItems')
+    // Do not fetch when we're on the cart page — CartView will load and emit the data
+    const onCartPage = route.name === 'cart' || route.path.startsWith('/cart')
+    if (!hasSessionCart && isClientLoggedIn.value && !onCartPage) {
+      fetchCartFromServer()
+    }
+  } catch {}
+  // Listen for cart-loaded from the CartView so Header can hydrate without an API call
+  window.addEventListener('cart-loaded', onCartLoaded)
   window.addEventListener('storage', updateCartCount)
   window.addEventListener('cart-updated', updateCartCount)
   document.addEventListener('visibilitychange', () => {
@@ -41,18 +54,71 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('storage', updateCartCount)
   window.removeEventListener('cart-updated', updateCartCount)
+  window.removeEventListener('cart-loaded', onCartLoaded)
 })
 
 // Update cart count from sessionStorage (unique items only)
 function updateCartCount() {
   try {
     const raw = sessionStorage.getItem('cartItems')
-    const cart = raw ? JSON.parse(raw) : []
-    cartCount.value = Array.isArray(cart) ? cart.length : 0
+    if (raw) {
+      const cart = JSON.parse(raw)
+      cartCount.value = Array.isArray(cart) ? cart.length : 0
+      return
+    }
+    // No session cart: if the client is logged in, fetch from backend
+    if (isClientLoggedIn.value) {
+      const onCartPage = route.name === 'cart' || route.path.startsWith('/cart')
+      // If we're on the cart page, avoid duplicating the CartView request — wait for cart-loaded
+      if (!onCartPage) {
+        fetchCartFromServer()
+      }
+      return
+    }
+    cartCount.value = 0
   } catch {
     cartCount.value = 0
   }
 }
+
+// Fetch cart items from backend and hydrate sessionStorage and cartCount
+async function fetchCartFromServer() {
+  try {
+    const res = await axiosClient.post('/api/cart/products')
+    let items = res.data
+    if (!Array.isArray(items)) {
+      items = res.data?.cart_items ?? res.data?.items ?? res.data?.data ?? []
+    }
+    if (!Array.isArray(items)) items = []
+    cartCount.value = items.length
+    try { sessionStorage.setItem('cartItems', JSON.stringify(items)) } catch {}
+  } catch (e) {
+    cartCount.value = 0
+  }
+}
+
+function onCartLoaded(e) {
+  try {
+    const items = e?.detail?.items ?? []
+    if (Array.isArray(items)) {
+      cartCount.value = items.length
+      try { sessionStorage.setItem('cartItems', JSON.stringify(items)) } catch {}
+    }
+  } catch {
+    // ignore
+  }
+}
+
+// When a user logs in during the session, hydrate cart from server
+watch(() => userStore.user, (u) => {
+  if (u) {
+    try {
+      const hasSessionCart = !!sessionStorage.getItem('cartItems')
+      const onCartPage = route.name === 'cart' || route.path.startsWith('/cart')
+      if (!hasSessionCart && !onCartPage) fetchCartFromServer()
+    } catch { fetchCartFromServer() }
+  }
+})
 
 </script>
 

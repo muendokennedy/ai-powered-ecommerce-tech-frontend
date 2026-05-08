@@ -348,7 +348,17 @@ onMounted(() => {
         >
           Top<span class="text-[#68A4FE] px-2">Sales</span>
         </div>
-          <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+          <div v-if="isLoadingProducts" class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+            <div v-for="i in 6" :key="`top-skel-${i}`" class="product-box group bg-white rounded-lg shadow-md transition-all duration-300 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+              <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+                <div class="h-full w-full bg-gray-200 skeleton-shimmer rounded"></div>
+              </div>
+              <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-3/4 mb-2"></div>
+              <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-1/2 mb-3"></div>
+              <div class="h-8 bg-gray-200 skeleton-shimmer rounded w-full"></div>
+            </div>
+          </div>
+          <div v-else class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
           <div v-for="p in topSalesProducts" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
             <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
               <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
@@ -378,7 +388,15 @@ onMounted(() => {
         >
           on<span class="text-[#68A4FE] px-2">special</span> offer
         </div>
-        <div class="top-sales-container grid mx-auto w-[95%] gap-3">
+        <div v-if="isLoadingProducts" class="top-sales-container grid mx-auto w-[95%] gap-3">
+          <div v-for="i in 3" :key="`offer-skel-${i}`" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
+            <div class="h-40 bg-gray-200 skeleton-shimmer mb-3 rounded"></div>
+            <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-3/4 mx-auto mb-2"></div>
+            <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-1/2 mx-auto mb-2"></div>
+            <div class="h-8 bg-gray-200 skeleton-shimmer rounded w-2/3 mx-auto"></div>
+          </div>
+        </div>
+        <div v-else class="top-sales-container grid mx-auto w-[95%] gap-3">
           <div v-for="p in specialOffersFiltered" :key="p.id" class="product-box text-center my-2 sm:my-4 border-2 border-gray-300 py-4">
             <div class="flex justify-center items-center">
               <div class="product-image cursor-pointer" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
@@ -450,7 +468,17 @@ onMounted(() => {
           New<span class="text-[#68A4FE] px-2">Arrivals</span>
         </div>
 
-            <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+            <div v-if="isLoadingProducts" class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
+              <div v-for="i in 6" :key="`new-skel-${i}`" class="product-box group bg-white rounded-lg shadow-md transition-all duration-300 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+                <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
+                  <div class="h-full w-full bg-gray-200 skeleton-shimmer rounded"></div>
+                </div>
+                <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-3/4 mb-2"></div>
+                <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-1/2 mb-3"></div>
+                <div class="h-8 bg-gray-200 skeleton-shimmer rounded w-full"></div>
+              </div>
+            </div>
+            <div v-else class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mx-auto w-[95%] max-w-6xl gap-3">
           <div v-for="p in newArrivalsProducts" :key="p.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
             <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
               <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300" role="button" tabindex="0" @click="gotoProduct(p)" @keydown.enter.prevent="gotoProduct(p)" @keydown.space.prevent="gotoProduct(p)">
@@ -569,5 +597,27 @@ onMounted(() => {
       line-height: 2.5rem;
     }
   }
+
+.skeleton-shimmer{
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after{
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 1.5s infinite
+}
+
+@keyframes shimmer{
+  100%{
+    left: 150%;
+  }
+
+}
 </style>
 

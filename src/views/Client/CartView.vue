@@ -91,6 +91,9 @@ function loadCart() {
           image: getImagePath(it.image),
           quantity: Number(it.quantity) > 0 ? Number(it.quantity) : 1,
         }))
+        // Persist loaded cart and notify other components (Header)
+        try { saveCart() } catch {}
+        try { window.dispatchEvent(new CustomEvent('cart-loaded', { detail: { items: cartItems.value } })) } catch {}
       })
       .catch(error => {
         console.error('Failed to load cart:', error)
