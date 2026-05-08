@@ -698,7 +698,77 @@ function saveForLaterFromProduct() {
       >
         <span class="text-[#68A4FE] px-2">product</span> page
       </div>
-      <div class="product flex items-center flex-col md:flex-row justify-between w-full">
+      <div v-if="isLoadingProduct" class="product flex items-center flex-col md:flex-row justify-between w-full animate-pulse">
+
+        <!-- LEFT SIDE -->
+        <div class="w-full md:basis-[48%] p-2 sm:p-4 flex flex-col items-center">
+
+          <!-- Main Image Skeleton -->
+          <div class="w-[15rem] md:w-[16rem] h-[15rem] md:h-[20rem] my-6 rounded-2xl bg-gray-200 skeleton-shimmer shadow-xl border border-gray-100"></div>
+
+          <!-- Thumbnail Skeletons -->
+          <div class="w-full sm:w-4/5 flex justify-between gap-2 md:gap-4 mx-auto">
+            <div
+              v-for="i in 3"
+              :key="`thumb-skeleton-${i}`"
+              class="h-20 flex-1 rounded-lg bg-gray-200 skeleton-shimmer border border-gray-100"
+            ></div>
+          </div>
+
+          <!-- Buttons Skeleton -->
+          <div class="action-button-container my-4 sm:my-8 flex w-full gap-3">
+            <div class="flex-1 h-12 rounded-lg bg-gray-200 skeleton-shimmer"></div>
+            <div class="flex-1 h-12 rounded-lg bg-gray-200 skeleton-shimmer"></div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="w-full md:basis-[48%] p-4 sm:p-6 md:p-8 my-2 md:my-4 bg-white rounded-xl shadow-lg border border-gray-100">
+
+          <!-- Product Title -->
+          <div class="h-8 w-4/5 bg-gray-200 skeleton-shimmer rounded mb-3"></div>
+
+          <!-- Brand -->
+          <div class="h-4 w-1/3 bg-gray-200 skeleton-shimmer rounded mb-6"></div>
+
+          <!-- Ratings -->
+          <div class="bg-gray-100 rounded-lg p-3 mb-4">
+            <div class="h-5 w-2/3 bg-gray-200 skeleton-shimmer rounded"></div>
+          </div>
+
+          <!-- Price Section -->
+          <div class="bg-gray-100 rounded-lg p-4 mb-4">
+            <div class="h-4 w-1/2 bg-gray-200 skeleton-shimmer rounded mb-3"></div>
+            <div class="h-8 w-3/4 bg-gray-200 skeleton-shimmer rounded mb-3"></div>
+            <div class="h-4 w-1/3 bg-gray-200 skeleton-shimmer rounded"></div>
+          </div>
+
+          <!-- Delivery -->
+          <div class="bg-gray-100 rounded-lg p-3 mb-4">
+            <div class="h-5 w-2/3 bg-gray-200 skeleton-shimmer rounded"></div>
+          </div>
+
+          <!-- Vendor -->
+          <div class="bg-gray-100 rounded-lg p-3 mb-6">
+            <div class="h-5 w-3/4 bg-gray-200 skeleton-shimmer rounded"></div>
+          </div>
+
+          <!-- Specifications -->
+          <div class="grid grid-cols-3 gap-3">
+            <div
+              v-for="i in 6"
+              :key="`spec-skeleton-${i}`"
+              class="flex flex-col gap-2"
+            >
+              <div class="h-4 w-3/4 bg-gray-200 skeleton-shimmer rounded"></div>
+              <div class="h-10 w-full bg-gray-300 rounded-lg"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div v-else-if="!isLoadingProduct" class="product flex items-center flex-col md:flex-row justify-between w-full">
         <div class="w-full md:basis-[48%] p-2 sm:p-4 flex flex-col items-center">
           <div class="master-image w-[15rem] md:w-[16rem] h-[15rem] md:h-[20rem] flex justify-center items-center my-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-4 hover:shadow-2xl transition-all duration-300">
             <img :src="resolveImg(image)" :alt="title" class="m-auto w-full h-full object-contain">
@@ -764,10 +834,13 @@ function saveForLaterFromProduct() {
         product description
       </div>
       <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
-        <p class="description-text text-sm sm:text-base leading-relaxed text-gray-700 mb-4">{{ descriptionText }}</p>
-        <div class="flex items-center gap-2 text-emerald-700 font-semibold">
-          <span class="text-xl">✓</span> Premium quality guaranteed
+        <div v-if='isLoadingProduct' class="animate-pulse mb-4">
+          <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-full mb-2"></div>
+          <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-11/12 mb-2"></div>
+          <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-10/12 mb-2"></div>
+          <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-8/12"></div>
         </div>
+        <p v-else-if='!isLoadingProduct' class="description-text text-sm sm:text-base leading-relaxed text-gray-700 mb-4">{{ descriptionText }}</p>
       </div>
       </section>
       <!-- Toast (slides near top, below header) -->
@@ -855,6 +928,27 @@ function saveForLaterFromProduct() {
 </template>
 
 <style scoped>
+.skeleton-shimmer{
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after{
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 1.5s infinite
+}
+
+@keyframes shimmer{
+  100%{
+    left: 150%;
+  }
+
+}
 /* Smooth scroll behavior */
 html {
   scroll-behavior: smooth;
