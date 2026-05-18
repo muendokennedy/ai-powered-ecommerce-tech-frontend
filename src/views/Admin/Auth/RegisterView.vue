@@ -173,8 +173,16 @@ const onSubmit = async () => {
     if (validation && typeof validation === 'object') {
       // Clear previous errors first
       Object.keys(errors).forEach(k => delete errors[k])
+      // Map backend field names to frontend keys
+      const keyMap = {
+        fullName: 'name',
+        password_confirmation: 'confirmPassword',
+        password_confirmation: 'confirmPassword',
+      }
+
       for (const [key, msgs] of Object.entries(validation)) {
-        errors[key] = Array.isArray(msgs) ? msgs[0] : String(msgs)
+        const mapped = keyMap[key] || key
+        errors[mapped] = Array.isArray(msgs) ? msgs[0] : String(msgs)
       }
     } else {
       // Fallback generic error
@@ -196,7 +204,7 @@ onMounted(() => {
   <section class="min-h-screen">
     <main class="bg-[#E4E7F3] pt-20 px-[3%] pb-10 min-h-screen">
       <div class="bg-white p-6 sm:p-8 rounded-md w-full max-w-3xl mx-auto shadow-sm">
-        <form @submit.prevent="onSubmit" novalidate>
+        <form @submit.prevent="onSubmit">
           <h2 class="text-center text-2xl text-[#042EFF] font-semibold capitalize py-4 border-b-2">Create admin account</h2>
 
           <!-- Avatar in-place -->

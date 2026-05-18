@@ -43,6 +43,22 @@ const getImagePath = (path) => {
   return value
 }
 
+const resolveImg = (path) => {
+  if(!path || typeof path !== 'string'){
+    return ''
+  }
+
+  const cleaned = path.trim()
+
+  if(/^https?:\/\//i.test(cleaned)){
+    return cleaned
+  }
+
+  const normalized = cleaned.replace(/^\/+/, '')
+
+  return `${apiBaseUrl}/storage/${normalized}`
+}
+
 // A cart action is allowed only for a normal user session, never an admin session.
 const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
 
@@ -50,19 +66,45 @@ const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
 const cartItems = ref([])
 const wishlistItems = ref([])
 const isLoadingCart = ref(false)
-// Recommendations for "you may also like"
-const recommendations = ref([
-  { id: 'rec-ph-1', name: 'infinix hot 12', brand: 'Infinix', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
-  { id: 'rec-ph-2', name: 'redmi note 12', brand: 'Xiaomi', image: '/src/assets/images/redmi note 12.png', price: 136, rating: 5 },
-  { id: 'rec-ph-3', name: 'iphone 12', brand: 'Apple', image: '/src/assets/images/iphone12.png', price: 699, rating: 5 },
-  { id: 'rec-ph-4', name: 'tecno spark 5', brand: 'Tecno', image: '/src/assets/images/techno spark 5.png', price: 159, rating: 5 },
-  { id: 'rec-ph-5', name: 'redmi 10 2022 pro', brand: 'Xiaomi', image: '/src/assets/images/xiaomi redmi 10 2022 pro.png', price: 219, rating: 5 },
-])
+const relatedProducts = ref([])
+const isLoadingRelated = ref(false)
 
 // Hide recommendations if both cart and wishlist are empty
 const showRecommendations = computed(() => {
   return cartItems.value.length > 0 || wishlistItems.value.length > 0
 })
+
+const fetchRelatedProducts = async () => {
+  isLoadingRelated.value = true
+  try {
+    const response = await axiosClient.get('/api/cart/related-products')
+    const raw = response.data.related_products || []
+    // Normalize each related product so the template can use `rp.image`, `rp.price`, `rp.oldPrice`, etc.
+    relatedProducts.value = raw.map(p => {
+      const imgs = Array.isArray(p.images) ? p.images : []
+      const primary = imgs.find(i => i.image_type === 'primary') || null
+      const imagePath = primary ? primary.image_path || primary : (p.image || '')
+      return {
+        id: p.id,
+        name: p.name,
+        brand: p.brand,
+        category: p.category,
+        // keep raw path here; template calls `resolveImg(rp.image)`
+        image: imagePath,
+        images: imgs.map(i => i.image_path),
+        // normalize prices to numbers used by template helpers
+        price: Number(p.discount_price ?? p.discountPrice ?? p.price) || 0,
+        oldPrice: Number(p.base_price ?? p.old_price ?? p.oldPrice) || null,
+        rating: p.rating ?? 5,
+      }
+    })
+  } catch (error) {
+    relatedProducts.value = []
+    showToast(error.response?.data?.message, 'error')
+  } finally {
+    isLoadingRelated.value = false
+  }
+}
 
 function loadCart() {
   isLoadingCart.value = true
@@ -94,11 +136,15 @@ function loadCart() {
         // Persist loaded cart and notify other components (Header)
         try { saveCart() } catch {}
         try { window.dispatchEvent(new CustomEvent('cart-loaded', { detail: { items: cartItems.value } })) } catch {}
+        // Fetch related products after cart loads
+        fetchRelatedProducts()
       })
       .catch(error => {
         console.error('Failed to load cart:', error)
         cartItems.value = []
         showToast(error.response?.data?.message || 'Failed to load cart', 'error')
+        // Still fetch related products even if cart fails
+        fetchRelatedProducts()
       })
       .finally(() => {
         isLoadingCart.value = false
@@ -107,6 +153,8 @@ function loadCart() {
     console.error('Error loading cart:', error)
     cartItems.value = []
     isLoadingCart.value = false
+    // Still fetch related products even if cart fails
+    fetchRelatedProducts()
   }
 }
 
@@ -312,26 +360,6 @@ function addToCartQuick(it) {
   saveCart()
   showToast(`${it.name} added to cart`, 'success')
 }
-function resolveImg(p) {
-  if (!p || typeof p !== 'string') return ''
-  // External or data URLs
-  if (/^(https?:)?\/\//.test(p) || p.startsWith('data:')) return p
-  // Normalize slashes and trim
-  let path = p.replace(/\\/g, '/').trim()
-  // Fix erroneous '/src/views/' to '/src/'
-  path = path.replace('/src/views/', '/src/')
-  // Already absolute to src
-  if (path.startsWith('/src/')) return path
-  // Alias to src
-  if (path.startsWith('@/')) return path.replace(/^@\//, '/src/')
-  // Public assets patterns
-  if (path.startsWith('/assets/') || path.startsWith('/images/') || path.startsWith('/img/')) return `/src${path}`
-  // Relative paths containing assets/ -> coerce to /src/assets/...
-  const idx = path.indexOf('assets/')
-  if (idx !== -1) return `/src/${path.slice(idx)}`
-  // As a last resort, return normalized original
-  return path
-}
 
 // Method to handle proceed to checkout
 const proceedToCheckout = () => {
@@ -357,27 +385,17 @@ const proceedToCheckout = () => {
         <div class="shopping-cart-container text-[#384857] w-full lg:w-3/5">
           <!-- Loading Skeleton -->
           <div v-if="isLoadingCart" class="space-y-2 sm:space-y-3">
-            <div v-for="i in 3" :key="`skeleton-${i}`" class="flex flex-col sm:flex-row gap-3 p-3 sm:p-4 rounded-lg bg-white border border-gray-200 shadow-sm animate-pulse" :style="{ animationDelay: `${i * 0.1}s` }">
+            <div v-for="i in 3" :key="`skeleton-${i}`" class="flex flex-col sm:flex-row gap-3 p-3 sm:p-4 rounded-lg bg-white border border-gray-200 shadow-sm animate-pulse">
               <!-- Image Skeleton -->
-              <div class="w-24 h-20 sm:w-40 sm:h-32 rounded-md bg-white border-2 border-gray-300 overflow-hidden relative skeleton-shimmer">
-                <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
-              </div>
+              <div class="w-24 h-20 sm:w-40 sm:h-32 rounded-md bg-gray-200 skeleton-shimmer"></div>
               <!-- Info Skeleton -->
               <div class="flex-1 space-y-2">
-                <div class="h-4 sm:h-5 bg-white border-2 border-gray-300 rounded w-3/4 relative overflow-hidden">
-                  <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
-                </div>
-                <div class="h-3 sm:h-4 bg-white border-2 border-gray-300 rounded w-1/2 relative overflow-hidden">
-                  <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
-                </div>
-                <div class="h-3 sm:h-4 bg-white border-2 border-gray-300 rounded w-2/3 relative overflow-hidden">
-                  <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
-                </div>
+                <div class="h-4 sm:h-5 bg-gray-200 skeleton-shimmer rounded w-3/4"></div>
+                <div class="h-3 sm:h-4 bg-gray-200 skeleton-shimmer rounded w-1/2"></div>
+                <div class="h-3 sm:h-4 bg-gray-200 skeleton-shimmer rounded w-2/3"></div>
               </div>
               <!-- Price Skeleton -->
-              <div class="w-16 sm:w-24 h-8 sm:h-10 bg-white border-2 border-gray-300 rounded relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300" style="animation: shimmer 2s infinite;"></div>
-              </div>
+              <div class="w-16 sm:w-24 h-8 sm:h-10 bg-gray-200 skeleton-shimmer rounded"></div>
             </div>
           </div>
 
@@ -571,12 +589,47 @@ const proceedToCheckout = () => {
           </div>
         </div>
       </section>
+      <!-- Pre-loading skeleton for related products -->
+      <section v-if="isLoadingCart" class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
+        <div class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize">
+          you may also<span class="text-[#68A4FE] px-2"> like</span>
+        </div>
+        <div class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mx-auto w-full gap-3">
+          <div v-for="i in 4" :key="`rp-pre-skel-${i}`" class="product-box group bg-white rounded-lg shadow-md transition-all duration-300 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-32 sm:h-40 rounded-lg mb-3">
+              <div class="h-full w-full bg-gray-200 skeleton-shimmer rounded"></div>
+            </div>
+            <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-3/4 mb-2"></div>
+            <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-1/2 mb-3"></div>
+            <div class="star-box flex justify-center gap-1 mb-3">
+              <div v-for="j in 5" :key="`star-${i}-${j}`" class="h-4 w-4 bg-gray-200 skeleton-shimmer rounded-full"></div>
+            </div>
+            <div class="h-8 bg-gray-200 skeleton-shimmer rounded w-full mb-3"></div>
+            <div class="h-10 bg-gray-200 skeleton-shimmer rounded w-full"></div>
+          </div>
+        </div>
+      </section>
+      <!-- Related products section -->
       <section v-if="showRecommendations" class="shopping-cart mx-auto px-[4%] lg:max-w-[1500px]">
         <div class="heading text-[#384857] border-b-2 border-gray-300 text-base sm:text-xl font-semibold py-2 sm:py-4 capitalize">
           you may also<span class="text-[#68A4FE] px-2"> like</span>
         </div>
-        <div class="top-sales-container flex flex-wrap justify-center gap-2 mx-auto w-full">
-          <div v-for="rec in recommendations" :key="rec.id" class="product-box group flex-shrink-0 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-2" style="min-width: 230px; max-width: 280px;">
+        <div v-if="isLoadingRelated" class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mx-auto w-full gap-3">
+          <div v-for="i in 4" :key="`rp-skel-${i}`" class="product-box group bg-white rounded-lg shadow-md transition-all duration-300 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
+            <div class="relative flex justify-center items-center overflow-hidden bg-white h-32 sm:h-40 rounded-lg mb-3">
+              <div class="h-full w-full bg-gray-200 skeleton-shimmer rounded"></div>
+            </div>
+            <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-3/4 mb-2"></div>
+            <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-1/2 mb-3"></div>
+            <div class="star-box flex justify-center gap-1 mb-3">
+              <div v-for="j in 5" :key="`star-${i}-${j}`" class="h-4 w-4 bg-gray-200 skeleton-shimmer rounded-full"></div>
+            </div>
+            <div class="h-8 bg-gray-200 skeleton-shimmer rounded w-full mb-3"></div>
+            <div class="h-10 bg-gray-200 skeleton-shimmer rounded w-full"></div>
+          </div>
+        </div>
+        <div v-else class="top-sales-container grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mx-auto w-full gap-3">
+          <div v-for="rec in relatedProducts" :key="rec.id" class="product-box group bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-1 border border-gray-200 overflow-hidden my-2 sm:my-4 py-4 px-3">
             <div class="relative flex justify-center items-center overflow-hidden bg-white h-40 rounded-lg mb-3">
               <div class="product-image cursor-pointer transform group-hover:scale-110 transition-transform duration-300">
                 <img :src="resolveImg(rec.image)" :alt="rec.name" class="h-full object-contain" />
@@ -590,7 +643,9 @@ const proceedToCheckout = () => {
             </div>
             <div class="brand-text text-xs text-gray-500 mb-2 font-medium">{{ rec.brand }}</div>
             <div class="star-box text-center text-sm text-[#FFCF10] mb-3 flex justify-center gap-1">
-              <i v-for="i in (rec.rating || 0)" :key="`r-${rec.id}-${i}`" class="fa-solid fa-star text-[#FFCF10]"></i>
+              <svg v-for="i in (rec.rating || 0)" :key="`r-${rec.id}-${i}`" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                <polygon points="12,17.27 18.18,21 16.54,13.97 22,9.24 14.81,8.62 12,2 9.19,8.62 2,9.24 7.46,13.97 5.82,21" />
+              </svg>
             </div>
             <div class="price-section bg-gradient-to-r from-blue-50 to-gray-50 rounded-lg p-2 mb-3">
               <div v-if="rec.oldPrice && rec.price < rec.oldPrice" class="deal-price text-xs text-gray-500 font-semibold line-through mb-1">{{ formatCurrency(rec.oldPrice) }}</div>
@@ -638,11 +693,8 @@ const proceedToCheckout = () => {
 
 <style scoped>
 @keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
+  100%{
+    left: 150%;
   }
 }
 
@@ -669,8 +721,21 @@ const proceedToCheckout = () => {
 }
 
 .skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(90deg, rgb(229, 231, 235) 0%, rgb(243, 244, 246) 20%, rgb(229, 231, 235) 40%);
   background-size: 1000px 100%;
   animation: skeleton-wave 2s infinite;
+}
+
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 150%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimmer 1.5s infinite
 }
 </style>

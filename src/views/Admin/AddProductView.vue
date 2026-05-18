@@ -323,8 +323,8 @@ const toLabeledSpecifications = (category, specs) => {
 }
 
 const categories = ['Phones', 'Laptops', 'Televisions', 'Smartwatches']
-const brands = ['Apple', 'Samsung', 'Dell', 'LG', 'HP', 'Sony', 'Google', 'OnePlus']
-const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG Electronics', 'HP Inc.', 'Sony Corporation']
+const brands = ['Apple', 'Samsung', 'Dell', 'LG', 'HP', 'Sony', 'Xiaomi', 'OnePlus']
+const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG Electronics', 'HP Inc.', 'Sony Corporation', 'Xiaomi Corporation']
 
 // Computed properties
 const filteredProducts = computed(() => {

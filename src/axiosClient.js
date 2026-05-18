@@ -30,6 +30,20 @@ axiosClient.interceptors.request.use(async (config) => {
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status = error?.response?.status
+    const message = error?.response?.data?.message || ''
+
+    // If CSRF token mismatch (Laravel typically returns 419) or message mentions CSRF,
+    // attempt to refresh the CSRF cookie once and retry the original request.
+    const config = error.config || {}
+    if (!config._retry && (status === 419 || /csrf/i.test(message))) {
+      config._retry = true
+      csrftokenInitialized = false
+      return ensureCsrfCookie()
+        .then(() => axiosClient(config))
+        .catch(() => Promise.reject(error))
+    }
+
     return Promise.reject(error)
   }
 )
