@@ -8,6 +8,7 @@ import QRCode from 'qrcode'
 import { useRouter, useRoute } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
+import axiosClient from '@/axiosClient'
 import { ShoppingBagIcon, EyeIcon, DocumentTextIcon, XMarkIcon, ArrowLongRightIcon } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -31,6 +32,8 @@ onMounted(async () => {
   await loadOrders()
   const newId = route?.query?.newId
   if (newId && typeof newId === 'string') {
+    // fetch full details for the new order id then open
+    try { await fetchOrder(newId) } catch {}
     showOrderDetails.value[newId] = true
     await nextTick()
     const el = document.querySelector(`[data-order-id="${newId}"]`)
@@ -38,21 +41,117 @@ onMounted(async () => {
   }
 })
 
+const normalizeOrder = (raw) => {
+  if (!raw) return null
+  // Backend may use different keys; be defensive
+  const itemsRaw = Array.isArray(raw.items)
+    ? raw.items
+    : Array.isArray(raw.order_items)
+      ? raw.order_items
+      : Array.isArray(raw.line_items)
+        ? raw.line_items
+        : []
+
+  const items = itemsRaw.map(it => ({
+    id: it.id ?? it.cart_item_id ?? it.product_id ?? null,
+    productId: it.product_id ?? it.productId ?? null,
+    name: it.name ?? it.product_name ?? it.title ?? '',
+    price: Number(it.price ?? it.unit_price ?? it.discount_price ?? 0) || 0,
+    quantity: Number(it.quantity ?? it.qty ?? 0) || 0,
+    image: it.image ?? it.image_url ?? it.image_path ?? ''
+  }))
+
+  const orderDate = raw.orderDate ?? raw.created_at ?? raw.createdAt ?? raw.date ?? null
+  const subtotal = Number(raw.subtotal ?? raw.sub_total ?? raw.items_subtotal ?? items.reduce((s,i)=>s+(i.price*i.quantity),0)) || 0
+  const deliveryFee = Number(raw.deliveryFee ?? raw.delivery_fee ?? raw.shipping ?? raw.shipping_cost ?? raw.deliveryFeeAmount ?? 0) || 0
+  const tax = Number(raw.tax ?? 0) || 0
+  const totalAmount = Number(raw.totalAmount ?? raw.total ?? raw.grand_total ?? subtotal + deliveryFee + tax) || 0
+
+  return {
+    id: raw.id ?? raw.order_number ?? raw.orderId ?? String(Date.now()),
+    orderDate: orderDate,
+    status: raw.status ?? raw.order_status ?? 'Pending',
+    paymentMethod: raw.paymentMethod ?? raw.payment_method ?? (raw.payment?.type) ?? 'cod',
+    items,
+    subtotal,
+    deliveryFee,
+    tax,
+    totalAmount,
+    deliveryAddress: raw.deliveryAddress ?? raw.delivery_address ?? raw.address ?? (raw.delivery ? (raw.delivery.address || '') : ''),
+    estimatedDelivery: raw.estimatedDelivery ?? raw.estimated_delivery ?? null,
+    deliveredDate: raw.deliveredDate ?? raw.delivered_date ?? raw.delivered_at ?? null,
+    trackingNumber: raw.trackingNumber ?? raw.tracking_number ?? null,
+    createdBy: raw.createdBy ?? raw.customer ?? null,
+    // internal flag to track whether full details have been fetched
+    _fullLoaded: !!(raw.items || raw.order_items)
+  }
+}
+
+// Currency formatting (KSH) — match ProductsView / ProductPageView
+const formatCurrency = (n) => {
+  const num = Number(n || 0)
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
 const loadOrders = async () => {
+  isLoading.value = true
   try {
-    isLoading.value = true
-    const raw = localStorage.getItem('orders')
-    let parsed = []
-    if (raw) {
-      try { parsed = JSON.parse(raw) || [] } catch { parsed = [] }
-    }
-    if (!Array.isArray(parsed)) parsed = []
-    // Sort newest first
-    orders.value = parsed.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+    const res = await axiosClient.post('/api/orders')
+    const payload = res.data || {}
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload.orders)
+        ? payload.orders
+        : Array.isArray(payload.items)
+          ? payload.items
+          : Array.isArray(payload.data)
+            ? payload.data
+            : []
+
+    const normalized = list.map(normalizeOrder).filter(Boolean)
+    // Sort newest first by date if available
+    orders.value = normalized.sort((a, b) => new Date(b.orderDate || 0) - new Date(a.orderDate || 0))
+
+    // Persist to localStorage as fallback/caching
+    try { localStorage.setItem('orders', JSON.stringify(orders.value)) } catch {}
   } catch (error) {
-    console.error('Error loading orders:', error)
+    console.error('Failed to load orders from API, falling back to localStorage:', error)
+    // Fallback to localStorage
+    try {
+      const raw = localStorage.getItem('orders')
+      let parsed = []
+      if (raw) parsed = JSON.parse(raw) || []
+      orders.value = Array.isArray(parsed) ? parsed : []
+    } catch (e) {
+      orders.value = []
+    }
   } finally {
     isLoading.value = false
+  }
+}
+
+// Fetch a single order's full details from backend and merge into orders list
+const fetchOrder = async (orderId) => {
+  if (!orderId) return null
+  try {
+    const res = await axiosClient.post(`/api/orders/${orderId}`)
+    const payload = res.data || {}
+    const raw = payload.order ?? payload.data ?? payload
+    const normalized = normalizeOrder(raw)
+    if (!normalized) return null
+    // Replace existing order in array or push
+    const idx = orders.value.findIndex(o => String(o.id) === String(normalized.id))
+    if (idx !== -1) {
+      orders.value.splice(idx, 1, normalized)
+    } else {
+      orders.value.unshift(normalized)
+    }
+    // Persist cache
+    try { localStorage.setItem('orders', JSON.stringify(orders.value)) } catch {}
+    return normalized
+  } catch (error) {
+    console.error('Failed to fetch order', orderId, error)
+    return null
   }
 }
 
@@ -99,8 +198,19 @@ const getProgressSteps = (status) => {
 // Show cancel button for all statuses except 'Delivered' (and hide on already 'Cancelled')
 const canCancelOrder = (status) => status !== 'Delivered' && status !== 'Cancelled'
 
-const toggleOrderDetails = (orderId) => {
-  showOrderDetails.value[orderId] = !showOrderDetails.value[orderId]
+const toggleOrderDetails = async (orderId) => {
+  const currently = !!showOrderDetails.value[orderId]
+  if (currently) {
+    showOrderDetails.value[orderId] = false
+    return
+  }
+
+  // If not currently shown, try to ensure full details are loaded
+  const existing = orders.value.find(o => String(o.id) === String(orderId))
+  if (!existing || !existing._fullLoaded) {
+    await fetchOrder(orderId)
+  }
+  showOrderDetails.value[orderId] = true
 }
 
 const generateReceipt = (order) => {
@@ -114,8 +224,8 @@ const buildPrintableReceipt = (order) => {
   const itemRows = order.items.map(it => `
       <tr>
         <td style="padding:2px 4px;white-space:nowrap;">${it.name}</td>
-        <td style="padding:2px 4px;text-align:right;">${it.quantity} @ $${it.price.toFixed(2)}</td>
-        <td style="padding:2px 4px;text-align:right;">$${(it.price * it.quantity).toFixed(2)}</td>
+        <td style="padding:2px 4px;text-align:right;">${it.quantity} @ ${formatCurrency(it.price)}</td>
+        <td style="padding:2px 4px;text-align:right;">${formatCurrency(it.price * it.quantity)}</td>
       </tr>`).join('')
   return `<!DOCTYPE html><html><head><meta charset='utf-8' />
     <title>Receipt ${order.id}</title>
@@ -155,11 +265,11 @@ const buildPrintableReceipt = (order) => {
     </table>
     <div class='divider'>------------------------------------</div>
     <table class='totals'>
-      <tr><td class='label'>SUBTOTAL</td><td style='text-align:right;'>$${order.subtotal.toFixed(2)}</td></tr>
-      <tr><td class='label'>DELIVERY</td><td style='text-align:right;'>$${order.deliveryFee.toFixed(2)}</td></tr>
-      ${order.tax > 0 ? `<tr><td class='label'>VAT</td><td style='text-align:right;'>$${order.tax.toFixed(2)}</td></tr>` : ''}
+      <tr><td class='label'>SUBTOTAL</td><td style='text-align:right;'>${formatCurrency(order.subtotal)}</td></tr>
+      <tr><td class='label'>DELIVERY</td><td style='text-align:right;'>${formatCurrency(order.deliveryFee)}</td></tr>
+      ${order.tax > 0 ? `<tr><td class='label'>VAT</td><td style='text-align:right;'>${formatCurrency(order.tax)}</td></tr>` : ''}
       <tr><td colspan='2'><div class='divider'>------------------------------------</div></td></tr>
-      <tr><td class='label'>TOTAL PAID</td><td style='text-align:right;font-weight:700;'>$${order.totalAmount.toFixed(2)}</td></tr>
+      <tr><td class='label'>TOTAL PAID</td><td style='text-align:right;font-weight:700;'>${formatCurrency(order.totalAmount)}</td></tr>
     </table>
     <div class='divider'>------------------------------------</div>
     <div style='font-size:11px;'><strong>DELIVERY ADDRESS</strong><br/>${order.deliveryAddress}</div>
@@ -291,23 +401,23 @@ const downloadReceipt = async () => {
     drawDivider()
     text('ITEMS', 9, true)
     order.items.forEach(it => {
-      const total = `$${(it.price * it.quantity).toFixed(2)}`
+      const total = formatCurrency(it.price * it.quantity)
       // Wider width allows longer names before truncation
       const name = it.name.length > 30 ? it.name.slice(0, 29) + '…' : it.name
       pdf.setFont('courier', 'normal'); pdf.setFontSize(9)
       pdf.text(name, margin, y)
       pdf.text(total, pageWidth - margin, y, { align: 'right' })
       y += lh
-      pdf.text(`Qty ${it.quantity} @ $${it.price.toFixed(2)}`, margin, y)
+      pdf.text(`Qty ${it.quantity} @ ${formatCurrency(it.price)}`, margin, y)
       y += lh
     })
 
     drawDivider()
-    leftRight('SUBTOTAL', `$${order.subtotal.toFixed(2)}`, 9)
-    leftRight('DELIVERY', `$${order.deliveryFee.toFixed(2)}`, 9)
-    if (order.tax > 0) leftRight('VAT', `$${order.tax.toFixed(2)}`, 9)
+    leftRight('SUBTOTAL', formatCurrency(order.subtotal), 9)
+    leftRight('DELIVERY', formatCurrency(order.deliveryFee), 9)
+    if (order.tax > 0) leftRight('VAT', formatCurrency(order.tax), 9)
     drawDivider()
-    pdf.setFont('courier', 'bold'); leftRight('TOTAL PAID', `$${order.totalAmount.toFixed(2)}`, 10)
+    pdf.setFont('courier', 'bold'); leftRight('TOTAL PAID', formatCurrency(order.totalAmount), 10)
 
     drawDivider()
     text('DELIVERY ADDRESS', 9, true)
@@ -344,16 +454,25 @@ const cancelOrder = async () => {
   
   try {
     isCancelling.value = true
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Update order status locally
-    const orderIndex = orders.value.findIndex(o => o.id === orderToCancel.value.id)
-    if (orderIndex !== -1) {
-      orders.value[orderIndex].status = 'Cancelled'
+    // Call backend delete endpoint
+    const orderId = orderToCancel.value.id
+    try {
+      const res = await axiosClient.delete(`/api/orders/${orderId}/delete`)
+      // treat 200/204 as success
+      if (res.status === 200 || res.status === 204) {
+        const orderIndex = orders.value.findIndex(o => String(o.id) === String(orderId))
+        if (orderIndex !== -1) orders.value[orderIndex].status = 'Cancelled'
+      } else {
+        // non-success status — still mark cancelled locally as fallback
+        const orderIndex = orders.value.findIndex(o => String(o.id) === String(orderId))
+        if (orderIndex !== -1) orders.value[orderIndex].status = 'Cancelled'
+      }
+    } catch (err) {
+      console.error('Cancel API failed, marking locally:', err)
+      const orderIndex = orders.value.findIndex(o => String(o.id) === String(orderToCancel.value.id))
+      if (orderIndex !== -1) orders.value[orderIndex].status = 'Cancelled'
     }
-    
+
     showCancelModal.value = false
     orderToCancel.value = null
     
@@ -445,7 +564,7 @@ watch([showReceiptModal, currentReceiptOrder], () => {
           <div class="order-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div class="order-info">
               <h3 class="product-name font-semibold text-base sm:text-xl capitalize mb-1">
-                Order #{{ order.id }}
+                Order #{{ order.trackingNumber || order.id }}
               </h3>
               <div class="product-text text-sm">
                 Placed on {{ formatDate(order.orderDate) }}
@@ -511,7 +630,7 @@ watch([showReceiptModal, currentReceiptOrder], () => {
             </div>
             <div class="action-box flex flex-col items-end gap-2">
               <div class="product-price text-[#FF412C] text-lg sm:text-xl font-semibold">
-                ${{ order.totalAmount.toFixed(2) }}
+                {{ formatCurrency(order.totalAmount) }}
               </div>
               <div class="action-buttons flex items-center gap-2">
                 <button
@@ -563,8 +682,8 @@ watch([showReceiptModal, currentReceiptOrder], () => {
                     </div>
                   </div>
                   <div class="text-right">
-                    <p class="font-semibold text-[#FF412C]">${{ (item.price * item.quantity).toFixed(2) }}</p>
-                    <p class="text-sm text-gray-600">${{ item.price.toFixed(2) }} each</p>
+                    <p class="font-semibold text-[#FF412C]">{{ formatCurrency(item.price * item.quantity) }}</p>
+                    <p class="text-sm text-gray-600">{{ formatCurrency(item.price) }} each</p>
                   </div>
                 </div>
               </div>
@@ -578,19 +697,19 @@ watch([showReceiptModal, currentReceiptOrder], () => {
               <div class="summary-content p-4 space-y-2">
                 <div class="flex justify-between text-sm">
                   <span class="text-gray-600">Subtotal:</span>
-                  <span class="text-[#384857] font-medium">${{ order.subtotal.toFixed(2) }}</span>
+                  <span class="text-[#384857] font-medium">{{ formatCurrency(order.subtotal) }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                   <span class="text-gray-600">Delivery Fee:</span>
-                  <span class="text-[#384857] font-medium">${{ order.deliveryFee.toFixed(2) }}</span>
+                  <span class="text-[#384857] font-medium">{{ formatCurrency(order.deliveryFee) }}</span>
                 </div>
                 <div v-if="order.tax > 0" class="flex justify-between text-sm">
                   <span class="text-gray-600">VAT:</span>
-                  <span class="text-[#384857] font-medium">${{ order.tax.toFixed(2) }}</span>
+                  <span class="text-[#384857] font-medium">{{ formatCurrency(order.tax) }}</span>
                 </div>
                 <div class="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
                   <span class="text-[#384857]">Total:</span>
-                  <span class="text-[#FF412C]">${{ order.totalAmount.toFixed(2) }}</span>
+                  <span class="text-[#FF412C]">{{ formatCurrency(order.totalAmount) }}</span>
                 </div>
               </div>
             </div>
@@ -692,12 +811,12 @@ watch([showReceiptModal, currentReceiptOrder], () => {
           </div>
           <div class="divider mt-2">------------------------------------</div>
           <!-- Totals -->
-          <div class="space-y-1">
-            <div class="flex justify-between"><span>SUBTOTAL</span><span>${{ currentReceiptOrder.subtotal.toFixed(2) }}</span></div>
-            <div class="flex justify-between"><span>DELIVERY</span><span>${{ currentReceiptOrder.deliveryFee.toFixed(2) }}</span></div>
-            <div v-if="currentReceiptOrder.tax > 0" class="flex justify-between"><span>VAT</span><span>${{ currentReceiptOrder.tax.toFixed(2) }}</span></div>
+                <div class="space-y-1">
+            <div class="flex justify-between"><span>SUBTOTAL</span><span>{{ formatCurrency(currentReceiptOrder.subtotal) }}</span></div>
+            <div class="flex justify-between"><span>DELIVERY</span><span>{{ formatCurrency(currentReceiptOrder.deliveryFee) }}</span></div>
+            <div v-if="currentReceiptOrder.tax > 0" class="flex justify-between"><span>VAT</span><span>{{ formatCurrency(currentReceiptOrder.tax) }}</span></div>
             <div class="divider">------------------------------------</div>
-            <div class="flex justify-between font-bold text-sm"><span>TOTAL PAID</span><span>${{ currentReceiptOrder.totalAmount.toFixed(2) }}</span></div>
+            <div class="flex justify-between font-bold text-sm"><span>TOTAL PAID</span><span>{{ formatCurrency(currentReceiptOrder.totalAmount) }}</span></div>
           </div>
           <div class="divider mt-3">------------------------------------</div>
           <!-- Address & Footer -->
@@ -747,7 +866,7 @@ watch([showReceiptModal, currentReceiptOrder], () => {
           <h3 class="text-lg font-semibold text-[#384857]">Cancel Order</h3>
         </div>
         <p class="text-gray-600 mb-6">
-          Are you sure you want to cancel order <strong>#{{ orderToCancel.id }}</strong>? This action cannot be undone.
+          Are you sure you want to cancel order <strong>#{{ orderToCancel.trackingNumber }}</strong>? This action cannot be undone.
         </p>
         <div class="flex gap-3 justify-end">
           <button
