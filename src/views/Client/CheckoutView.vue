@@ -504,9 +504,10 @@ async function loadCartItems() {
             ? payload.cartItems
             : []
 
+
     // Map API response to order items format (handle cart_item_id / product_id shapes)
     orderItems.value = list.map(p => ({
-      id: p.cart_item_id ?? p.id ?? p.product_id,
+      id: p.cart_item_id,
       productId: p.product_id,
       name: p.name || p.product_name || '',
       brand: p.brand || '',
@@ -636,7 +637,7 @@ async function placeOrder() {
 
     // Normalize items (send only the fields required by backend)
     const items = orderItems.value.map(it => ({
-      id: Number(it.id),
+      id: Number(it.productId),
       name: it.name,
       price: Number(it.price) || 0,
       quantity: Number(it.quantity) || 1
@@ -700,40 +701,6 @@ async function placeOrder() {
       },
       payment: paymentDetails
     }
-
-    // Log the data structure and types to console
-    console.log('=== CHECKOUT DATA STRUCTURE ===')
-    console.log(JSON.stringify(checkoutData, null, 2))
-    console.log('=== DATA TYPES ===')
-    console.log({
-      'personal.name': typeof checkoutData.personal.name,
-      'personal.email': typeof checkoutData.personal.email,
-      'personal.phone': typeof checkoutData.personal.phone,
-      'delivery.address': typeof checkoutData.delivery.address,
-      'delivery.apartment': typeof checkoutData.delivery.apartment,
-      'delivery.landmark': typeof checkoutData.delivery.landmark,
-      'delivery.city': typeof checkoutData.delivery.city,
-      'delivery.state': typeof checkoutData.delivery.state,
-      'delivery.postalCode': typeof checkoutData.delivery.postalCode,
-      'delivery.country': typeof checkoutData.delivery.country,
-      'delivery.instructions': typeof checkoutData.delivery.instructions,
-      'delivery.coordinates.lat': typeof checkoutData.delivery.coordinates.lat,
-      'delivery.coordinates.lng': typeof checkoutData.delivery.coordinates.lng,
-      'order.items': Array.isArray(checkoutData.order.items) ? 'array' : typeof checkoutData.order.items,
-      'order.subtotal': typeof checkoutData.order.subtotal,
-      'order.shippingCost': typeof checkoutData.order.shippingCost,
-      'order.tax': typeof checkoutData.order.tax,
-      'order.total': typeof checkoutData.order.total,
-      'payment': typeof checkoutData.payment,
-      'payment.type': typeof checkoutData.payment.type,
-      'items[0]': items.length > 0 ? {
-        id: typeof items[0].id,
-        name: typeof items[0].name,
-        price: typeof items[0].price,
-        quantity: typeof items[0].quantity,
-        image: typeof items[0].image
-      } : null
-    })
 
     // Make POST request to backend
     const response = await axiosClient.post('/api/checkout', checkoutData)

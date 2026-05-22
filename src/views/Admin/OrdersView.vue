@@ -1,6 +1,7 @@
 
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
+import axiosClient from '@/axiosClient'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import AdminToast from '@/components/Admin/AdminToast.vue'
@@ -37,190 +38,140 @@ function showNotification({ type = 'info', title = '', message = '', duration = 
   }, duration)
 }
 
-// Orders data (clean)
-const orders = reactive([
-  {
-    id: 'ORD-2024-001',
-    trackingNumber: 'TRK-5A8B9C2D',
-    customer: {
-      id: 'CUST-001',
-      name: 'John Doe',
-      email: 'john.doe@email.com',
-      phone: '+1 (555) 123-4567',
-      address: '123 Main Street, Apt 4B',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      country: 'United States'
-    },
-    products: [
-      {
-        id: 'PH-001',
-        name: 'iPhone 15 Pro Max',
-        sku: 'IPH-15-PM-256',
-        quantity: 1,
-        price: 1199,
-        image: 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=150&h=150&fit=crop&crop=center'
-      }
-    ],
-    totalAmount: 1199,
-    status: 'Delivered',
-    paymentMethod: 'Credit Card',
-    paymentStatus: 'Paid',
-    orderDate: '2024-09-10',
-    deliveryDate: '2024-09-15',
-    shippingCost: 15.99,
-    tax: 95.92,
-    discount: 0,
-    paymentDetails: {
-      cardHolder: 'John Doe',
-      cardLast4: '8421',
-      cardBrand: 'Visa',
-      authCode: 'AUTH-58FD2A',
-      transactionId: 'TXN-CC-2024-0001'
-    }
-  },
-  {
-    id: 'ORD-2024-002',
-    trackingNumber: 'TRK-7E3F1G4H',
-    customer: {
-      id: 'CUST-002',
-      name: 'Jane Smith',
-      email: 'jane.smith@email.com',
-      phone: '+1 (555) 987-6543',
-      address: '456 Oak Avenue',
-      city: 'Los Angeles',
-      state: 'CA',
-      zipCode: '90210',
-      country: 'United States'
-    },
-    products: [
-      {
-        id: 'LP-001',
-        name: 'MacBook Pro 14"',
-        sku: 'MBP-14-M3-512',
-        quantity: 1,
-        price: 2399,
-        image: 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=150&h=150&fit=crop&crop=center'
-      },
-      {
-        id: 'SW-001',
-        name: 'Apple Watch Series 9',
-        sku: 'AW-S9-45-GPS',
-        quantity: 1,
-        price: 429,
-        image: 'https://images.unsplash.com/photo-1544117519-31a4b719223d?w=150&h=150&fit=crop&crop=center'
-      }
-    ],
-    totalAmount: 2828,
-    status: 'Processing',
-    paymentMethod: 'PayPal',
-    paymentStatus: 'Paid',
-    orderDate: '2024-09-12',
-    deliveryDate: null,
-    shippingCost: 0,
-    tax: 226.24,
-    discount: 50,
-    paymentDetails: {
-      paypalPayerId: 'PAYER-8892JKL',
-      paypalTransactionId: 'TXN-PP-2024-2099',
-      paypalEmail: 'payer.jane@paypal.com'
-    }
-  },
-  {
-    id: 'ORD-2024-003',
-    trackingNumber: 'TRK-9I5J7K8L',
-    customer: {
-      id: 'CUST-003',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@email.com',
-      phone: '+1 (555) 456-7890',
-      address: '789 Pine Street',
-      city: 'Chicago',
-      state: 'IL',
-      zipCode: '60601',
-      country: 'United States'
-    },
-    products: [
-      {
-        id: 'PH-002',
-        name: 'Samsung Galaxy S24 Ultra',
-        sku: 'SAM-S24-U-512',
-        quantity: 1,
-        price: 1299,
-        image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=150&h=150&fit=crop&crop=center'
-      }
-    ],
-    totalAmount: 1299,
-    status: 'In Transit',
-    paymentMethod: 'Credit Card',
-    paymentStatus: 'Paid',
-    orderDate: '2024-09-08',
-    deliveryDate: '2024-09-18',
-    shippingCost: 0,
-    tax: 104.0,
-    discount: 0,
-    paymentDetails: {
-      cardHolder: 'Mike Johnson',
-      cardLast4: '0911',
-      cardBrand: 'Mastercard',
-      authCode: 'AUTH-AC9102',
-      transactionId: 'TXN-CC-2024-0042'
-    }
-  },
-  {
-    id: 'ORD-2024-004',
-    trackingNumber: 'TRK-3M7N9O1P',
-    customer: {
-      id: 'CUST-004',
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@email.com',
-      phone: '+1 (555) 321-0987',
-      address: '321 Elm Drive',
-      city: 'Miami',
-      state: 'FL',
-      zipCode: '33101',
-      country: 'United States'
-    },
-    products: [
-      {
-        id: 'TV-001',
-        name: 'Samsung QLED 65"',
-        sku: 'SAM-Q65-4K',
-        quantity: 1,
-        price: 1899,
-        image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=150&h=150&fit=crop&crop=center'
-      }
-    ],
-    totalAmount: 1899,
-    status: 'Pending',
-    paymentMethod: 'Mpesa',
-    paymentStatus: 'Paid',
-    orderDate: '2024-09-14',
-    deliveryDate: null,
-    shippingCost: 49.99,
-    tax: 151.92,
-    discount: 100,
-    paymentDetails: {
-      mpesaNumber: '0745079253',
-      mpesaName: 'KENNEDY  MUENDO',
-      mpesaCode: 'TAXI4390',
-      transactionTime: '10:50PM'
-    }
+// Orders data (will be loaded from backend)
+const orders = reactive([])
+const productImageCache = new Map()
+
+// Currency formatting (KSH)
+const formatCurrency = (n) => {
+  const num = Number(n) || 0
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
+// Resolve a product's primary image (fall back to common fields)
+function getPrimaryImage(prod) {
+  if (!prod) return ''
+  if (prod.primary_image) return prod.primary_image
+  if (prod.primaryImage) return prod.primaryImage
+  if (prod.image) return prod.image
+  if (Array.isArray(prod.images) && prod.images.length) {
+    const primary = prod.images.find(i => i.image_type === 'primary' || i.is_primary) || prod.images[0]
+    return primary.image_path || primary.path || primary.url || ''
   }
-])
+  return ''
+}
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+
+const getImagePath = (path) => {
+  if (!path || typeof path !== 'string') return ''
+  const value = path.trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  const normalized = value.replace(/^\/+/, '')
+  return `${apiBaseUrl}/storage/${normalized}`
+}
+
+// Load orders from admin endpoint and normalize
+async function loadAdminOrders() {
+  try {
+    const resp = await axiosClient.get('/api/admin/orders')
+    const payload = resp.data
+    const list = Array.isArray(payload) ? payload : Array.isArray(payload?.allOrders) ? payload.allOrders : Array.isArray(payload?.data) ? payload.data : []
+
+    const normalized = list.map(o => ({
+      id: o.id || o.order_id || o.orderId || o._id || o.reference || '',
+      trackingNumber: o.order_tracking_number || o.tracking_number || o.trackingNumber || o.tracking || o.tracking_no || o.trackingNo || (o.tracking ?? ''),
+      customer: (() => {
+        const u = o.user || o.customer || {}
+        return {
+          id: u.id || o.user_id || o.customer_id || null,
+          name: u.name || o.user?.name || o.customer_name || o.name || 'Unknown',
+          email: u.email || o.user?.email || o.customer_email || '',
+          // shipping fields come from order root in this API
+          address: o.street_address || o.streetAddress || '',
+          apartment: o['apartment/suite'] || o.apartment || o.suite || '',
+          city: o['city/town'] || o.city || '',
+          state: o.region || o.state || '',
+          zipCode: o.postal_code || o.postalCode || o.zipCode || '',
+          country: o.country || ''
+        }
+      })(),
+      products: (Array.isArray(o.items) ? o.items : Array.isArray(o.products) ? o.products : []).map(p => ({
+        id: p.product_id || p.id || null,
+        name: p.product_name_snapshot || p.name || p.title || '',
+        sku: p.sku || p.sku_code || '',
+        quantity: Number(p.quantity || p.qty || 1),
+        price: Number(p.price_at_purchase || p.price || p.unit_price || p.price_amount || 0),
+        total_price: Number(p.total_price || 0),
+        image: '',
+      })),
+      shippingCost: Number(o.shipping_cost || o.shippingCost || o.shipping || 0),
+      tax: Number(o.tax || 0),
+      discount: Number(o.discount || 0),
+      totalAmount: Number(o.total_amount || o.total || o.grand_total || 0),
+      status: (o.status || o.order_status || (o.status ? o.status.toString() : '') || (o.order_status ? o.order_status.toString() : '') || 'pending'),
+      paymentMethod: o.payment_detail?.payment_method || o.payment_method || o.paymentMethod || o.payment || '',
+      paymentStatus: o.payment_detail?.payment_status || o.payment_status || o.paymentStatus || '',
+      paymentDetails: o.payment_detail?.payment_details || o.payment_details || o.paymentDetails || {},
+      orderDate: o.created_at || o.order_date || o.orderDate || '',
+      deliveryDate: o.delivery_date || o.eta || o.deliveryDate || null,
+      raw: o
+    }))
+
+    // compute total from items if missing
+    normalized.forEach(o => {
+      if (!o.totalAmount || o.totalAmount === 0) {
+        const sum = o.products.reduce((s, p) => s + (Number(p.total_price) || (Number(p.price) * Number(p.quantity) || 0)), 0)
+        o.totalAmount = sum + (Number(o.shippingCost) || 0)
+      }
+    })
+
+    // replace reactive array contents
+    orders.splice(0, orders.length, ...normalized)
+
+    // fetch primary images for products if possible
+    const ids = [...new Set(normalized.flatMap(o => o.products.map(p => p.id).filter(Boolean)))]
+    const missing = ids.filter(id => !productImageCache.has(id))
+    if (missing.length) {
+      const promises = missing.map(id => axiosClient.get(`/api/product/page/${id}`).then(r => ({ id, product: r.data.product })).catch(() => ({ id, product: null })))
+      const results = await Promise.all(promises)
+      results.forEach(res => {
+        if (res.product) {
+          const imgs = Array.isArray(res.product.images) ? res.product.images : []
+          const primary = imgs.find(i => i.image_type === 'primary' || i.is_primary) || imgs[0] || null
+          const imagePath = primary ? (primary.image_path || primary.path || primary.url || '') : (res.product.image || '')
+          productImageCache.set(res.id, imagePath)
+        } else {
+          productImageCache.set(res.id, '')
+        }
+      })
+      // apply images
+      orders.forEach(o => o.products.forEach(p => { if (p.id && productImageCache.has(p.id)) p.image = getImagePath(productImageCache.get(p.id) || '') }))
+    }
+  } catch (error) {
+    console.error('Failed to load admin orders:', error)
+    orders.splice(0, orders.length)
+  }
+}
+
+onMounted(() => { loadAdminOrders() })
 
 function getStatusColor(status) {
-  switch (status) {
-    case 'Delivered':
+  const s = String(status || '').toLowerCase()
+  switch (s) {
+    case 'delivered':
       return 'bg-green-100 text-green-800';
-    case 'Processing':
+    case 'processing':
       return 'bg-blue-100 text-blue-800';
-    case 'In Transit':
+    case 'in transit':
+    case 'in_transit':
+    case 'intransit':
       return 'bg-purple-100 text-purple-800';
-    case 'Pending':
+    case 'pending':
       return 'bg-yellow-100 text-yellow-800';
-    case 'Cancelled':
+    case 'cancelled':
+    case 'canceled':
       return 'bg-red-100 text-red-700';
     default:
       return 'bg-gray-100 text-gray-800';
@@ -230,16 +181,18 @@ function getStatusColor(status) {
 const filteredOrders = computed(() => {
   let filtered = orders;
   if (statusFilter.value !== 'All') {
-    filtered = filtered.filter(order => order.status === statusFilter.value);
+    const want = String(statusFilter.value || '').toLowerCase()
+    filtered = filtered.filter(order => String(order.status || '').toLowerCase() === want);
   }
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
-    filtered = filtered.filter(order =>
-      order.id.toLowerCase().includes(query) ||
-      order.trackingNumber.toLowerCase().includes(query) ||
-      order.customer.name.toLowerCase().includes(query) ||
-      order.customer.email.toLowerCase().includes(query)
-    );
+    filtered = filtered.filter(order => {
+      const idStr = String(order.id || '')
+      const tracking = String(order.trackingNumber || '')
+      const name = String(order.customer?.name || '')
+      const email = String(order.customer?.email || '')
+      return idStr.toLowerCase().includes(query) || tracking.toLowerCase().includes(query) || name.toLowerCase().includes(query) || email.toLowerCase().includes(query)
+    })
   }
   return filtered;
 });
@@ -259,15 +212,43 @@ function confirmDeleteOrder(order) {
 }
 
 function deleteOrder() {
-  if (!orderToDelete.value) {
-    return;
-  }
-  const index = orders.findIndex(o => o.id === orderToDelete.value.id);
-  if (index > -1) {
-    orders.splice(index, 1);
-  }
-  showDeleteConfirmModal.value = false;
-  orderToDelete.value = null;
+  if (!orderToDelete.value) return
+  const id = orderToDelete.value.id
+  // try server delete endpoints
+  const endpoints = [
+    `/api/order/${id}/delete`,
+    `/api/admin/orders/${id}/delete`,
+    `/api/orders/${id}/delete`,
+    `/api/orders/${id}`
+  ]
+  (async () => {
+    let removed = false
+    for (const ep of endpoints) {
+      try {
+        const res = await axiosClient.post(ep)
+        if (res && (res.status === 200 || res.status === 204 || res.status === 201)) {
+          removed = true
+          break
+        }
+      } catch (e) {
+        try {
+          const res2 = await axiosClient.delete(ep)
+          if (res2 && (res2.status === 200 || res2.status === 204)) { removed = true; break }
+        } catch (e2) {
+          // continue
+        }
+      }
+    }
+    if (removed) {
+      const index = orders.findIndex(o => o.id === id)
+      if (index > -1) orders.splice(index, 1)
+      showNotification({ type: 'success', title: 'Order Deleted', message: 'Order removed successfully.' })
+    } else {
+      showNotification({ type: 'error', title: 'Delete Failed', message: 'Failed to delete order on server.' })
+    }
+    showDeleteConfirmModal.value = false
+    orderToDelete.value = null
+  })()
 }
 
 function closeOrderDetailsModal() {
@@ -285,12 +266,13 @@ function updateOrderStatus(newStatus) {
   if (!selectedOrder.value) {
     return;
   }
-  // Just update pending status; actual mutation done on save
+  // Update pendingStatus immediately and attempt server update
   pendingStatus.value = newStatus
-  // If user selects a different status than the persisted one, clear saved indicator
   if (selectedOrder.value && newStatus !== selectedOrder.value.status) {
     justSavedStatus.value = false
   }
+  // send update to server
+  saveStatusChange()
 }
 
 function cancelOrder() {
@@ -346,6 +328,15 @@ const hasStatusChanged = computed(() => {
   return pendingStatus.value && pendingStatus.value !== selectedOrderComputed.value.status
 })
 
+const manageStatusOptions = computed(() => {
+  const opts = []
+  const cur = selectedOrderComputed.value?.status
+  if (cur) opts.push(cur)
+  statusOptions.forEach(s => { if (!opts.includes(s)) opts.push(s) })
+  if (!opts.includes('Cancelled')) opts.push('Cancelled')
+  return opts
+})
+
 function saveStatusChange(afterCommitCb) {
   if (!selectedOrderComputed.value) return
   if (!hasStatusChanged.value) return
@@ -354,19 +345,45 @@ function saveStatusChange(afterCommitCb) {
   justSavedStatus.value = false
   const orderId = selectedOrderComputed.value.id
   const newStatus = pendingStatus.value
-  setTimeout(() => {
-    const idx = orders.findIndex(o => o.id === orderId)
-    if (idx > -1) {
-      orders[idx].status = newStatus
-      if (selectedOrderComputed.value && selectedOrderComputed.value.id === orderId) {
-        selectedOrderComputed.value.status = newStatus
+
+  const endpoints = [
+    `/api/order/${orderId}/status`,
+    `/api/order/${orderId}/update`,
+    `/api/admin/orders/${orderId}/status`,
+    `/api/admin/orders/${orderId}/update`,
+    `/api/orders/${orderId}/status`,
+    `/api/orders/${orderId}/update`
+  ]
+
+  let succeeded = false
+  (async () => {
+    for (const ep of endpoints) {
+      try {
+        const res = await axiosClient.post(ep, { status: newStatus })
+        if (res && (res.status === 200 || res.status === 201 || res.status === 204)) {
+          succeeded = true
+          break
+        }
+      } catch (e) {
+        // try next
       }
     }
-    isSavingStatus.value = false
-    justSavedStatus.value = true
-    if (afterCommitCb) afterCommitCb()
-    setTimeout(() => { justSavedStatus.value = false }, 1600)
-  }, 1000)
+    if (succeeded) {
+      const idx = orders.findIndex(o => o.id === orderId)
+      if (idx > -1) orders[idx].status = newStatus
+      if (selectedOrderComputed.value && selectedOrderComputed.value.id === orderId) selectedOrderComputed.value.status = newStatus
+      isSavingStatus.value = false
+      justSavedStatus.value = true
+      showNotification({ type: 'success', title: 'Status Updated', message: `Order status updated to ${newStatus}` })
+      if (afterCommitCb) afterCommitCb()
+      setTimeout(() => { justSavedStatus.value = false }, 1600)
+    } else {
+      isSavingStatus.value = false
+      showNotification({ type: 'error', title: 'Update Failed', message: 'Failed to update status on server.' })
+      // revert pendingStatus to server value
+      pendingStatus.value = selectedOrderComputed.value.status
+    }
+  })()
 }
 
 const orderFinancials = computed(() => {
@@ -388,15 +405,16 @@ const statusTimeline = computed(() => {
   if (!selectedOrderComputed.value) {
     return [];
   }
-  const statusOrder = ['Pending', 'Processing', 'In Transit', 'Delivered'];
-  const current = selectedOrderComputed.value.status;
+  const statusOrder = ['pending', 'processing', 'in transit', 'delivered'];
+  const current = String(selectedOrderComputed.value.status || '').toLowerCase();
   return statusOrder.map(step => {
     const index = statusOrder.indexOf(step);
     const currentIndex = statusOrder.indexOf(current);
-    const completed = currentIndex > index || current === 'Cancelled';
-    const active = currentIndex === index && current !== 'Cancelled';
-    const cancelled = current === 'Cancelled';
-    return { step, completed, active, cancelled };
+    const cancelled = current === 'cancelled' || current === 'canceled';
+    const completed = currentIndex > index || cancelled;
+    const active = currentIndex === index && !cancelled;
+    const display = step.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    return { step: display, completed, active, cancelled };
   });
 });
 
@@ -442,6 +460,9 @@ const paymentDetailRows = computed(() => {
     if (paymentDetails.mpesaName) rows.push(['Mpesa Name', paymentDetails.mpesaName]);
     if (paymentDetails.mpesaCode) rows.push(['Mpesa Code', paymentDetails.mpesaCode]);
     if (paymentDetails.transactionTime) rows.push(['Time', paymentDetails.transactionTime]);
+  } else if (paymentMethod === 'cod' || String(paymentMethod).toLowerCase() === 'cod' || String(paymentMethod).toLowerCase() === 'cash on delivery') {
+    if (paymentDetails.type) rows.push(['Type', 'Cash on Delivery']);
+    if (paymentDetails.recipientName) rows.push(['Recipient Name', paymentDetails.recipientName]);
   }
   return rows;
 });
@@ -500,7 +521,6 @@ const paymentDetailRows = computed(() => {
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Products</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tracking</th>
@@ -513,23 +533,20 @@ const paymentDetailRows = computed(() => {
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   <tr v-for="order in filteredOrders" :key="order.id" @click.stop="viewOrderDetails(order)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.id }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.customer.name }}</div>
                       <div class="text-sm text-gray-500 dark:text-gray-400">{{ order.customer.email }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex -space-x-2 overflow-hidden">
-                        <img v-for="(product) in order.products.slice(0, 3)" :key="product.id" :src="product.image" :alt="product.name" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-gray-800 object-cover" :title="product.name" />
-                        <div v-if="order.products.length > 3" class="flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          +{{ order.products.length - 3 }}
+                        <img v-for="(product) in order.products.slice(0, 2)" :key="product.id" :src="product.image" :alt="product.name" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-gray-800 object-cover" :title="product.name" />
+                        <div v-if="order.products.length > 2" class="flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          +{{ order.products.length - 2 }}
                         </div>
                       </div>
                       <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ order.products.length }} item{{ order.products.length > 1 ? 's' : '' }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">{{ order.trackingNumber }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">${{ order.totalAmount.toLocaleString() }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">{{ formatCurrency(order.totalAmount) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(order.status)]">{{ order.status }}</span>
                     </td>
@@ -616,7 +633,7 @@ const paymentDetailRows = computed(() => {
                 <div class="col-span-2 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
                 <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Items ({{ orderFinancials?.totalItems }})</h4>
-                  <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">Avg: ${{ orderFinancials?.avgItemPrice.toFixed(2) }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">Avg: {{ formatCurrency(orderFinancials?.avgItemPrice) }}</span>
                 </div>
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                   <div v-for="p in selectedOrderComputed.products" :key="p.id" class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
@@ -629,17 +646,17 @@ const paymentDetailRows = computed(() => {
                       </div>
                     </div>
                     <div class="text-right">
-                      <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">${{ p.price.toLocaleString() }}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${{ (p.price * p.quantity).toLocaleString() }} total</p>
+                      <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatCurrency(p.price) }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatCurrency(p.price * p.quantity) }} total</p>
                     </div>
                   </div>
                 </div>
                 <div class="bg-gradient-to-r from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 px-5 py-4 space-y-2 text-sm">
-                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Subtotal</span><span class="font-medium text-gray-900 dark:text-gray-100">${{ orderFinancials?.subtotal.toLocaleString() }}</span></div>
-                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Shipping</span><span class="text-gray-900 dark:text-gray-100">${{ orderFinancials?.shipping.toLocaleString() }}</span></div>
-                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Tax</span><span class="text-gray-900 dark:text-gray-100">${{ orderFinancials?.tax.toLocaleString() }}</span></div>
-                  <div v-if="orderFinancials && orderFinancials.discount > 0" class="flex justify-between text-green-600"><span>Discount</span><span>- ${{ orderFinancials.discount.toLocaleString() }}</span></div>
-                  <div class="flex justify-between pt-2 mt-1 border-t border-gray-200 dark:border-gray-700 text-base font-semibold"><span class="text-gray-900 dark:text-gray-100">Total</span><span class="text-gray-900 dark:text-gray-100">${{ orderFinancials?.total.toLocaleString() }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Subtotal</span><span class="font-medium text-gray-900 dark:text-gray-100">{{ formatCurrency(orderFinancials?.subtotal) }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Shipping</span><span class="text-gray-900 dark:text-gray-100">{{ formatCurrency(orderFinancials?.shipping) }}</span></div>
+                  <div class="flex justify-between"><span class="text-gray-600 dark:text-gray-400">Tax</span><span class="text-gray-900 dark:text-gray-100">{{ formatCurrency(orderFinancials?.tax) }}</span></div>
+                  <div v-if="orderFinancials && orderFinancials.discount > 0" class="flex justify-between text-green-600"><span>Discount</span><span>- {{ formatCurrency(orderFinancials.discount) }}</span></div>
+                  <div class="flex justify-between pt-2 mt-1 border-t border-gray-200 dark:border-gray-700 text-base font-semibold"><span class="text-gray-900 dark:text-gray-100">Total</span><span class="text-gray-900 dark:text-gray-100">{{ formatCurrency(orderFinancials?.total) }}</span></div>
                 </div>
               </div>
               <!-- Customer Card -->
@@ -702,8 +719,7 @@ const paymentDetailRows = computed(() => {
                   <div>
                     <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 mb-2">Update Status</label>
   <select v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
-                      <option v-for="s in statusOptions" :key="s" :value="s">{{ s }}</option>
-                      <option value="Cancelled">Cancelled</option>
+                      <option v-for="s in manageStatusOptions" :key="s" :value="s">{{ s }}</option>
                     </select>
                   </div>
 
