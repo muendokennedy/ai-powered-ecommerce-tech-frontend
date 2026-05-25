@@ -40,25 +40,11 @@ function showNotification({ type = 'info', title = '', message = '', duration = 
 
 // Orders data (will be loaded from backend)
 const orders = reactive([])
-const productImageCache = new Map()
 
 // Currency formatting (KSH)
 const formatCurrency = (n) => {
   const num = Number(n) || 0
   return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-}
-
-// Resolve a product's primary image (fall back to common fields)
-function getPrimaryImage(prod) {
-  if (!prod) return ''
-  if (prod.primary_image) return prod.primary_image
-  if (prod.primaryImage) return prod.primaryImage
-  if (prod.image) return prod.image
-  if (Array.isArray(prod.images) && prod.images.length) {
-    const primary = prod.images.find(i => i.image_type === 'primary' || i.is_primary) || prod.images[0]
-    return primary.image_path || primary.path || primary.url || ''
-  }
-  return ''
 }
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
@@ -78,77 +64,8 @@ async function loadAdminOrders() {
     const resp = await axiosClient.get('/api/admin/orders')
     const payload = resp.data
     const list = Array.isArray(payload) ? payload : Array.isArray(payload?.allOrders) ? payload.allOrders : Array.isArray(payload?.data) ? payload.data : []
-
-    const normalized = list.map(o => ({
-      id: o.id || o.order_id || o.orderId || o._id || o.reference || '',
-      trackingNumber: o.order_tracking_number || o.tracking_number || o.trackingNumber || o.tracking || o.tracking_no || o.trackingNo || (o.tracking ?? ''),
-      customer: (() => {
-        const u = o.user || o.customer || {}
-        return {
-          id: u.id || o.user_id || o.customer_id || null,
-          name: u.name || o.user?.name || o.customer_name || o.name || 'Unknown',
-          email: u.email || o.user?.email || o.customer_email || '',
-          // shipping fields come from order root in this API
-          address: o.street_address || o.streetAddress || '',
-          apartment: o['apartment/suite'] || o.apartment || o.suite || '',
-          city: o['city/town'] || o.city || '',
-          state: o.region || o.state || '',
-          zipCode: o.postal_code || o.postalCode || o.zipCode || '',
-          country: o.country || ''
-        }
-      })(),
-      products: (Array.isArray(o.items) ? o.items : Array.isArray(o.products) ? o.products : []).map(p => ({
-        id: p.product_id || p.id || null,
-        name: p.product_name_snapshot || p.name || p.title || '',
-        sku: p.sku || p.sku_code || '',
-        quantity: Number(p.quantity || p.qty || 1),
-        price: Number(p.price_at_purchase || p.price || p.unit_price || p.price_amount || 0),
-        total_price: Number(p.total_price || 0),
-        image: '',
-      })),
-      shippingCost: Number(o.shipping_cost || o.shippingCost || o.shipping || 0),
-      tax: Number(o.tax || 0),
-      discount: Number(o.discount || 0),
-      totalAmount: Number(o.total_amount || o.total || o.grand_total || 0),
-      status: (o.status || o.order_status || (o.status ? o.status.toString() : '') || (o.order_status ? o.order_status.toString() : '') || 'pending'),
-      paymentMethod: o.payment_detail?.payment_method || o.payment_method || o.paymentMethod || o.payment || '',
-      paymentStatus: o.payment_detail?.payment_status || o.payment_status || o.paymentStatus || '',
-      paymentDetails: o.payment_detail?.payment_details || o.payment_details || o.paymentDetails || {},
-      orderDate: o.created_at || o.order_date || o.orderDate || '',
-      deliveryDate: o.delivery_date || o.eta || o.deliveryDate || null,
-      raw: o
-    }))
-
-    // compute total from items if missing
-    normalized.forEach(o => {
-      if (!o.totalAmount || o.totalAmount === 0) {
-        const sum = o.products.reduce((s, p) => s + (Number(p.total_price) || (Number(p.price) * Number(p.quantity) || 0)), 0)
-        o.totalAmount = sum + (Number(o.shippingCost) || 0)
-      }
-    })
-
-    // replace reactive array contents
-    orders.splice(0, orders.length, ...normalized)
-
-    // fetch primary images for products if possible
-    const ids = [...new Set(normalized.flatMap(o => o.products.map(p => p.id).filter(Boolean)))]
-    const missing = ids.filter(id => !productImageCache.has(id))
-    if (missing.length) {
-      const promises = missing.map(id => axiosClient.get(`/api/product/page/${id}`).then(r => ({ id, product: r.data.product })).catch(() => ({ id, product: null })))
-      const results = await Promise.all(promises)
-      results.forEach(res => {
-        if (res.product) {
-          const imgs = Array.isArray(res.product.images) ? res.product.images : []
-          const primary = imgs.find(i => i.image_type === 'primary' || i.is_primary) || imgs[0] || null
-          const imagePath = primary ? (primary.image_path || primary.path || primary.url || '') : (res.product.image || '')
-          productImageCache.set(res.id, imagePath)
-        } else {
-          productImageCache.set(res.id, '')
-        }
-      })
-      // apply images
-      orders.forEach(o => o.products.forEach(p => { if (p.id && productImageCache.has(p.id)) p.image = getImagePath(productImageCache.get(p.id) || '') }))
-    }
+    // Use server keys directly; do not normalize or prefetch images here
+    orders.splice(0, orders.length, ...list)
   } catch (error) {
     console.error('Failed to load admin orders:', error)
     orders.splice(0, orders.length)
@@ -178,6 +95,57 @@ function getStatusColor(status) {
   }
 }
 
+function getOrderTotal(order) {
+  if (!order) return 0
+  const items = Array.isArray(order.items) ? order.items : []
+  const subtotal = items.reduce((s, p) => s + (Number(p.total_price || 0) || (Number(p.price_at_purchase || 0) * Number(p.quantity || 0) || 0)), 0)
+  const shipping = Number(order.shipping_cost || 0)
+  return subtotal + shipping
+}
+
+function formatShippingAddress(o) {
+  if (!o) return ''
+  const parts = []
+  if (o.street_address) parts.push(o.street_address)
+  if (o['apartment/suite']) parts.push(o['apartment/suite'])
+  if (o['city/town']) parts.push(o['city/town'])
+  if (o.region) parts.push(o.region)
+  if (o.postal_code) parts.push(o.postal_code)
+  if (o.country) parts.push(o.country)
+  return parts.filter(Boolean).join(', ')
+}
+
+function normalizeStatus(s) {
+  if (!s && s !== '') return ''
+  const v = String(s || '').toLowerCase().trim()
+  if (v === 'in_transit' || v === 'intransit') return 'in transit'
+  if (v === 'canceled') return 'cancelled'
+  if (['pending', 'processing', 'delivered', 'cancelled', 'in transit'].includes(v)) return v
+  // map common display variants
+  if (v === 'pending') return 'pending'
+  return v
+}
+
+function formatStatusLabel(s) {
+  if (s === null || s === undefined) return ''
+  const n = normalizeStatus(s)
+  if (!n) return ''
+  return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+function formatDate(input) {
+  if (!input) return ''
+  const d = new Date(input)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  const Y = d.getFullYear()
+  const M = pad(d.getMonth() + 1)
+  const D = pad(d.getDate())
+  const h = pad(d.getHours())
+  const m = pad(d.getMinutes())
+  return `${Y}-${M}-${D} ${h}:${m}`
+}
+
 const filteredOrders = computed(() => {
   let filtered = orders;
   if (statusFilter.value !== 'All') {
@@ -188,22 +156,101 @@ const filteredOrders = computed(() => {
     const query = searchQuery.value.toLowerCase();
     filtered = filtered.filter(order => {
       const idStr = String(order.id || '')
-      const tracking = String(order.trackingNumber || '')
-      const name = String(order.customer?.name || '')
-      const email = String(order.customer?.email || '')
+      const tracking = String(order.order_tracking_number || '')
+      const name = String(order.user?.name || '')
+      const email = String(order.user?.email || '')
       return idStr.toLowerCase().includes(query) || tracking.toLowerCase().includes(query) || name.toLowerCase().includes(query) || email.toLowerCase().includes(query)
     })
   }
   return filtered;
 });
 
+// images for currently selected order
+const imagesLoading = ref(false)
+const selectedOrderImages = reactive({})
+// persistent cache across modal opens to avoid refetching
+const productImageCache = new Map()
+// coalesce ongoing requests to avoid duplicate fetches
+const ongoingImageRequests = new Map()
+// per-item loading state for UI buttons
+const loadingImageFor = reactive({})
+
+async function fetchProductImage(pid) {
+  if (!pid) return ''
+  if (productImageCache.has(pid)) return productImageCache.get(pid)
+  if (ongoingImageRequests.has(pid)) return ongoingImageRequests.get(pid)
+  const promise = axiosClient.get(`/api/product/page/${pid}`).then(r => {
+    const prod = r.data.product || r.data || null
+    let imagePath = ''
+    if (prod) {
+      if (Array.isArray(prod.images) && prod.images.length) {
+        const primary = prod.images.find(i => i.image_type === 'primary' || i.is_primary) || prod.images[0]
+        imagePath = primary.image_path || primary.path || primary.url || ''
+      } else if (prod.image) {
+        imagePath = prod.image
+      }
+    }
+    const url = getImagePath(imagePath)
+    productImageCache.set(pid, url)
+    ongoingImageRequests.delete(pid)
+    return url
+  }).catch(() => {
+    ongoingImageRequests.delete(pid)
+    productImageCache.set(pid, '')
+    return ''
+  })
+  ongoingImageRequests.set(pid, promise)
+  return promise
+}
+
+async function loadImagesForOrder(order) {
+  // do not eagerly load all images; prefetch only the first couple for a snappier UX
+  if (!order || !Array.isArray(order.items)) return
+  imagesLoading.value = true
+  // clear selected images for current modal
+  for (const k in selectedOrderImages) delete selectedOrderImages[k]
+  const ids = [...new Set(order.items.map(i => i.product_id || i.id).filter(Boolean))]
+  const prefetchCount = 2
+  const toPrefetch = ids.slice(0, prefetchCount)
+  const results = await Promise.all(toPrefetch.map(pid => fetchProductImage(pid)))
+  results.forEach((url, i) => { if (toPrefetch[i]) selectedOrderImages[toPrefetch[i]] = url || '' })
+  // start background fetches for the remaining images; show per-item loading spinner
+  const remaining = ids.slice(prefetchCount)
+  remaining.forEach(pid => {
+    // if cached, show immediately
+    if (productImageCache.has(pid) && productImageCache.get(pid)) {
+      selectedOrderImages[pid] = productImageCache.get(pid)
+      return
+    }
+    loadingImageFor[pid] = true
+    // fire-and-forget background fetch
+    fetchProductImage(pid).then(url => {
+      if (url) selectedOrderImages[pid] = url
+    }).finally(() => { loadingImageFor[pid] = false })
+  })
+  imagesLoading.value = false
+}
+
+async function loadImageForItem(item) {
+  const pid = item.product_id || item.id || null
+  if (!pid) return
+  if (productImageCache.has(pid) && productImageCache.get(pid)) {
+    selectedOrderImages[pid] = productImageCache.get(pid)
+    return
+  }
+  loadingImageFor[pid] = true
+  const url = await fetchProductImage(pid)
+  selectedOrderImages[pid] = url || ''
+  loadingImageFor[pid] = false
+}
+
 function viewOrderDetails(order) {
   selectedOrder.value = order;
   showOrderDetailsModal.value = true;
-  // Initialize pending status
-  if (order) pendingStatus.value = order.status
-
-  console.log(paymentDetailRows.value)
+  // Initialize pending status using server key
+  if (order) pendingStatus.value = formatStatusLabel(order.status)
+  // load images for this order on demand
+  loadImagesForOrder(order)
 }
 
 function confirmDeleteOrder(order) {
@@ -213,37 +260,27 @@ function confirmDeleteOrder(order) {
 
 function deleteOrder() {
   if (!orderToDelete.value) return
-  const id = orderToDelete.value.id
-  // try server delete endpoints
-  const endpoints = [
-    `/api/order/${id}/delete`,
-    `/api/admin/orders/${id}/delete`,
-    `/api/orders/${id}/delete`,
-    `/api/orders/${id}`
-  ]
+  // send only the order id to the delete endpoint (no extra body)
+  const rawId = orderToDelete.value.id ?? orderToDelete.value.order_id ?? orderToDelete.value.orderId
+  const id = (typeof rawId === 'function') ? (() => { try { return rawId.call(orderToDelete.value) } catch (e) { return '' } })() : rawId
+  if (!id && id !== 0) {
+    showNotification({ type: 'error', title: 'Delete Failed', message: 'Unable to determine order id to delete.' })
+    showDeleteConfirmModal.value = false
+    orderToDelete.value = null
+    return
+  }
+
   (async () => {
-    let removed = false
-    for (const ep of endpoints) {
-      try {
-        const res = await axiosClient.post(ep)
-        if (res && (res.status === 200 || res.status === 204 || res.status === 201)) {
-          removed = true
-          break
-        }
-      } catch (e) {
-        try {
-          const res2 = await axiosClient.delete(ep)
-          if (res2 && (res2.status === 200 || res2.status === 204)) { removed = true; break }
-        } catch (e2) {
-          // continue
-        }
+    try {
+      const res = await axiosClient.delete(`/api/admin/orders/${id}/delete`)
+      if (res && (res.status === 200 || res.status === 201 || res.status === 204)) {
+        const index = orders.findIndex(o => String(o.id) === String(id))
+        if (index > -1) orders.splice(index, 1)
+        showNotification({ type: 'success', title: 'Order Deleted', message: 'Order removed successfully.' })
+      } else {
+        showNotification({ type: 'error', title: 'Delete Failed', message: 'Failed to delete order on server.' })
       }
-    }
-    if (removed) {
-      const index = orders.findIndex(o => o.id === id)
-      if (index > -1) orders.splice(index, 1)
-      showNotification({ type: 'success', title: 'Order Deleted', message: 'Order removed successfully.' })
-    } else {
+    } catch (e) {
       showNotification({ type: 'error', title: 'Delete Failed', message: 'Failed to delete order on server.' })
     }
     showDeleteConfirmModal.value = false
@@ -268,50 +305,34 @@ function updateOrderStatus(newStatus) {
   }
   // Update pendingStatus immediately and attempt server update
   pendingStatus.value = newStatus
-  if (selectedOrder.value && newStatus !== selectedOrder.value.status) {
+  if (selectedOrder.value && normalizeStatus(newStatus) !== normalizeStatus(selectedOrder.value.status)) {
     justSavedStatus.value = false
   }
-  // send update to server
-  saveStatusChange()
 }
 
 function cancelOrder() {
   if (!selectedOrder.value) return
-  if (pendingStatus.value === 'Cancelled' && selectedOrder.value.status === 'Cancelled') return
+  if (normalizeStatus(pendingStatus.value) === 'cancelled' && normalizeStatus(selectedOrder.value.status) === 'cancelled') return
   updateOrderStatus('Cancelled')
   saveStatusChange(() => {
     showNotification({ type: 'warning', title: 'Order Cancelled', message: 'Refund or reversal process will begin within 5 minutes if you do not change this status' })
   })
 }
 
-function attemptDeleteOrder(order) {
-  if (!order) return
-  if (order.status !== 'Cancelled') {
-    showNotification({ type: 'warning', title: 'Deletion Blocked', message: 'Cancel the order first before deleting.' })
-    return
-  }
-  confirmDeleteOrder(order)
-}
 
 function generateReceipt() {
   if (!selectedOrder.value) {
     return;
   }
-  alert(`Receipt generated for order ${selectedOrder.value.id}`);
-}
-
-function generateInvoice() {
-  if (!selectedOrder.value) {
-    return;
-  }
-  alert(`Invoice generated for order ${selectedOrder.value.id}`);
+  const refNum = selectedOrder.value.order_tracking_number || selectedOrder.value.order_tracking || selectedOrder.value.tracking_number || selectedOrder.value.id
+  alert(`Receipt generated for order ${refNum}`);
 }
 
 function deleteOrderFromDetails() {
   if (!selectedOrder.value) {
     return;
   }
-  if (selectedOrder.value.status !== 'Cancelled') {
+  if (String(selectedOrder.value.status).toLowerCase() !== 'cancelled') {
     showNotification({ type: 'warning', title: 'Deletion Blocked', message: 'Cancel the order first before deleting.' })
     return
   }
@@ -325,16 +346,27 @@ const selectedOrderComputed = computed(() => selectedOrder.value || null);
 // Track if status changed
 const hasStatusChanged = computed(() => {
   if (!selectedOrderComputed.value) return false
-  return pendingStatus.value && pendingStatus.value !== selectedOrderComputed.value.status
+  return pendingStatus.value && normalizeStatus(pendingStatus.value) !== normalizeStatus(selectedOrderComputed.value.status)
 })
 
 const manageStatusOptions = computed(() => {
-  const opts = []
-  const cur = selectedOrderComputed.value?.status
-  if (cur) opts.push(cur)
-  statusOptions.forEach(s => { if (!opts.includes(s)) opts.push(s) })
-  if (!opts.includes('Cancelled')) opts.push('Cancelled')
-  return opts
+  const list = []
+  const seen = new Set()
+  const add = (val) => {
+    const n = normalizeStatus(val)
+    if (!n) return
+    if (seen.has(n)) return
+    seen.add(n)
+    list.push(formatStatusLabel(n))
+  }
+  // Prefer the current pending selection (if present) so the select shows it first
+  if (pendingStatus.value) add(pendingStatus.value)
+  else if (selectedOrderComputed.value?.status) add(selectedOrderComputed.value.status)
+  // Add canonical options
+  statusOptions.forEach(s => add(s))
+  // Ensure Cancelled is available
+  add('Cancelled')
+  return list
 })
 
 function saveStatusChange(afterCommitCb) {
@@ -345,61 +377,63 @@ function saveStatusChange(afterCommitCb) {
   justSavedStatus.value = false
   const orderId = selectedOrderComputed.value.id
   const newStatus = pendingStatus.value
+  const payloadStatus = normalizeStatus(newStatus)
 
-  const endpoints = [
-    `/api/order/${orderId}/status`,
-    `/api/order/${orderId}/update`,
-    `/api/admin/orders/${orderId}/status`,
-    `/api/admin/orders/${orderId}/update`,
-    `/api/orders/${orderId}/status`,
-    `/api/orders/${orderId}/update`
-  ]
+  // optimistic UI update: apply the new status locally immediately
+  const idx = orders.findIndex(o => o.id === orderId)
+  const prevStatus = idx > -1 ? orders[idx].status : selectedOrderComputed.value.status
+  if (idx > -1) orders[idx].status = payloadStatus
+  if (selectedOrder.value && selectedOrder.value.id === orderId) {
+    selectedOrder.value.status = payloadStatus
+    pendingStatus.value = formatStatusLabel(payloadStatus)
+  }
 
-  let succeeded = false
   (async () => {
-    for (const ep of endpoints) {
-      try {
-        const res = await axiosClient.post(ep, { status: newStatus })
-        if (res && (res.status === 200 || res.status === 201 || res.status === 204)) {
-          succeeded = true
-          break
+    try {
+      const res = await axiosClient.post(`/api/admin/orders/${orderId}/status/update`, { status: payloadStatus })
+      if (res && (res.status === 200 || res.status === 201 || res.status === 204)) {
+        isSavingStatus.value = false
+        justSavedStatus.value = true
+        showNotification({ type: 'success', title: 'Status Updated', message: `Order status updated to ${payloadStatus}` })
+        if (typeof afterCommitCb === 'function') afterCommitCb()
+        setTimeout(() => { justSavedStatus.value = false }, 1600)
+      } else {
+        // revert optimistic change
+        if (idx > -1) orders[idx].status = prevStatus
+        if (selectedOrder.value && selectedOrder.value.id === orderId) {
+          selectedOrder.value.status = prevStatus
+          pendingStatus.value = formatStatusLabel(prevStatus)
         }
-      } catch (e) {
-        // try next
+        isSavingStatus.value = false
+        showNotification({ type: 'error', title: 'Update Failed', message: 'Failed to update status on server.' })
       }
-    }
-    if (succeeded) {
-      const idx = orders.findIndex(o => o.id === orderId)
-      if (idx > -1) orders[idx].status = newStatus
-      if (selectedOrderComputed.value && selectedOrderComputed.value.id === orderId) selectedOrderComputed.value.status = newStatus
-      isSavingStatus.value = false
-      justSavedStatus.value = true
-      showNotification({ type: 'success', title: 'Status Updated', message: `Order status updated to ${newStatus}` })
-      if (afterCommitCb) afterCommitCb()
-      setTimeout(() => { justSavedStatus.value = false }, 1600)
-    } else {
+    } catch (e) {
+      // revert optimistic change
+      if (idx > -1) orders[idx].status = prevStatus
+      if (selectedOrder.value && selectedOrder.value.id === orderId) {
+        selectedOrder.value.status = prevStatus
+        pendingStatus.value = formatStatusLabel(prevStatus)
+      }
       isSavingStatus.value = false
       showNotification({ type: 'error', title: 'Update Failed', message: 'Failed to update status on server.' })
-      // revert pendingStatus to server value
-      pendingStatus.value = selectedOrderComputed.value.status
     }
   })()
 }
 
 const orderFinancials = computed(() => {
-  if (!selectedOrderComputed.value) {
-    return null;
-  }
-  const o = selectedOrderComputed.value;
-  const subtotal = o.totalAmount - o.tax - o.shippingCost + o.discount;
-  const shipping = o.shippingCost;
-  const tax = o.tax;
-  const discount = o.discount;
-  const total = o.totalAmount;
-  const avgItemPrice = o.products.length ? subtotal / o.products.length : 0;
-  const totalItems = o.products.reduce((sum, p) => sum + p.quantity, 0);
-  return { subtotal, shipping, tax, discount, total, avgItemPrice, totalItems };
-});
+  if (!selectedOrderComputed.value) return null
+  const o = selectedOrderComputed.value
+  const items = Array.isArray(o.items) ? o.items : []
+  const subtotal = items.reduce((s, p) => s + (Number(p.total_price || 0) || (Number(p.price_at_purchase || 0) * Number(p.quantity || 0) || 0)), 0)
+  const shipping = Number(o.shipping_cost || 0)
+  // tax/discount not always provided on root, compute minimal set
+  const tax = Number(o.tax || 0)
+  const discount = Number(o.discount || 0)
+  const total = subtotal + shipping + tax - discount
+  const avgItemPrice = items.length ? subtotal / items.length : 0
+  const totalItems = items.reduce((sum, p) => sum + (Number(p.quantity || 0) || 0), 0)
+  return { subtotal, shipping, tax, discount, total, avgItemPrice, totalItems }
+})
 
 const statusTimeline = computed(() => {
   if (!selectedOrderComputed.value) {
@@ -419,53 +453,56 @@ const statusTimeline = computed(() => {
 });
 
 const paymentBadge = computed(() => {
-  if (!selectedOrderComputed.value) return '';
-  const status = selectedOrderComputed.value.paymentStatus;
+  if (!selectedOrderComputed.value) return ''
+  const status = String(selectedOrderComputed.value.payment_detail?.payment_status || '').toLowerCase()
   switch (status) {
-    case 'Paid':
-      return 'bg-green-100 text-green-700';
-    case 'Pending':
-      return 'bg-yellow-100 text-yellow-700';
-    case 'Failed':
-      return 'bg-red-100 text-red-700';
+    case 'paid':
+      return 'bg-green-100 text-green-700'
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-700'
+    case 'failed':
+      return 'bg-red-100 text-red-700'
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-gray-100 text-gray-700'
   }
-});
+})
 
 
 // Build payment detail rows depending on method
 const paymentDetailRows = computed(() => {
-  if (!selectedOrderComputed.value) return [];
-  const { paymentMethod, paymentDetails = {} } = selectedOrderComputed.value;
-  const rows = [];
-  if (paymentMethod === 'Credit Card') {
-    if (paymentDetails.cardBrand) rows.push(['Card Brand', paymentDetails.cardBrand]);
-    if (paymentDetails.cardHolder) rows.push(['Card Holder', paymentDetails.cardHolder]);
-    if (paymentDetails.cardLast4) rows.push(['Card Last 4', '**** **** **** ' + paymentDetails.cardLast4]);
-    if (paymentDetails.authCode) rows.push(['Auth Code', paymentDetails.authCode]);
-    if (paymentDetails.transactionId) rows.push(['Transaction ID', paymentDetails.transactionId]);
-  } else if (paymentMethod === 'PayPal') {
-    if (paymentDetails.paypalEmail) rows.push(['PayPal Email', paymentDetails.paypalEmail]);
-    if (paymentDetails.paypalPayerId) rows.push(['Payer ID', paymentDetails.paypalPayerId]);
-    if (paymentDetails.paypalTransactionId) rows.push(['Transaction ID', paymentDetails.paypalTransactionId]);
-  } else if (paymentMethod === 'Bank Transfer') {
-    if (paymentDetails.bankName) rows.push(['Bank Name', paymentDetails.bankName]);
-    if (paymentDetails.accountName) rows.push(['Account Name', paymentDetails.accountName]);
-    if (paymentDetails.reference) rows.push(['Reference', paymentDetails.reference]);
-    if (paymentDetails.swiftCode) rows.push(['SWIFT Code', paymentDetails.swiftCode]);
-    if (paymentDetails.expectedClearance) rows.push(['Expected Clearance', paymentDetails.expectedClearance]);
-  } else if (paymentMethod === 'Mpesa' || paymentMethod === 'MPESA' || paymentMethod === 'M-Pesa') {
-    if (paymentDetails.mpesaNumber) rows.push(['Mpesa Number', paymentDetails.mpesaNumber]);
-    if (paymentDetails.mpesaName) rows.push(['Mpesa Name', paymentDetails.mpesaName]);
-    if (paymentDetails.mpesaCode) rows.push(['Mpesa Code', paymentDetails.mpesaCode]);
-    if (paymentDetails.transactionTime) rows.push(['Time', paymentDetails.transactionTime]);
-  } else if (paymentMethod === 'cod' || String(paymentMethod).toLowerCase() === 'cod' || String(paymentMethod).toLowerCase() === 'cash on delivery') {
-    if (paymentDetails.type) rows.push(['Type', 'Cash on Delivery']);
-    if (paymentDetails.recipientName) rows.push(['Recipient Name', paymentDetails.recipientName]);
+  if (!selectedOrderComputed.value) return []
+  const pd = selectedOrderComputed.value.payment_detail || {}
+  const paymentMethod = pd.payment_method || String(pd.type || '').toLowerCase()
+  const paymentDetails = pd.payment_details || {}
+  const rows = []
+  const method = String(paymentMethod || '').toLowerCase()
+  if (method === 'credit card' || method === 'credit_card' || method === 'card') {
+    if (paymentDetails.cardBrand) rows.push(['Card Brand', paymentDetails.cardBrand])
+    if (paymentDetails.cardHolder) rows.push(['Card Holder', paymentDetails.cardHolder])
+    if (paymentDetails.cardLast4) rows.push(['Card Last 4', '**** **** **** ' + paymentDetails.cardLast4])
+    if (paymentDetails.authCode) rows.push(['Auth Code', paymentDetails.authCode])
+    if (paymentDetails.transactionId) rows.push(['Transaction ID', paymentDetails.transactionId])
+  } else if (method === 'paypal') {
+    if (paymentDetails.paypalEmail) rows.push(['PayPal Email', paymentDetails.paypalEmail])
+    if (paymentDetails.paypalPayerId) rows.push(['Payer ID', paymentDetails.paypalPayerId])
+    if (paymentDetails.paypalTransactionId) rows.push(['Transaction ID', paymentDetails.paypalTransactionId])
+  } else if (method === 'bank transfer' || method === 'bank_transfer') {
+    if (paymentDetails.bankName) rows.push(['Bank Name', paymentDetails.bankName])
+    if (paymentDetails.accountName) rows.push(['Account Name', paymentDetails.accountName])
+    if (paymentDetails.reference) rows.push(['Reference', paymentDetails.reference])
+    if (paymentDetails.swiftCode) rows.push(['SWIFT Code', paymentDetails.swiftCode])
+    if (paymentDetails.expectedClearance) rows.push(['Expected Clearance', paymentDetails.expectedClearance])
+  } else if (method === 'mpesa' || method === 'm-pesa') {
+    if (paymentDetails.mpesaNumber) rows.push(['Mpesa Number', paymentDetails.mpesaNumber])
+    if (paymentDetails.mpesaName) rows.push(['Mpesa Name', paymentDetails.mpesaName])
+    if (paymentDetails.mpesaCode) rows.push(['Mpesa Code', paymentDetails.mpesaCode])
+    if (paymentDetails.transactionTime) rows.push(['Time', paymentDetails.transactionTime])
+  } else if (method === 'cod' || method === 'cash on delivery') {
+    if (paymentDetails.type) rows.push(['Type', 'Cash on Delivery'])
+    if (paymentDetails.recipientName) rows.push(['Recipient Name', paymentDetails.recipientName])
   }
-  return rows;
-});
+  return rows
+})
 
 
 </script>
@@ -533,30 +570,24 @@ const paymentDetailRows = computed(() => {
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   <tr v-for="order in filteredOrders" :key="order.id" @click.stop="viewOrderDetails(order)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.customer.name }}</div>
-                      <div class="text-sm text-gray-500 dark:text-gray-400">{{ order.customer.email }}</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.user && order.user.name ? order.user.name : 'Unknown' }}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ order.user && order.user.email ? order.user.email : '' }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <div class="flex -space-x-2 overflow-hidden">
-                        <img v-for="(product) in order.products.slice(0, 2)" :key="product.id" :src="product.image" :alt="product.name" class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-gray-800 object-cover" :title="product.name" />
-                        <div v-if="order.products.length > 2" class="flex items-center justify-center h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-800 text-xs font-medium text-gray-600 dark:text-gray-300">
-                          +{{ order.products.length - 2 }}
-                        </div>
-                      </div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ order.products.length }} item{{ order.products.length > 1 ? 's' : '' }}</div>
+                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ (order.items || []).length }} item{{ (order.items || []).length > 1 ? 's' : '' }}</div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">{{ order.trackingNumber }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">{{ formatCurrency(order.totalAmount) }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono">{{ order.order_tracking_number }}</td>
+                                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">{{ formatCurrency(getOrderTotal(order)) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(order.status)]">{{ order.status }}</span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ order.orderDate }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ formatDate(order.created_at) }}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex space-x-2">
                         <button @click.stop="viewOrderDetails(order)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
-                        <button v-if="order.status === 'Delivered'" @click.stop="confirmDeleteOrder(order)" class="text-red-600 hover:text-red-800" title="Delete Order">
+                        <button v-if="String(order.status).toLowerCase() === 'delivered'" @click.stop="confirmDeleteOrder(order)" class="text-red-600 hover:text-red-800" title="Delete Order">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         </button>
                       </div>
@@ -578,14 +609,14 @@ const paymentDetailRows = computed(() => {
         <div class="sticky top-0 z-20 bg-white dark:bg-gray-900  border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
           <div>
             <div class="flex items-center space-x-3 mb-1">
-              <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Order {{ selectedOrderComputed.id }}</h3>
+              <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Order {{ selectedOrderComputed.order_tracking_number || selectedOrderComputed.order_tracking || selectedOrderComputed.tracking_number || selectedOrderComputed.id }}</h3>
               <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getStatusColor(selectedOrderComputed.status)]">{{ selectedOrderComputed.status }}</span>
-              <span :class="['px-2 py-1 rounded-full text-xs font-medium', paymentBadge]">Payment: {{ selectedOrderComputed.paymentStatus }}</span>
+              <span :class="['px-2 py-1 rounded-full text-xs font-medium', paymentBadge]">Payment: {{ selectedOrderComputed.payment_detail?.payment_status || '' }}</span>
             </div>
             <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
-              <span>Tracking: {{ selectedOrderComputed.trackingNumber }}</span>
-              <span>Placed: {{ selectedOrderComputed.orderDate }}</span>
-              <span v-if="selectedOrderComputed.deliveryDate">ETA: {{ selectedOrderComputed.deliveryDate }}</span>
+              <span>Tracking: {{ selectedOrderComputed.order_tracking_number }}</span>
+              <span>Placed: {{ formatDate(selectedOrderComputed.created_at) }}</span>
+              <span v-if="selectedOrderComputed.delivery_date || selectedOrderComputed.eta">ETA: {{ formatDate(selectedOrderComputed.delivery_date || selectedOrderComputed.eta) }}</span>
             </div>
           </div>
           <div class="flex items-center space-x-2">
@@ -636,18 +667,30 @@ const paymentDetailRows = computed(() => {
                   <span class="text-xs text-gray-500 dark:text-gray-400 font-mono">Avg: {{ formatCurrency(orderFinancials?.avgItemPrice) }}</span>
                 </div>
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                  <div v-for="p in selectedOrderComputed.products" :key="p.id" class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
-                    <img :src="p.image" :alt="p.name" class="h-16 w-16 rounded-lg object-cover ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm" />
+                  <div v-for="p in selectedOrderComputed.items" :key="p.id" class="flex items-center p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
+                    <div class="h-16 w-16 rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm flex items-center justify-center bg-gray-50 dark:bg-gray-800">
+                      <img v-if="selectedOrderImages[p.product_id]" :src="selectedOrderImages[p.product_id]" :alt="p.product_name_snapshot" class="h-16 w-16 object-cover" />
+                      <div v-else class="flex items-center justify-center h-full w-full">
+                        <button @click.stop="loadImageForItem(p)" :disabled="loadingImageFor[p.product_id]" class="inline-flex items-center px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600">
+                          <svg v-if="loadingImageFor[p.product_id]" class="animate-spin -ml-0.5 mr-2 h-4 w-4 text-gray-600 dark:text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                          </svg>
+                          <span v-else class="text-xs text-gray-700 dark:text-gray-200">Load image</span>
+                          <span v-if="loadingImageFor[p.product_id]" class="sr-only">Loading</span>
+                        </button>
+                      </div>
+                    </div>
                     <div class="ml-4 flex-1 min-w-0">
-                      <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.name }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ p.product_name_snapshot || ('Product ' + (p.product_id || p.id || '')) }}</p>
                       <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
-                        <span>SKU: {{ p.sku }}</span>
+                        <span>Product ID: {{ p.product_id || p.id }}</span>
                         <span>Qty: {{ p.quantity }}</span>
                       </div>
                     </div>
                     <div class="text-right">
-                      <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatCurrency(p.price) }}</p>
-                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatCurrency(p.price * p.quantity) }} total</p>
+                      <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatCurrency(Number(p.price_at_purchase || p.price || 0)) }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatCurrency(Number(p.total_price || 0)) }} total</p>
                     </div>
                   </div>
                 </div>
@@ -663,27 +706,27 @@ const paymentDetailRows = computed(() => {
                 <div class="col-span-1 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
                 <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Customer</h4>
-                  <span class="text-xs text-gray-400 font-mono">#{{ selectedOrderComputed.customer.id }}</span>
+                  <span class="text-xs text-gray-400 font-mono">#{{ selectedOrderComputed.user?.id || '' }}</span>
                 </div>
-                <div class="p-5 space-y-4 text-sm">
+                  <div class="p-5 space-y-4 text-sm">
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Name</p>
-                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.customer.name }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.user?.name || '' }}</p>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Contact</p>
                     <div class="space-y-1">
-                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.customer.email }}</p>
-                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.customer.phone }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.user?.email || '' }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedOrderComputed.user?.phone || '' }}</p>
                     </div>
                   </div>
                   <div>
                     <p class="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400">Shipping Address</p>
-                    <p class="font-medium text-gray-900 dark:text-gray-100 leading-relaxed">{{ selectedOrderComputed.customer.address }}, {{ selectedOrderComputed.customer.city }}, {{ selectedOrderComputed.customer.state }} {{ selectedOrderComputed.customer.zipCode }}, {{ selectedOrderComputed.customer.country }}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100 leading-relaxed">{{ formatShippingAddress(selectedOrderComputed) }}</p>
                   </div>
                   <div class="flex flex-wrap gap-2 pt-2">
-                    <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium">{{ selectedOrderComputed.paymentMethod }}</span>
-                    <span class="px-2 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium">{{ selectedOrderComputed.products.length }} item(s)</span>
+                    <span class="px-2 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-medium">{{ selectedOrderComputed.payment_detail?.payment_method || '' }}</span>
+                    <span class="px-2 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium">{{ (selectedOrderComputed.items || []).length }} item(s)</span>
                   </div>
                 </div>
               </div>
@@ -694,7 +737,7 @@ const paymentDetailRows = computed(() => {
               <div class="col-span-2 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
                 <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Payment Details</h4>
-                  <span class="text-xs font-medium px-2 py-1 rounded-md bg-[#042EFF]/10 text-[#042EFF]">{{ selectedOrderComputed.paymentMethod }}</span>
+                  <span class="text-xs font-medium px-2 py-1 rounded-md bg-[#042EFF]/10 text-[#042EFF]">{{ selectedOrderComputed.payment_detail?.payment_method || '' }}</span>
                 </div>
                 <div class="p-5 space-y-4 text-sm">
                   <div v-if="paymentDetailRows.length === 0" class="text-xs text-gray-500 dark:text-gray-400 italic">No additional payment metadata.</div>
@@ -705,9 +748,9 @@ const paymentDetailRows = computed(() => {
                     </div>
                   </dl>
                   <div class="pt-2 flex flex-wrap gap-2">
-                    <span v-if="selectedOrderComputed.paymentStatus === 'Paid'" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-green-50 text-green-700 ring-1 ring-inset ring-green-200">Paid</span>
-                    <span v-else-if="selectedOrderComputed.paymentStatus === 'Pending'" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200">Pending</span>
-                    <span v-else class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200">{{ selectedOrderComputed.paymentStatus }}</span>
+                    <span v-if="String(selectedOrderComputed.payment_detail?.payment_status || '').toLowerCase() === 'paid'" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-green-50 text-green-700 ring-1 ring-inset ring-green-200">Paid</span>
+                    <span v-else-if="String(selectedOrderComputed.payment_detail?.payment_status || '').toLowerCase() === 'pending'" class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200">Pending</span>
+                    <span v-else class="inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-md bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200">{{ selectedOrderComputed.payment_detail?.payment_status || '' }}</span>
                   </div>
                 </div>
               </div>
@@ -718,22 +761,22 @@ const paymentDetailRows = computed(() => {
                 <div class="p-5 space-y-6">
                   <div>
                     <label class="block text-xs font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 mb-2">Update Status</label>
-  <select v-model="pendingStatus" @change="updateOrderStatus(pendingStatus)" class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
+  <select v-model="pendingStatus" class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-sm">
                       <option v-for="s in manageStatusOptions" :key="s" :value="s">{{ s }}</option>
                     </select>
                   </div>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button @click="cancelOrder" :disabled="isSavingStatus || (selectedOrderComputed.status === 'Cancelled' && pendingStatus === 'Cancelled')" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors"
-              :class="(selectedOrderComputed.status === 'Cancelled' && pendingStatus === 'Cancelled') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'">
+            <button @click="cancelOrder" :disabled="isSavingStatus || (String(selectedOrderComputed.status).toLowerCase() === 'cancelled' && String(pendingStatus).toLowerCase() === 'cancelled')" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors"
+              :class="(String(selectedOrderComputed.status).toLowerCase() === 'cancelled' && String(pendingStatus).toLowerCase() === 'cancelled') ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600'">
                       Cancel
                     </button>
-                    <button @click="deleteOrderFromDetails" :disabled="selectedOrderComputed.status !== 'Cancelled'" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors" :class="selectedOrderComputed.status === 'Cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'">
+                    <button @click="deleteOrderFromDetails" :disabled="String(selectedOrderComputed.status).toLowerCase() !== 'cancelled'" class="inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-sm transition-colors" :class="String(selectedOrderComputed.status).toLowerCase() === 'cancelled' ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'">
                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                       Delete
                     </button>
                   </div>
-                  <button @click="saveStatusChange" :disabled="!hasStatusChanged || isSavingStatus" :class="['relative w-full mt-2 inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors select-none',
+                  <button @click="() => saveStatusChange()" :disabled="!hasStatusChanged || isSavingStatus" :class="['relative w-full mt-2 inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-colors select-none',
                     isSavingStatus ? 'bg-blue-500 text-white' :
                     hasStatusChanged ? 'bg-[#042EFF] text-white hover:bg-blue-600' :
                     justSavedStatus ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed']">
@@ -781,7 +824,7 @@ const paymentDetailRows = computed(() => {
           </div>
           <div class="flex-1">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">Delete Order</h3>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">You're about to permanently remove order <span class="font-semibold text-gray-900 dark:text-gray-100">{{ orderToDelete?.id }}</span>. This action cannot be undone and related analytics may be affected.</p>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">You're about to permanently remove order <span class="font-semibold text-gray-900 dark:text-gray-100">{{ orderToDelete?.order_tracking_number || orderToDelete?.order_tracking || orderToDelete?.tracking_number || orderToDelete?.id }}</span>. This action cannot be undone and related analytics may be affected.</p>
           </div>
           <button @click="closeDeleteConfirmModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors" title="Close dialog">
             <svg class="w-5 h-5 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
