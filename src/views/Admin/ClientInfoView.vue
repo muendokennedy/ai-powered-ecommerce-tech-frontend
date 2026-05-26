@@ -52,6 +52,24 @@ function formatDateShort(dateString) {
   return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')} ${d.getFullYear()}`
 }
 
+function normalizePhoneForDisplay(phone) {
+  if (!phone) return ''
+  let p = String(phone).trim()
+  // remove common separators
+  p = p.replace(/[^+0-9]/g, '')
+  // +2540... -> +254...
+  if (p.startsWith('+2540')) return '+254' + p.slice(5)
+  // +254 followed by number ok
+  if (p.startsWith('+254')) return p
+  // 2540... -> +254...
+  if (p.startsWith('2540')) return '+254' + p.slice(4)
+  if (p.startsWith('254')) return '+' + p
+  // leading zero -> strip then prefix
+  if (p.startsWith('0')) return `+254${p.slice(1)}`
+  // already in other international format, return as-is
+  return p
+}
+
 async function loadClients() {
   try {
     const res = await axiosClient.get('/api/admin/clients')
@@ -64,28 +82,47 @@ async function loadClients() {
       copy.totalOrders = orders.length
       // determine latest order created_at
       if (orders.length) {
-        const latest = orders.reduce((a,b) => (new Date(a.created_at) > new Date(b.created_at) ? a : b))
+        const latest = orders.reduce((a,b) => (new Date(a.created_at || a.date) > new Date(b.created_at || b.date) ? a : b))
         copy.lastOrderDate = latest.created_at || latest.date || null
       } else {
         copy.lastOrderDate = null
       }
-      // compute totalSpent from orders shipping_cost if total not provided
-      if (copy.totalSpent === undefined || copy.totalSpent === null) {
-        const sum = orders.reduce((s,o) => s + (Number(o.total || o.total_price || o.shipping_cost || 0) || 0), 0)
+
+      // compute totalSpent from server field or derive from order totals
+      if (c.total_spent !== undefined && c.total_spent !== null) {
+        copy.totalSpent = Number(c.total_spent) || 0
+      } else {
+        const sum = orders.reduce((s,o) => {
+          const v = Number(o.total || o.total_price || o.amount || o.grand_total || o.total_amount || 0) || 0
+          return s + v
+        }, 0)
         copy.totalSpent = sum
       }
+
       // join date from created_at
       copy.joinDate = c.created_at || c.joinDate || null
-      // map orders -> orderHistory for the UI
-      copy.orderHistory = orders.map(o => ({
-        orderId: o.order_tracking_number || o.order_tracking || o.order_tracking_number || o.id,
-        date: o.created_at || o.date || null,
-        amount: Number(o.total || o.total_price || o.shipping_cost || 0) || 0,
-        status: o.status || ''
-      }))
+
+      copy.status = c.status === 1 ? 'Active' : c.status === 0 ? 'Inactive' : (c.status || 'Unknown')
+
+      copy.loyaltyPoints = c.loyalty_points
+
+      // map orders -> orderHistory for the UI (compute from items + shipping_cost and sort newest first)
+      copy.orderHistory = orders.map(o => {
+        const itemSum = Array.isArray(o.items) ? o.items.reduce((s,it) => s + (Number(it.total_price || it.price_at_purchase || 0) || 0), 0) : 0
+        const shipping = Number(o.shipping_cost || 0) || 0
+        const computedAmount = itemSum + shipping
+        const fallbackAmount = Number(o.total || o.total_price || o.amount || o.grand_total || o.total_amount || 0) || 0
+        return {
+          orderId: o.order_tracking_number || o.tracking_number || o.id,
+          date: o.created_at || o.date || null,
+          amount: computedAmount || fallbackAmount,
+          status: o.status || ''
+        }
+      }).sort((a,b) => new Date(b.date) - new Date(a.date))
+
       // ensure address object exists (derive from latest order if not provided)
       if (!copy.address) {
-        const src = orders.length ? orders.reduce((a,b) => (new Date(a.created_at) > new Date(b.created_at) ? a : b)) : null
+        const src = orders.length ? orders.reduce((a,b) => (new Date(a.created_at || a.date) > new Date(b.created_at || b.date) ? a : b)) : null
         copy.address = src ? {
           street: src.street_address || '',
           city: src['city/town'] || src.city || '',
@@ -94,6 +131,7 @@ async function loadClients() {
           country: src.country || ''
         } : { street: '', city: '', state: '', zipCode: '', country: '' }
       }
+
       return copy
     }))
   } catch (e) {
@@ -151,12 +189,18 @@ const confirmDeleteClient = (client) => {
   showDeleteConfirmModal.value = true
 }
 
-const deleteClient = () => {
-  if (clientToDelete.value) {
-    const index = clients.findIndex(c => c.id === clientToDelete.value.id)
-    if (index > -1) {
-      clients.splice(index, 1)
-    }
+const deleteClient = async () => {
+  if (!clientToDelete.value) return
+  const id = clientToDelete.value.id
+  try {
+    await axiosClient.post(`/api/clients/${id}/delete`)
+    const index = clients.findIndex(c => c.id === id)
+    if (index > -1) clients.splice(index, 1)
+    showNotification({ type: 'success', title: 'Deleted', message: `Client ${clientToDelete.value.name} deleted.` })
+  } catch (err) {
+    console.error('Failed to delete client', err)
+    showNotification({ type: 'error', title: 'Delete failed', message: `Could not delete client ${clientToDelete.value?.name || id}.` })
+  } finally {
     showDeleteConfirmModal.value = false
     clientToDelete.value = null
   }
@@ -232,6 +276,7 @@ const getOrderStatusColor = (status) => {
     default: return 'bg-gray-100 text-gray-800'
   }
 }
+
 </script>
 
 <template>
@@ -260,7 +305,7 @@ const getOrderStatusColor = (status) => {
           </div>
 
           <!-- Client Statistics Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-[#042EFF] bg-opacity-10 rounded-lg">
@@ -284,25 +329,10 @@ const getOrderStatusColor = (status) => {
                 </div>
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Clients</p>
-                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ clients.filter(c => c.status === 'Active').length }}</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ clients.filter(c => String(c.status).toLowerCase() === 'active').length }}</p>
                 </div>
               </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
-              <div class="flex items-center">
-                <div class="p-3 bg-purple-100 rounded-lg">
-                  <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
-                  </svg>
-                </div>
-                <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Premium Clients</p>
-                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ clients.filter(c => c.accountType === 'Premium').length }}</p>
-                </div>
-              </div>
-            </div>
-
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-yellow-100 rounded-lg">
@@ -370,13 +400,13 @@ const getOrderStatusColor = (status) => {
                       <div class="flex items-center">
                           <div>
                             <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.name }}</div>
-                            <div class="text-sm text-gray-500">{{ client.id }}</div>
+                            <div class="text-sm text-gray-500">{{ client.client_id }}</div>
                           </div>
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm text-gray-900 dark:text-gray-100">{{ client.email }}</div>
-                      <div class="text-sm text-gray-500">{{ client.phone || 'No phone' }}</div>
+                      <div class="text-sm text-gray-500">{{ normalizePhoneForDisplay(client.phone) || 'No phone' }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.totalOrders }}</div>
@@ -446,7 +476,6 @@ const getOrderStatusColor = (status) => {
             <svg class="w-6 h-6 text-gray-500 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-
         <!-- Content -->
         <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Left: Details -->
@@ -464,7 +493,7 @@ const getOrderStatusColor = (status) => {
                 </div>
                 <div>
                   <p class="text-xs uppercase font-semibold text-gray-500">Phone</p>
-                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedClient.phone || 'Not provided' }}</p>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ normalizePhoneForDisplay(selectedClient.phone) || 'Not provided' }}</p>
                 </div>
               </div>
             </div>
@@ -539,7 +568,6 @@ const getOrderStatusColor = (status) => {
               </div>
             </div> -->
           </div>
-
           <!-- Right: Stats & Actions -->
           <div class="space-y-6">
             <!-- Stats Card -->
