@@ -1,5 +1,6 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
+import axiosClient from '@/axiosClient'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import AdminToast from '@/components/Admin/AdminToast.vue'
@@ -35,156 +36,72 @@ const messageForm = reactive({
   priority: 'Normal'
 })
 
-// Client data
-const clients = reactive([
-  {
-    id: 'CUST-001',
-    name: 'John Doe',
-    email: 'john.doe@email.com',
-    phone: '+1 (555) 123-4567',
-    joinDate: '2024-01-15',
-    lastOrderDate: '2024-09-10',
-    totalOrders: 12,
-    totalSpent: 14580.50,
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    address: {
-      street: '123 Main Street, Apt 4B',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      country: 'United States'
-    },
-    preferences: {
-      newsletter: true,
-      smsNotifications: false,
-      emailNotifications: true
-    },
-    orderHistory: [
-      { orderId: 'ORD-2024-001', date: '2024-09-10', amount: 1199, status: 'Delivered' },
-      { orderId: 'ORD-2024-015', date: '2024-08-22', amount: 2399, status: 'Delivered' },
-      { orderId: 'ORD-2024-032', date: '2024-07-15', amount: 899, status: 'Delivered' }
-    ],
-    loyaltyPoints: 1458,
-    accountType: 'Premium'
-  },
-  {
-    id: 'CUST-002',
-    name: 'Jane Smith',
-    email: 'jane.smith@email.com',
-    phone: '+1 (555) 987-6543',
-    joinDate: '2024-02-08',
-    lastOrderDate: '2024-09-12',
-    totalOrders: 8,
-    totalSpent: 8945.25,
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b29c?w=150&h=150&fit=crop&crop=face',
-    address: {
-      street: '456 Oak Avenue',
-      city: 'Los Angeles',
-      state: 'CA',
-      zipCode: '90210',
-      country: 'United States'
-    },
-    preferences: {
-      newsletter: true,
-      smsNotifications: true,
-      emailNotifications: true
-    },
-    orderHistory: [
-      { orderId: 'ORD-2024-002', date: '2024-09-12', amount: 2828, status: 'Processing' },
-      { orderId: 'ORD-2024-018', date: '2024-08-30', amount: 1299, status: 'Delivered' }
-    ],
-    loyaltyPoints: 894,
-    accountType: 'Standard'
-  },
-  {
-    id: 'CUST-003',
-    name: 'Mike Johnson',
-    email: 'mike.johnson@email.com',
-    phone: '+1 (555) 456-7890',
-    joinDate: '2024-03-22',
-    lastOrderDate: '2024-09-08',
-    totalOrders: 5,
-    totalSpent: 4567.80,
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    address: {
-      street: '789 Pine Street',
-      city: 'Chicago',
-      state: 'IL',
-      zipCode: '60601',
-      country: 'United States'
-    },
-    preferences: {
-      newsletter: false,
-      smsNotifications: false,
-      emailNotifications: true
-    },
-    orderHistory: [
-      { orderId: 'ORD-2024-003', date: '2024-09-08', amount: 1299, status: 'In Transit' },
-      { orderId: 'ORD-2024-025', date: '2024-08-12', amount: 899, status: 'Delivered' }
-    ],
-    loyaltyPoints: 456,
-    accountType: 'Standard'
-  },
-  {
-    id: 'CUST-004',
-    name: 'Sarah Wilson',
-    email: 'sarah.wilson@email.com',
-    phone: '+1 (555) 321-0987',
-    joinDate: '2024-04-10',
-    lastOrderDate: '2024-09-14',
-    totalOrders: 3,
-    totalSpent: 3245.75,
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    address: {
-      street: '321 Elm Drive',
-      city: 'Miami',
-      state: 'FL',
-      zipCode: '33101',
-      country: 'United States'
-    },
-    preferences: {
-      newsletter: true,
-      smsNotifications: true,
-      emailNotifications: true
-    },
-    orderHistory: [
-      { orderId: 'ORD-2024-004', date: '2024-09-14', amount: 1899, status: 'Pending' }
-    ],
-    loyaltyPoints: 324,
-    accountType: 'Standard'
-  },
-  {
-    id: 'CUST-005',
-    name: 'David Brown',
-    email: 'david.brown@email.com',
-    phone: null,
-    joinDate: '2024-05-18',
-    lastOrderDate: null,
-    totalOrders: 0,
-    totalSpent: 0,
-    status: 'Inactive',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-    address: {
-      street: '654 Maple Court',
-      city: 'Seattle',
-      state: 'WA',
-      zipCode: '98101',
-      country: 'United States'
-    },
-    preferences: {
-      newsletter: false,
-      smsNotifications: false,
-      emailNotifications: true
-    },
-    orderHistory: [],
-    loyaltyPoints: 0,
-    accountType: 'Standard'
+// Client data (loaded from server)
+const clients = reactive([])
+
+function formatCurrencyKSH(n) {
+  const num = Number(n) || 0
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
+function formatDateShort(dateString) {
+  if (!dateString) return 'Never'
+  const d = new Date(dateString)
+  if (Number.isNaN(d.getTime())) return 'Never'
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  return `${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')} ${d.getFullYear()}`
+}
+
+async function loadClients() {
+  try {
+    const res = await axiosClient.get('/api/admin/clients')
+    const payload = res.data
+    const list = Array.isArray(payload.allClients) ? payload.allClients : Array.isArray(payload) ? payload : []
+    // Map server objects directly, compute lastOrderDate and totals when needed
+    clients.splice(0, clients.length, ...list.map(c => {
+      const copy = { ...c }
+      const orders = Array.isArray(c.orders) ? c.orders : []
+      copy.totalOrders = orders.length
+      // determine latest order created_at
+      if (orders.length) {
+        const latest = orders.reduce((a,b) => (new Date(a.created_at) > new Date(b.created_at) ? a : b))
+        copy.lastOrderDate = latest.created_at || latest.date || null
+      } else {
+        copy.lastOrderDate = null
+      }
+      // compute totalSpent from orders shipping_cost if total not provided
+      if (copy.totalSpent === undefined || copy.totalSpent === null) {
+        const sum = orders.reduce((s,o) => s + (Number(o.total || o.total_price || o.shipping_cost || 0) || 0), 0)
+        copy.totalSpent = sum
+      }
+      // join date from created_at
+      copy.joinDate = c.created_at || c.joinDate || null
+      // map orders -> orderHistory for the UI
+      copy.orderHistory = orders.map(o => ({
+        orderId: o.order_tracking_number || o.order_tracking || o.order_tracking_number || o.id,
+        date: o.created_at || o.date || null,
+        amount: Number(o.total || o.total_price || o.shipping_cost || 0) || 0,
+        status: o.status || ''
+      }))
+      // ensure address object exists (derive from latest order if not provided)
+      if (!copy.address) {
+        const src = orders.length ? orders.reduce((a,b) => (new Date(a.created_at) > new Date(b.created_at) ? a : b)) : null
+        copy.address = src ? {
+          street: src.street_address || '',
+          city: src['city/town'] || src.city || '',
+          state: src.region || '',
+          zipCode: src.postal_code || '',
+          country: src.country || ''
+        } : { street: '', city: '', state: '', zipCode: '', country: '' }
+      }
+      return copy
+    }))
+  } catch (e) {
+    console.error('Failed to load clients', e)
   }
-])
+}
+
+onMounted(() => { loadClients() })
 
 const statusOptions = ['All', 'Active', 'Inactive']
 
@@ -214,10 +131,10 @@ const filteredClients = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(client => 
-      client.name.toLowerCase().includes(query) ||
-      client.email.toLowerCase().includes(query) ||
-      client.id.toLowerCase().includes(query) ||
-      (client.phone && client.phone.toLowerCase().includes(query))
+      String(client.name || '').toLowerCase().includes(query) ||
+      String(client.email || '').toLowerCase().includes(query) ||
+      String(client.id || '').toLowerCase().includes(query) ||
+      (client.phone && String(client.phone).toLowerCase().includes(query))
     )
   }
   
@@ -395,7 +312,7 @@ const getOrderStatusColor = (status) => {
                 </div>
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Revenue</p>
-                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">${{ clients.reduce((sum, c) => sum + c.totalSpent, 0).toLocaleString() }}</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ formatCurrencyKSH(clients.reduce((sum, c) => sum + (Number(c.totalSpent)||0), 0)) }}</p>
                 </div>
               </div>
             </div>
@@ -441,7 +358,7 @@ const getOrderStatusColor = (status) => {
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Spent</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Account Type</th>
+                     <!-- Account Type column removed per request -->
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Join Date</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
@@ -451,11 +368,10 @@ const getOrderStatusColor = (status) => {
                   <tr v-for="client in filteredClients" :key="client.id" @click.stop="viewClientDetails(client)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
-                        <img :src="client.avatar" :alt="client.name" class="h-10 w-10 rounded-full object-cover mr-4">
-                        <div>
-                          <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.name }}</div>
-                          <div class="text-sm text-gray-500">{{ client.id }}</div>
-                        </div>
+                          <div>
+                            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.name }}</div>
+                            <div class="text-sm text-gray-500">{{ client.id }}</div>
+                          </div>
                       </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -464,15 +380,10 @@ const getOrderStatusColor = (status) => {
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ client.totalOrders }}</div>
-                      <div class="text-sm text-gray-500">{{ formatDate(client.lastOrderDate) }}</div>
+                      <div class="text-sm text-gray-500">{{ formatDateShort(client.lastOrderDate) }}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
-                      ${{ client.totalSpent.toLocaleString() }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getAccountTypeColor(client.accountType)]">
-                        {{ client.accountType }}
-                      </span>
+                      {{ formatCurrencyKSH(client.totalSpent) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getStatusColor(client.status)]">
@@ -480,7 +391,7 @@ const getOrderStatusColor = (status) => {
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {{ formatDate(client.joinDate) }}
+                      {{ formatDateShort(client.joinDate) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div class="flex space-x-2">
@@ -517,17 +428,17 @@ const getOrderStatusColor = (status) => {
         <!-- Sticky Header -->
         <div class="sticky top-0 z-20 bg-white dark:bg-gray-900 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
           <div class="flex items-center">
-            <img :src="selectedClient.avatar" :alt="selectedClient.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm">
+            <img v-if="selectedClient.avatar" :src="selectedClient.avatar" :alt="selectedClient.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm">
             <div>
               <div class="flex items-center space-x-3 mb-1">
                 <h3 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">{{ selectedClient.name }}</h3>
                 <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getStatusColor(selectedClient.status)]">{{ selectedClient.status }}</span>
-                <span :class="['px-2 py-1 rounded-full text-xs font-medium', getAccountTypeColor(selectedClient.accountType)]">{{ selectedClient.accountType }}</span>
+                <!-- account type removed from details header -->
               </div>
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>ID: {{ selectedClient.id }}</span>
-                <span>Member since: {{ formatDate(selectedClient.joinDate) }}</span>
-                <span v-if="selectedClient.lastOrderDate">Last Order: {{ formatDate(selectedClient.lastOrderDate) }}</span>
+                <span>Member since: {{ formatDateShort(selectedClient.joinDate) }}</span>
+                <span v-if="selectedClient.lastOrderDate">Last Order: {{ formatDateShort(selectedClient.lastOrderDate) }}</span>
               </div>
             </div>
           </div>
@@ -582,11 +493,11 @@ const getOrderStatusColor = (status) => {
                   <div class="flex-1 min-w-0">
                     <p class="font-medium text-gray-900 dark:text-gray-100 font-mono truncate">{{ order.orderId }}</p>
                     <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      <span>Date: {{ formatDate(order.date) }}</span>
+                      <span>Date: {{ formatDateShort(order.date) }}</span>
                     </div>
                   </div>
                   <div class="text-right">
-                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">${{ order.amount.toLocaleString() }}</p>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatCurrencyKSH(order.amount) }}</p>
                     <span :class="['items-center px-2 py-1 rounded-full text-[10px] font-semibold', getOrderStatusColor(order.status)]">{{ order.status }}</span>
                   </div>
                 </div>
@@ -600,7 +511,7 @@ const getOrderStatusColor = (status) => {
             
 
             <!-- Preferences Card -->
-            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+            <!-- <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
               <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
                 <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Communication Preferences</h4>
               </div>
@@ -626,7 +537,7 @@ const getOrderStatusColor = (status) => {
                   </div>
                 </dl>
               </div>
-            </div>
+            </div> -->
           </div>
 
           <!-- Right: Stats & Actions -->
@@ -642,7 +553,7 @@ const getOrderStatusColor = (status) => {
                   <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Orders</p>
                 </div>
                 <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
-                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">${{ selectedClient.totalSpent.toLocaleString() }}</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ formatCurrencyKSH(selectedClient.totalSpent) }}</p>
                   <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Spent</p>
                 </div>
                 <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
@@ -650,7 +561,7 @@ const getOrderStatusColor = (status) => {
                   <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Points</p>
                 </div>
                 <div class="bg-white dark:bg-gray-900 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
-                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatDate(selectedClient.lastOrderDate) }}</p>
+                  <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ formatDateShort(selectedClient.lastOrderDate) }}</p>
                   <p class="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide mt-1">Last Order</p>
                 </div>
               </div>
