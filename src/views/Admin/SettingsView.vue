@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted, watch } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import AdminToast from '@/components/Admin/AdminToast.vue'
+import axiosClient from '@/axiosClient'
 
 const showEditProfileModal = ref(false)
 const showAdminDetailsModal = ref(false)
@@ -17,35 +18,47 @@ const showMessageModal = ref(false)
 const sendingMessage = ref(false)
 const messageForm = reactive({ subject: '', body: '' })
 
-// Current logged in admin (simulated)
+// Current logged in admin (will be loaded from server)
 const currentAdmin = reactive({
-  id: 'ADM-001',
-  name: 'Alex Thompson',
-  email: 'alex.thompson@admin.com',
-  phone: '+1 (555) 123-4567',
-  role: 'Primary Admin',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-  joinDate: '2023-01-15',
-  lastLogin: '2024-09-26 10:30 AM',
-  department: 'Operations',
-  location: 'New York, NY',
-  permissions: {
-    userManagement: true,
-    orderManagement: true,
-    productManagement: true,
-    systemSettings: true,
-    financialReports: true,
-    analytics: true
-  },
-  preferences: {
-    theme: 'Light',
-    language: 'English',
-    timezone: 'EST (UTC-5)',
-    emailNotifications: true,
-    smsNotifications: false,
-    weeklyReports: true
-  }
+  id: null,
+  name: '',
+  email: '',
+  phone: '',
+  role: '',
+  avatar: '',
+  joinDate: null,
+  lastLogin: null,
+  department: '',
+  location: '',
+  permissions: {},
+  preferences: { theme: 'Light', language: 'English', emailNotifications: true, smsNotifications: false, weeklyReports: true },
+  devices: []
 })
+const devices = ref([])
+
+function normalizePhoneForDisplay(phone) {
+  if (!phone) return ''
+  let p = String(phone).trim()
+  p = p.replace(/[^+0-9]/g, '')
+  if (p.startsWith('+2540')) return '+254' + p.slice(5)
+  if (p.startsWith('+254')) return p
+  if (p.startsWith('2540')) return '+254' + p.slice(4)
+  if (p.startsWith('254')) return '+' + p
+  if (p.startsWith('0')) return `+254${p.slice(1)}`
+  return p
+}
+
+// Persist partial admin updates to backend
+const persistAdminUpdate = async (partial) => {
+  if (!currentAdmin.id) return
+  try {
+    await axiosClient.post(`/api/admins/${currentAdmin.id}/update`, partial)
+    showNotification({ type: 'success', title: 'Saved', message: 'Changes saved.' })
+  } catch (err) {
+    console.error('Failed to persist admin update', err)
+    showNotification({ type: 'error', title: 'Save failed', message: 'Could not save changes to server.' })
+  }
+}
 
 // Edit profile form
 const editForm = reactive({
@@ -85,120 +98,11 @@ function onAvatarDrop(e){
 function onAvatarDragOver(e){ e.preventDefault(); isDraggingAvatar.value = true }
 function onAvatarDragLeave(e){ e.preventDefault(); isDraggingAvatar.value = false }
 
+// const res = await axiosClient.get('/api/admin/settings')
+
 // All admins data
 const admins = reactive([
-  {
-    id: 'ADM-001',
-    name: 'Alex Thompson',
-    email: 'alex.thompson@admin.com',
-    phone: '+1 (555) 123-4567',
-    role: 'Primary Admin',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-01-15',
-    lastLogin: '2024-09-26 10:30 AM',
-    department: 'Operations',
-    location: 'New York, NY',
-    permissions: {
-      userManagement: true,
-      orderManagement: true,
-      productManagement: true,
-      systemSettings: true,
-      financialReports: true,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Updated product inventory', date: '2024-09-26 09:15 AM' },
-      { action: 'Processed order refund', date: '2024-09-25 03:22 PM' },
-      { action: 'Added new admin user', date: '2024-09-24 11:45 AM' }
-    ],
-    totalActions: 1247,
-    accountCreated: '2023-01-15'
-  },
-  {
-    id: 'ADM-002',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@admin.com',
-    phone: '+1 (555) 987-6543',
-    role: 'Secondary Admin',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b29c?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-03-22',
-    lastLogin: '2024-09-26 08:45 AM',
-    department: 'Customer Service',
-    location: 'Los Angeles, CA',
-    permissions: {
-      userManagement: true,
-      orderManagement: true,
-      productManagement: false,
-      systemSettings: false,
-      financialReports: false,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Resolved customer complaint', date: '2024-09-26 08:30 AM' },
-      { action: 'Updated client information', date: '2024-09-25 04:15 PM' },
-      { action: 'Processed order cancellation', date: '2024-09-25 02:10 PM' }
-    ],
-    totalActions: 856,
-    accountCreated: '2023-03-22'
-  },
-  {
-    id: 'ADM-003',
-    name: 'Michael Rodriguez',
-    email: 'michael.rodriguez@admin.com',
-    phone: '+1 (555) 456-7890',
-    role: 'Secondary Admin',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-06-10',
-    lastLogin: '2024-09-25 06:22 PM',
-    department: 'Inventory',
-    location: 'Chicago, IL',
-    permissions: {
-      userManagement: false,
-      orderManagement: true,
-      productManagement: true,
-      systemSettings: false,
-      financialReports: false,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Updated stock levels', date: '2024-09-25 06:00 PM' },
-      { action: 'Added new products', date: '2024-09-25 02:30 PM' },
-      { action: 'Generated inventory report', date: '2024-09-24 10:15 AM' }
-    ],
-    totalActions: 623,
-    accountCreated: '2023-06-10'
-  },
-  {
-    id: 'ADM-004',
-    name: 'Emily Johnson',
-    email: 'emily.johnson@admin.com',
-    phone: '+1 (555) 321-0987',
-    role: 'Secondary Admin',
-    status: 'Inactive',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-08-18',
-    lastLogin: '2024-09-20 02:15 PM',
-    department: 'Marketing',
-    location: 'Miami, FL',
-    permissions: {
-      userManagement: false,
-      orderManagement: false,
-      productManagement: false,
-      systemSettings: false,
-      financialReports: false,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Updated marketing campaign', date: '2024-09-20 02:00 PM' },
-      { action: 'Generated analytics report', date: '2024-09-19 11:30 AM' },
-      { action: 'Updated client newsletter', date: '2024-09-18 09:45 AM' }
-    ],
-    totalActions: 234,
-    accountCreated: '2023-08-18'
-  }
+  
 ])
 
 const getRoleColor = (role) => {
@@ -258,7 +162,25 @@ const saveProfile = () => {
 }
 
 const viewAdminDetails = (admin) => {
-  selectedAdmin.value = admin
+  // ensure selectedAdmin has the fields the modal expects to avoid template/runtime errors
+  const safe = {
+    id: admin.id ?? null,
+    name: admin.name ?? admin.fullName ?? '',
+    email: admin.email ?? '',
+    phone: admin.phone ?? '',
+    role: admin.role ?? '',
+    avatar: admin.avatar ?? admin.profileImg ?? '',
+    joinDate: admin.joinDate ?? admin.accountCreated ?? admin.created_at ?? null,
+    totalActions: admin.totalActions ?? 0,
+    accountCreated: admin.accountCreated ?? admin.joinDate ?? admin.created_at ?? null,
+    status: admin.status ?? (admin.online ? 'Active' : 'Inactive') ,
+    permissions: admin.permissions ?? {},
+    activityLog: admin.activityLog ?? admin.actions ?? [],
+    lastLogin: admin.lastLogin ?? null
+  }
+  selectedAdmin.value = safe
+  isEditingPermissions.value = false
+  permissionDraft.value = {}
   showAdminDetailsModal.value = true
 }
 
@@ -338,6 +260,21 @@ const deleteAdmin = () => {
   }
 }
 
+// Device logout
+const logoutDevice = async (sessionId) => {
+  if (!currentAdmin.id || !sessionId) return
+  try {
+    await axiosClient.post(`/api/admins/${currentAdmin.id}/devices/${sessionId}/logout`)
+    // remove from local devices list
+    devices.value = devices.value.filter(d => d.session_id !== sessionId)
+    currentAdmin.devices = devices.value.slice()
+    showNotification({ type: 'success', title: 'Device logged out', message: 'The device was logged out successfully.' })
+  } catch (err) {
+    console.error('Failed to logout device', err)
+    showNotification({ type: 'error', title: 'Logout failed', message: 'Could not log out the device.' })
+  }
+}
+
 const closeDeleteConfirmModal = () => {
   showDeleteConfirmModal.value = false
   adminToDelete.value = null
@@ -375,20 +312,14 @@ const recentActivity = computed(() => (currentAdminRecord.value?.activityLog || 
 const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
 
-  // Apply theme immediately; the watcher will handle the toast to avoid duplicates.
+  // Apply theme immediately; persist all preferences to backend
   if (key === 'theme') {
-    try {
-      localStorage.setItem(THEME_KEY, String(value))
-    } catch {}
+    try { localStorage.setItem(THEME_KEY, String(value)) } catch {}
     applyTheme(value)
-    return
   }
 
-  showNotification({
-    type: 'success',
-    title: 'Preference Saved',
-    message: `${key.replace(/([A-Z])/g, ' $1')} updated.`
-  })
+  // persist preferences JSON to backend
+  persistAdminUpdate({ preferences: currentAdmin.preferences })
 }
 
 // --- Permission Editing State for Admin Details Modal ---
@@ -422,6 +353,11 @@ const savePermissions = () => {
     admins[idx].permissions = { ...permissionDraft.value }
   }
   isEditingPermissions.value = false
+  // persist permissions for this selected admin (if it's the current admin persist to server)
+  if (selectedAdmin.value.id === currentAdmin.id) {
+    currentAdmin.permissions = { ...permissionDraft.value }
+    persistAdminUpdate({ permissions: currentAdmin.permissions })
+  }
   showNotification({ type: 'success', title: 'Permissions Updated', message: 'Administrator permissions were saved.' })
 }
 
@@ -525,6 +461,42 @@ function handleSystemThemeChange(e) {
 }
 
 onMounted(() => {
+  // load server settings
+  (async () => {
+    try {
+      const res = await axiosClient.get('/api/admin/settings')
+      const data = res.data || {}
+      const auth = data.currentAuthenticatedAdmin || {}
+      currentAdmin.id = auth.id || currentAdmin.id
+      currentAdmin.name = auth.fullName || currentAdmin.name
+      currentAdmin.email = auth.email || currentAdmin.email
+      currentAdmin.phone = normalizePhoneForDisplay(auth.phone || currentAdmin.phone)
+      currentAdmin.department = auth.department || currentAdmin.department
+      currentAdmin.location = auth.location || currentAdmin.location
+      currentAdmin.avatar = auth.profileImg || currentAdmin.avatar
+      currentAdmin.joinDate = auth.created_at || currentAdmin.joinDate
+      currentAdmin.permissions = auth.permissions || currentAdmin.permissions || {}
+      currentAdmin.preferences = auth.preferences || currentAdmin.preferences || {}
+      currentAdmin.devices = auth.devices || []
+      devices.value = currentAdmin.devices.slice()
+      // populate admins list if provided
+      if (Array.isArray(data.admins)) {
+        // map minimal fields into admins reactive
+        admins.splice(0, admins.length, ...data.admins.map(a => ({
+          id: a.id || a.id,
+          name: a.fullName || a.name || '',
+          email: a.email || '',
+          phone: a.phone || '',
+          role: a.role || '',
+          status: a.online ? 'Active' : 'Inactive',
+          avatar: a.profileImg || ''
+        })))
+      }
+    } catch (e) {
+      console.error('Failed to load admin settings', e)
+    }
+  })()
+
   let initial = 'Light'
   try {
     const saved = localStorage.getItem(THEME_KEY)
@@ -614,7 +586,7 @@ watch(
                            </div>
                            <div>
                              <p class="text-sm text-gray-600 dark:text-gray-400">Phone</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.phone }}</p>
+                             <p class="font-medium dark:text-gray-100">{{ normalizePhoneForDisplay(currentAdmin.phone) }}</p>
                            </div>
                            <div>
                              <p class="text-sm text-gray-600 dark:text-gray-400">Department</p>
@@ -779,6 +751,33 @@ watch(
                     </span>
                   </div>
                 </div>
+              </div>
+            </div>
+            <!-- Devices Card -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mt-4">
+              <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Logged Devices</h3>
+              </div>
+              <div class="p-6">
+                <div v-if="devices.length" class="space-y-3">
+                  <div v-for="d in devices" :key="d.session_id" class="flex items-center justify-between border border-gray-100 dark:border-gray-700 rounded-lg p-3">
+                    <div class="flex items-center space-x-4">
+                      <div class="text-sm">
+                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ d.device_type || d.user_agent || 'Device' }}</div>
+                        <div class="text-xs text-gray-500">{{ d.browser }} · {{ d.os }}</div>
+                        <div class="text-xs text-gray-500">{{ d.ip_address }}</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-xs text-gray-500">Last active: {{ formatDate(d.last_activity) }}</div>
+                      <div class="mt-2 flex items-center justify-end gap-2">
+                        <button v-if="d.is_current" class="text-xs px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600">Current</button>
+                        <button v-else @click="logoutDevice(d.session_id)" class="text-xs px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">Log out</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-gray-500">No other devices logged in.</div>
               </div>
             </div>
             <!-- System Administrators Table -->

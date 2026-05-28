@@ -151,13 +151,6 @@ const getStatusColor = (status) => {
   }
 }
 
-const getAccountTypeColor = (type) => {
-  switch (type) {
-    case 'Premium': return 'bg-purple-100 text-purple-800'
-    case 'Standard': return 'bg-blue-100 text-blue-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
 
 const filteredClients = computed(() => {
   let filtered = clients
