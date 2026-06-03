@@ -168,6 +168,7 @@ onMounted(() => {
 </script>
 
 <template>
+  <div>
   <Header/>
   <main class="menu-toggle">
     <section class="register-section mx-auto pt-16 px-[4%] lg:max-w-[1500px]">
@@ -307,6 +308,8 @@ onMounted(() => {
               </div>
               <p v-if="fieldErrors.confirmPassword" class="text-red-500 text-sm mt-1">{{ fieldErrors.confirmPassword }}</p>
             </div>
+
+            
             
             <!-- Register Button -->
             <button
@@ -335,7 +338,7 @@ onMounted(() => {
       </div>
     </section>
   </main>
-  <Footer/>
+  </div>
 </template>
 
 <style scoped>

@@ -19,33 +19,11 @@ const sendingMessage = ref(false)
 const messageForm = reactive({ subject: '', body: '' })
 
 // Current logged in admin (will be loaded from server)
-const currentAdmin = reactive({
-  id: null,
-  name: '',
-  email: '',
-  phone: '',
-  role: '',
-  avatar: '',
-  joinDate: null,
-  lastLogin: null,
-  department: '',
-  location: '',
-  permissions: {},
-  preferences: { theme: 'Light', language: 'English', emailNotifications: true, smsNotifications: false, weeklyReports: true },
-  devices: []
-})
-const devices = ref([])
+const currentAdmin = reactive({ preferences: { theme: 'Light', language: 'English' } })
 
 function normalizePhoneForDisplay(phone) {
   if (!phone) return ''
-  let p = String(phone).trim()
-  p = p.replace(/[^+0-9]/g, '')
-  if (p.startsWith('+2540')) return '+254' + p.slice(5)
-  if (p.startsWith('+254')) return p
-  if (p.startsWith('2540')) return '+254' + p.slice(4)
-  if (p.startsWith('254')) return '+' + p
-  if (p.startsWith('0')) return `+254${p.slice(1)}`
-  return p
+  return String(phone)
 }
 
 // Persist partial admin updates to backend
@@ -106,19 +84,17 @@ const admins = reactive([
 ])
 
 const getRoleColor = (role) => {
-  switch (role) {
-    case 'Primary Admin': return 'bg-purple-100 text-purple-800'
-    case 'Secondary Admin': return 'bg-blue-100 text-blue-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
+  const r = (role || '').toString().toLowerCase()
+  if (r === 'primary admin' || r === 'primary') return 'bg-purple-100 text-purple-800'
+  if (r === 'secondary admin' || r === 'secondary') return 'bg-blue-100 text-blue-800'
+  return 'bg-gray-100 text-gray-800'
 }
 
 const getStatusColor = (status) => {
-  switch (status) {
-    case 'Active': return 'bg-green-100 text-green-800'
-    case 'Inactive': return 'bg-red-100 text-red-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
+  const s = (status || '').toString().toLowerCase()
+  if (s === 'active') return 'bg-green-100 text-green-800'
+  if (s === 'inactive') return 'bg-red-100 text-red-800'
+  return 'bg-gray-100 text-gray-800'
 }
 
 const openEditProfile = () => {
@@ -169,6 +145,7 @@ const viewAdminDetails = (admin) => {
     email: admin.email ?? '',
     phone: admin.phone ?? '',
     role: admin.role ?? '',
+    department: admin.department ?? '',
     avatar: admin.avatar ?? admin.profileImg ?? '',
     joinDate: admin.joinDate ?? admin.accountCreated ?? admin.created_at ?? null,
     totalActions: admin.totalActions ?? 0,
@@ -240,7 +217,7 @@ function sendAdminMessage() {
 }
 
 const confirmDeleteAdmin = (admin) => {
-  if (admin.role === 'Primary Admin') {
+  if ((admin.role || '').toString().toLowerCase() === 'primary admin') {
     showNotification({ type: 'warning', title: 'Action Blocked', message: 'Primary Admin cannot be deleted.' })
     return
   }
@@ -260,20 +237,7 @@ const deleteAdmin = () => {
   }
 }
 
-// Device logout
-const logoutDevice = async (sessionId) => {
-  if (!currentAdmin.id || !sessionId) return
-  try {
-    await axiosClient.post(`/api/admins/${currentAdmin.id}/devices/${sessionId}/logout`)
-    // remove from local devices list
-    devices.value = devices.value.filter(d => d.session_id !== sessionId)
-    currentAdmin.devices = devices.value.slice()
-    showNotification({ type: 'success', title: 'Device logged out', message: 'The device was logged out successfully.' })
-  } catch (err) {
-    console.error('Failed to logout device', err)
-    showNotification({ type: 'error', title: 'Logout failed', message: 'Could not log out the device.' })
-  }
-}
+// Device logout removed (feature disabled)
 
 const closeDeleteConfirmModal = () => {
   showDeleteConfirmModal.value = false
@@ -298,16 +262,33 @@ const diffInDays = (from) => {
 const profileMetrics = computed(() => {
   const a = currentAdminRecord.value
   if (!a) return []
-  const permissionsEnabled = Object.values(a.permissions || {}).filter(Boolean).length
+  const permissionsEnabled = Object.values(a.permissions || {}).filter(val => val === true || String(val).toLowerCase() === 'enabled').length
+  // Days active: from active_since to lastLogin (if present) otherwise to now
+  let daysActive = '—'
+  try {
+    const start = a.active_since ? new Date(a.active_since) : null
+    if (start) {
+      const end = a.lastLogin ? new Date(a.lastLogin) : new Date()
+      daysActive = Math.max(0, Math.floor((end - start)/(1000*60*60*24))) + 1
+    }
+  } catch (e) {}
+
+  const lastLoginDisplay = a.lastLogin ? new Date(a.lastLogin).toLocaleString() : '—'
   return [
     { label: 'Total Actions', value: a.totalActions?.toLocaleString?.() || '—' },
     { label: 'Permissions Enabled', value: permissionsEnabled },
-    { label: 'Days Active', value: diffInDays(a.joinDate) },
-    { label: 'Last Login', value: a.lastLogin || '—' },
+    { label: 'Days Active', value: daysActive },
+    { label: 'Last Login', value: lastLoginDisplay },
     { label: 'Joined', value: formatDate(a.joinDate) }
   ]
 })
 const recentActivity = computed(() => (currentAdminRecord.value?.activityLog || []).slice(0,6))
+
+// helper to display permission labels in Title Case (stock_management -> Stock Management)
+const formatPermissionLabel = (s) => {
+  if (!s) return ''
+  return String(s).replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
@@ -378,7 +359,7 @@ const toggleSuspendAdmin = () => {
   if (!selectedAdmin.value) return
   if (isTogglingStatus.value) return
   if (selectedAdmin.value.status === 'Active') {
-    if (selectedAdmin.value.role === 'Primary Admin') {
+    if ((selectedAdmin.value.role || '').toString().toLowerCase() === 'primary admin') {
       showNotification({ type: 'warning', title: 'Protected Account', message: 'Primary Admin cannot be suspended.' })
       return
     }
@@ -459,7 +440,6 @@ function handleSystemThemeChange(e) {
   }
   setDarkMode(!!e.matches)
 }
-
 onMounted(() => {
   // load server settings
   (async () => {
@@ -467,30 +447,90 @@ onMounted(() => {
       const res = await axiosClient.get('/api/admin/settings')
       const data = res.data || {}
       const auth = data.currentAuthenticatedAdmin || {}
-      currentAdmin.id = auth.id || currentAdmin.id
-      currentAdmin.name = auth.fullName || currentAdmin.name
-      currentAdmin.email = auth.email || currentAdmin.email
-      currentAdmin.phone = normalizePhoneForDisplay(auth.phone || currentAdmin.phone)
-      currentAdmin.department = auth.department || currentAdmin.department
-      currentAdmin.location = auth.location || currentAdmin.location
-      currentAdmin.avatar = auth.profileImg || currentAdmin.avatar
-      currentAdmin.joinDate = auth.created_at || currentAdmin.joinDate
-      currentAdmin.permissions = auth.permissions || currentAdmin.permissions || {}
-      currentAdmin.preferences = auth.preferences || currentAdmin.preferences || {}
-      currentAdmin.devices = auth.devices || []
-      devices.value = currentAdmin.devices.slice()
-      // populate admins list if provided
+      // helper: transform server admin record into UI-friendly shape
+      const transformAdmin = (a) => {
+        if (!a) return a
+        const admin = { ...a }
+
+        // normalize profile image: ensure absolute URL pointing to backend baseURL
+        if (admin.profileImg && typeof admin.profileImg === 'string') {
+          const base = (axiosClient && axiosClient.defaults && axiosClient.defaults.baseURL) ? String(axiosClient.defaults.baseURL).replace(/\/$/, '') : window.location.origin
+          if (admin.profileImg.startsWith('/storage')) {
+            admin.profileImg = base + admin.profileImg
+          } else if (admin.profileImg.includes('/storage/') && admin.profileImg.startsWith('http')) {
+            // replace origin with backend base if it was incorrectly set to frontend origin
+            try {
+              const u = new URL(admin.profileImg)
+              const p = u.pathname + (u.search || '') + (u.hash || '')
+              admin.profileImg = base + p
+            } catch (e) {
+              // leave as-is on parse error
+            }
+          }
+        }
+
+        // normalize permissions: convert empty arrays to empty object
+        if (Array.isArray(admin.permissions) && admin.permissions.length === 0) admin.permissions = {}
+        if (typeof admin.permissions === 'string') {
+          try { admin.permissions = JSON.parse(admin.permissions) } catch { admin.permissions = {} }
+        }
+
+        // normalize status: 1 -> 'Active', 0 -> 'Inactive'
+        if (admin.status === 1 || admin.status === '1') admin.status = 'Active'
+        else if (admin.status === 0 || admin.status === '0') admin.status = 'Inactive'
+
+        // normalize preferences and theme casing
+        if (!admin.preferences) admin.preferences = { theme: 'Light', language: 'English' }
+        // normalize language and apply to document
+        if (admin.preferences.language) {
+          const langVal = String(admin.preferences.language).trim()
+          admin.preferences.language = langVal.charAt(0).toUpperCase() + langVal.slice(1).toLowerCase()
+        }
+        if (admin.preferences.theme) {
+          const t = String(admin.preferences.theme).toLowerCase()
+          if (t === 'light') admin.preferences.theme = 'Light'
+          else if (t === 'dark') admin.preferences.theme = 'Dark'
+          else admin.preferences.theme = t === 'auto' ? 'Auto' : admin.preferences.theme
+        }
+
+        // parse actions -> activityLog with friendly action text and date
+        const acts = Array.isArray(admin.actions) ? admin.actions : []
+        admin.activityLog = acts.map((it) => {
+          let parsed = it.action
+          if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed) } catch { parsed = { activity: parsed } }
+          }
+          const actionText = parsed.activity ?? parsed.action ?? String(parsed)
+          const ts = parsed.time ? Number(parsed.time) * 1000 : (it.created_at ? Date.parse(it.created_at) : null)
+          const date = ts ? new Date(ts).toISOString() : (it.last_login ? new Date(it.last_login).toISOString() : '')
+          return {
+            id: it.id,
+            action: actionText,
+            date,
+            raw: it,
+          }
+        })
+
+        // expose a lastLogin field: prefer latest activity raw.last_login then activityLog date then active_since
+        admin.lastLogin = (admin.activityLog && admin.activityLog.length) ? (admin.activityLog[0].raw.last_login || admin.activityLog[0].date) : (admin.last_login || admin.active_since || null)
+
+        // total actions - try to use numeric value
+        admin.totalActions = Number((acts[0] && (acts[0].total_actions ?? acts[0].totalActions)) || admin.totalActions || 0)
+
+        // joined date (created_at)
+        admin.joinDate = admin.created_at || admin.joinDate || null
+
+        return admin
+      }
+
+      // merge transformed authenticated admin
+      const authTransformed = transformAdmin(auth)
+      Object.assign(currentAdmin, authTransformed)
+
+      // populate admins list directly when provided (returned only for primary admin)
       if (Array.isArray(data.admins)) {
-        // map minimal fields into admins reactive
-        admins.splice(0, admins.length, ...data.admins.map(a => ({
-          id: a.id || a.id,
-          name: a.fullName || a.name || '',
-          email: a.email || '',
-          phone: a.phone || '',
-          role: a.role || '',
-          status: a.online ? 'Active' : 'Inactive',
-          avatar: a.profileImg || ''
-        })))
+        const transformed = data.admins.map(transformAdmin)
+        admins.splice(0, admins.length, ...transformed)
       }
     } catch (e) {
       console.error('Failed to load admin settings', e)
@@ -517,7 +557,7 @@ onMounted(() => {
 })
 
 watch(
-  () => currentAdmin.preferences.theme,
+  () => currentAdmin.preferences?.theme ?? 'Light',
   (val) => {
     applyTheme(val)
     showNotification({
@@ -569,41 +609,38 @@ watch(
                    </div>
                    
                    <div class="p-6">
-                     <div class="flex items-start space-x-6">
-                       <img :src="currentAdmin.avatar" :alt="currentAdmin.name" class="h-20 w-20 rounded-full object-cover">
-                       <div class="flex-1">
-                         <div class="flex items-center space-x-3 mb-2">
-                           <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ currentAdmin.name }}</h2>
-                           <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
-                             {{ currentAdmin.role }}
-                           </span>
+                     <div class="flex flex-col items-center text-center">
+                       <img :src="currentAdmin.profileImg || currentAdmin.avatar" :alt="currentAdmin.fullName || currentAdmin.name" class="h-28 w-28 rounded-full object-cover mb-4" />
+                       <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ currentAdmin.fullName || currentAdmin.name }}</h2>
+                       <div class="mt-2">
+                         <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
+                           {{ currentAdmin.role }}
+                         </span>
+                       </div>
+                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 w-full">
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Email</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.email }}</p>
                          </div>
-                         
-                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Email</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.email }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Phone</p>
-                             <p class="font-medium dark:text-gray-100">{{ normalizePhoneForDisplay(currentAdmin.phone) }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Department</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.department }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Location</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.location }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Join Date</p>
-                             <p class="font-medium dark:text-gray-100">{{ formatDate(currentAdmin.joinDate) }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Last Login</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.lastLogin }}</p>
-                           </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Phone</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ normalizePhoneForDisplay(currentAdmin.phone) }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Department</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.department }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Location</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.location }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Join Date</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ formatDate(currentAdmin.created_at || currentAdmin.joinDate) }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Last Login</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.lastLogin ? new Date(currentAdmin.lastLogin).toLocaleString() : '—' }}</p>
                          </div>
                        </div>
                      </div>
@@ -639,7 +676,7 @@ watch(
                       <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#042EFF] ring-4 ring-[#042EFF]/10"></div>
                       <div class="flex-1">
                         <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ item.action }}</p>
-                        <p class="text-xs text-gray-500">{{ item.date }}</p>
+                        <p class="text-xs text-gray-500">{{ item.date ? new Date(item.date).toLocaleString() : '' }}</p>
                       </div>
                     </li>
                   </ul>
@@ -664,7 +701,7 @@ watch(
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Theme</label>
                     <select 
-                      :value="currentAdmin.preferences.theme"
+                      :value="currentAdmin.preferences?.theme || 'Light'"
                       @change="updatePreference('theme', $event.target.value)"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                     >
@@ -677,7 +714,7 @@ watch(
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Language</label>
                     <select 
-                      :value="currentAdmin.preferences.language"
+                      :value="currentAdmin.preferences?.language || 'English'"
                       @change="updatePreference('language', $event.target.value)"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                     >
@@ -701,7 +738,7 @@ watch(
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        :checked="currentAdmin.preferences.emailNotifications"
+                        :checked="!!currentAdmin.preferences?.emailNotifications"
                         @change="updatePreference('emailNotifications', $event.target.checked)"
                         class="sr-only peer"
                       >
@@ -714,7 +751,7 @@ watch(
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        :checked="currentAdmin.preferences.smsNotifications"
+                        :checked="!!currentAdmin.preferences?.smsNotifications"
                         @change="updatePreference('smsNotifications', $event.target.checked)"
                         class="sr-only peer"
                       >
@@ -727,7 +764,7 @@ watch(
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        :checked="currentAdmin.preferences.weeklyReports"
+                        :checked="!!currentAdmin.preferences?.weeklyReports"
                         @change="updatePreference('weeklyReports', $event.target.checked)"
                         class="sr-only peer"
                       >
@@ -745,7 +782,7 @@ watch(
                 
                 <div class="p-6 space-y-3">
                   <div v-for="(hasPermission, permission) in currentAdmin.permissions" :key="permission" class="flex items-center justify-between">
-                    <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ formatPermissionLabel(permission) }}</span>
                     <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', hasPermission ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
                       {{ hasPermission ? 'Granted' : 'Denied' }}
                     </span>
@@ -753,33 +790,7 @@ watch(
                 </div>
               </div>
             </div>
-            <!-- Devices Card -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mt-4">
-              <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Logged Devices</h3>
-              </div>
-              <div class="p-6">
-                <div v-if="devices.length" class="space-y-3">
-                  <div v-for="d in devices" :key="d.session_id" class="flex items-center justify-between border border-gray-100 dark:border-gray-700 rounded-lg p-3">
-                    <div class="flex items-center space-x-4">
-                      <div class="text-sm">
-                        <div class="font-medium text-gray-900 dark:text-gray-100">{{ d.device_type || d.user_agent || 'Device' }}</div>
-                        <div class="text-xs text-gray-500">{{ d.browser }} · {{ d.os }}</div>
-                        <div class="text-xs text-gray-500">{{ d.ip_address }}</div>
-                      </div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-xs text-gray-500">Last active: {{ formatDate(d.last_activity) }}</div>
-                      <div class="mt-2 flex items-center justify-end gap-2">
-                        <button v-if="d.is_current" class="text-xs px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-600">Current</button>
-                        <button v-else @click="logoutDevice(d.session_id)" class="text-xs px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700">Log out</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div v-else class="text-sm text-gray-500">No other devices logged in.</div>
-              </div>
-            </div>
+            <!-- Devices list removed per requirements -->
             <!-- System Administrators Table -->
               <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -803,9 +814,9 @@ watch(
                       <tr v-for="admin in admins" :key="admin.id" @click.stop="viewAdminDetails(admin)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div class="flex items-center">
-                            <img :src="admin.avatar" :alt="admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
+                            <img :src="admin.profileImg || admin.avatar" :alt="admin.fullName || admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
                             <div>
-                              <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ admin.name }}</div>
+                              <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ admin.fullName || admin.name }}</div>
                               <div class="text-sm text-gray-500">{{ admin.id }}</div>
                             </div>
                           </div>
@@ -815,7 +826,7 @@ watch(
                           <div class="text-sm text-gray-500">{{ admin.phone }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(admin.role)]">
+                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize', getRoleColor(admin.role)]">
                             {{ admin.role }}
                           </span>
                         </td>
@@ -828,7 +839,7 @@ watch(
                           </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {{ admin.lastLogin }}
+                          {{ admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : '' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div class="flex space-x-2">
@@ -842,10 +853,10 @@ watch(
                               @click="confirmDeleteAdmin(admin)" 
                               :class="[
                                 'hover:text-red-800',
-                                admin.role === 'Primary Admin' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'
+                                (admin.role || '').toString().toLowerCase() === 'primary admin' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'
                               ]" 
-                              :disabled="admin.role === 'Primary Admin'"
-                              :title="admin.role === 'Primary Admin' ? 'Primary Admin cannot be deleted' : 'Delete Admin'"
+                              :disabled="(admin.role || '').toString().toLowerCase() === 'primary admin'"
+                              :title="(admin.role || '').toString().toLowerCase() === 'primary admin' ? 'Primary Admin cannot be deleted' : 'Delete Admin'"
                             >
                               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
@@ -952,18 +963,18 @@ watch(
       <div class="admin-details-modal relative w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-auto animate-fade-in h-[95vh]">
         <!-- Sticky Header -->
         <div class="sticky top-0 z-20 bg-white dark:bg-gray-900 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
-          <div class="flex items-center">
+                <div class="flex items-center">
             <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm" />
             <div>
               <div class="flex items-center space-x-3 mb-1">
                 <h3 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ selectedAdmin.name }}</h3>
-                <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getRoleColor(selectedAdmin.role)]">{{ selectedAdmin.role }}</span>
+                <span :class="['px-2.5 py-1 rounded-full text-xs font-medium capitalize', getRoleColor(selectedAdmin.role)]">{{ selectedAdmin.role }}</span>
                 <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusColor(selectedAdmin.status)]">{{ selectedAdmin.status }}</span>
               </div>
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>ID: {{ selectedAdmin.id }}</span>
                 <span>Dept: {{ selectedAdmin.department }}</span>
-                <span>Last Login: {{ selectedAdmin.lastLogin }}</span>
+                <span>Last Login: {{ selectedAdmin.lastLogin ? new Date(selectedAdmin.lastLogin).toLocaleString() : '' }}</span>
               </div>
             </div>
           </div>
@@ -972,6 +983,7 @@ watch(
           </button>
         </div>
         <!-- Content -->
+         
         <div class="p-6 space-y-8">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Left Column -->
@@ -1045,9 +1057,9 @@ watch(
                     <span class="text-xs text-gray-400 font-mono">{{ Object.keys(selectedAdmin.permissions).length }}</span>
                   </div>
                 </div>
-                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div v-for="(hasPermission, permission) in (isEditingPermissions ? permissionDraft : selectedAdmin.permissions)" :key="permission" class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 ring-1 ring-gray-100 dark:ring-gray-700 hover:ring-blue-200 dark:hover:ring-blue-400/40 transition-colors group">
-                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 pr-3">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 pr-3">{{ formatPermissionLabel(permission) }}</span>
                     <!-- View Mode Badge -->
                     <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
                     <!-- Edit Mode Toggle -->
@@ -1093,7 +1105,7 @@ watch(
                     <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Created</p>
                   </div>
                   <div class="bg-white dark:bg-gray-800 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4 col-span-2">
-                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ selectedAdmin.lastLogin }}</p>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ selectedAdmin.lastLogin ? new Date(selectedAdmin.lastLogin).toLocaleString() : '' }}</p>
                     <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Last Login</p>
                   </div>
                 </div>
@@ -1108,18 +1120,18 @@ watch(
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     Send Message
                   </button>
-                  <button @click="toggleSuspendAdmin" :disabled="isTogglingStatus || (selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active')" :class="[
+                    <button @click="toggleSuspendAdmin" :disabled="isTogglingStatus || ((selectedAdmin.role || '').toString().toLowerCase() === 'primary admin' && selectedAdmin.status === 'Active')" :class="[
                       'w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm',
                       selectedAdmin.status === 'Active' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white',
-                      (selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active') ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : '',
+                      ((selectedAdmin.role || '').toString().toLowerCase() === 'primary admin' && selectedAdmin.status === 'Active') ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : '',
                       isTogglingStatus ? 'opacity-70 cursor-wait' : ''
                     ]">
                     <svg v-if="!isTogglingStatus" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                     <svg v-else class="w-4 h-4 mr-2 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-                    <span v-if="selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active'">Protected</span>
+                    <span v-if="(selectedAdmin.role || '').toString().toLowerCase() === 'primary admin' && selectedAdmin.status === 'Active'">Protected</span>
                     <span v-else>{{ selectedAdmin.status === 'Active' ? (isTogglingStatus ? 'Suspending...' : 'Suspend Account') : (isTogglingStatus ? 'Activating...' : 'Activate Account') }}</span>
                   </button>
-                  <button v-if="selectedAdmin.role !== 'Primary Admin'" @click="selectedAdmin.status === 'Inactive' ? confirmDeleteAdmin(selectedAdmin) : null" :disabled="selectedAdmin.status !== 'Inactive'" :class="[
+                    <button v-if="(selectedAdmin.role || '').toString().toLowerCase() !== 'primary admin'" @click="selectedAdmin.status === 'Inactive' ? confirmDeleteAdmin(selectedAdmin) : null" :disabled="selectedAdmin.status !== 'Inactive'" :class="[
                       'w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm',
                       selectedAdmin.status === 'Inactive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-200 text-red-500 cursor-not-allowed'
                     ]">

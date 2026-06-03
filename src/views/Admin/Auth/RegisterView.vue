@@ -28,6 +28,7 @@ const emailInput = ref(null)
 const newAvatarPreview = ref('')
 const isDraggingAvatar = ref(false)
 const fileInputRef = ref(null)
+const avatarFile = ref(null)
 
 function triggerAvatarSelect() {
   if (fileInputRef.value) {
@@ -52,6 +53,7 @@ function handleAvatarFileList(files) {
   }
 
   newAvatarPreview.value = URL.createObjectURL(file)
+  avatarFile.value = file
   errors.avatar = ''
 }
 
@@ -136,19 +138,34 @@ const onSubmit = async () => {
 
   loading.value = true
   // Build payload expected by backend
-  const payload = {
-    fullName: form.name,
-    email: form.email,
-    phone: form.phone,
-    department: form.department,
-    location: form.location,
-    password: form.password,
-    password_confirmation: form.confirmPassword,
-    remember: !!form.remember,
-  }
-
   try {
-    const response = await axiosClient.post('/admin/register', payload)
+    let response
+    if (avatarFile.value) {
+      const fd = new FormData()
+      fd.append('fullName', form.name)
+      fd.append('email', form.email)
+      fd.append('phone', form.phone)
+      fd.append('department', form.department)
+      fd.append('location', form.location)
+      fd.append('password', form.password)
+      fd.append('password_confirmation', form.confirmPassword)
+      fd.append('remember', form.remember ? '1' : '0')
+      fd.append('profileImg', avatarFile.value)
+
+      response = await axiosClient.post('/admin/register', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    } else {
+      const payload = {
+        fullName: form.name,
+        email: form.email,
+        phone: form.phone,
+        department: form.department,
+        location: form.location,
+        password: form.password,
+        password_confirmation: form.confirmPassword,
+        remember: !!form.remember,
+      }
+      response = await axiosClient.post('/admin/register', payload)
+    }
 
     const adminUserStore = useAdminUserStore()
     const userStore = useUserStore()
@@ -305,7 +322,6 @@ onMounted(() => {
               <p v-if="errors.confirmPassword" class="mt-1 text-xs text-red-600">{{ errors.confirmPassword }}</p>
             </div>
           </div>
-
           <!-- Submit -->
           <button type="submit" :disabled="loading" class="cursor-pointer mt-6 text-white bg-[#042EFF] w-full px-4 py-3 rounded-md capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center">
             <svg v-if="loading" class="animate-spin  mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
