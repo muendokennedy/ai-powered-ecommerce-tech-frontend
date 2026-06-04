@@ -51,6 +51,7 @@ const departments = ['Operations','Customer Service','Inventory','Marketing']
 
 // Avatar editing state
 const newAvatarPreview = ref('')
+const avatarFile = ref(null)
 const isDraggingAvatar = ref(false)
 const fileInputRef = ref(null)
 
@@ -64,6 +65,7 @@ function handleAvatarFileList(files){
     showNotification({ type:'warning', title:'Invalid File', message:'Please select an image file.' })
     return
   }
+  avatarFile.value = file
   if(newAvatarPreview.value) URL.revokeObjectURL(newAvatarPreview.value)
   newAvatarPreview.value = URL.createObjectURL(file)
 }
@@ -98,43 +100,52 @@ const getStatusColor = (status) => {
 }
 
 const openEditProfile = () => {
-  editForm.name = currentAdmin.name
+  editForm.name = currentAdmin.fullName
   editForm.email = currentAdmin.email
   editForm.phone = currentAdmin.phone
   editForm.department = currentAdmin.department
   editForm.location = currentAdmin.location
+  // prefill avatar preview with existing image
+  newAvatarPreview.value = currentAdmin.profileImg || currentAdmin.avatar || ''
+  avatarFile.value = null
   showEditProfileModal.value = true
 }
 
 const closeEditProfileModal = () => {
   showEditProfileModal.value = false
+  newAvatarPreview.value = ''
+  avatarFile.value = null
 }
 
 const saveProfile = () => {
-  currentAdmin.name = editForm.name
-  currentAdmin.email = editForm.email
-  currentAdmin.phone = editForm.phone
-  currentAdmin.department = editForm.department
-  currentAdmin.location = editForm.location
-  if(newAvatarPreview.value) {
-    currentAdmin.avatar = newAvatarPreview.value
-  }
+  // submit to backend endpoint
+  const form = new FormData()
+  form.append('name', editForm.name)
+  form.append('fullName', editForm.name)
+  form.append('email', editForm.email)
+  form.append('phone', editForm.phone)
+  form.append('department', editForm.department)
+  form.append('location', editForm.location)
+  if (avatarFile.value) form.append('profileImg', avatarFile.value)
 
-  const adminIndex = admins.findIndex(a => a.id === currentAdmin.id)
-  if (adminIndex > -1) {
-    Object.assign(admins[adminIndex], {
-      name: editForm.name,
-      email: editForm.email,
-      phone: editForm.phone,
-      department: editForm.department,
-      location: editForm.location,
-      avatar: newAvatarPreview.value ? newAvatarPreview.value : admins[adminIndex].avatar
+  showNotification({ type: 'info', title: 'Saving', message: 'Saving profile to server...' })
+  axiosClient.post('/api/admin/profile/edit', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then(res => {
+      const admin = (res.data && res.data.admin) ? res.data.admin : null
+      if (admin) {
+        Object.assign(currentAdmin, admin)
+        const adminIndex = admins.findIndex(a => a.id === currentAdmin.id)
+        if (adminIndex > -1) Object.assign(admins[adminIndex], admin)
+      }
+      showNotification({ type: 'success', title: 'Profile Updated', message: 'Your profile was updated.' })
+      newAvatarPreview.value = ''
+      avatarFile.value = null
+      closeEditProfileModal()
     })
-  }
-
-  showNotification({ type: 'success', title: 'Profile Updated', message: 'Your profile information has been saved.' })
-  newAvatarPreview.value = ''
-  closeEditProfileModal()
+    .catch(err => {
+      console.error('Failed to save profile', err)
+      showNotification({ type: 'error', title: 'Save failed', message: 'Could not save profile to server.' })
+    })
 }
 
 const viewAdminDetails = (admin) => {
@@ -226,15 +237,19 @@ const confirmDeleteAdmin = (admin) => {
 }
 
 const deleteAdmin = () => {
-  if (adminToDelete.value) {
-    const index = admins.findIndex(a => a.id === adminToDelete.value.id)
-    if (index > -1) {
-      admins.splice(index, 1)
-      showNotification({ type: 'success', title: 'Admin Deleted', message: 'The administrator account was removed.' })
-    }
+  if (!adminToDelete.value) return
+  const id = adminToDelete.value.id
+  showNotification({ type: 'info', title: 'Deleting', message: 'Deleting admin...' })
+  axiosClient.post(`/api/admins/admin/delete/${id}`).then(() => {
+    const index = admins.findIndex(a => a.id === id)
+    if (index > -1) admins.splice(index, 1)
+    showNotification({ type: 'success', title: 'Admin Deleted', message: 'The administrator account was removed.' })
     showDeleteConfirmModal.value = false
     adminToDelete.value = null
-  }
+  }).catch(err => {
+    console.error('Delete failed', err)
+    showNotification({ type: 'error', title: 'Delete failed', message: 'Could not delete administrator.' })
+  })
 }
 
 // Device logout removed (feature disabled)
@@ -371,7 +386,17 @@ const toggleSuspendAdmin = () => {
 function confirmSuspend(){
   if (!selectedAdmin.value) return
   showSuspendConfirmModal.value = false
-  performStatusToggle('Inactive')
+  const id = selectedAdmin.value.id
+  showNotification({ type: 'info', title: 'Suspending', message: 'Suspending admin...' })
+  axiosClient.post(`/api/admins/admin/suspend/${id}`).then(() => {
+    selectedAdmin.value.status = 'Inactive'
+    const idx = admins.findIndex(a => a.id === id)
+    if (idx > -1) admins[idx].status = 'Inactive'
+    showNotification({ type: 'success', title: 'Suspended', message: `${selectedAdmin.value.name} has been suspended.` })
+  }).catch(err => {
+    console.error('Suspend failed', err)
+    showNotification({ type: 'error', title: 'Failed', message: 'Could not suspend administrator.' })
+  })
 }
 function cancelSuspend(){
   showSuspendConfirmModal.value = false
@@ -607,7 +632,6 @@ watch(
                        Edit Profile
                      </button>
                    </div>
-                   
                    <div class="p-6">
                      <div class="flex flex-col items-center text-center">
                        <img :src="currentAdmin.profileImg || currentAdmin.avatar" :alt="currentAdmin.fullName || currentAdmin.name" class="h-28 w-28 rounded-full object-cover mb-4" />
@@ -806,8 +830,7 @@ watch(
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Login</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                        <!-- Last Login and Actions columns removed per requirements -->
                       </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -838,32 +861,7 @@ watch(
                             {{ admin.status }}
                           </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {{ admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : '' }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div class="flex space-x-2">
-                            <button @click.stop="viewAdminDetails(admin)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                              </svg>
-                            </button>
-                            <button 
-                              @click="confirmDeleteAdmin(admin)" 
-                              :class="[
-                                'hover:text-red-800',
-                                (admin.role || '').toString().toLowerCase() === 'primary admin' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'
-                              ]" 
-                              :disabled="(admin.role || '').toString().toLowerCase() === 'primary admin'"
-                              :title="(admin.role || '').toString().toLowerCase() === 'primary admin' ? 'Primary Admin cannot be deleted' : 'Delete Admin'"
-                            >
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
+                        <!-- Actions removed from table rows per requirements -->
                       </tr>
                     </tbody>
                   </table>
