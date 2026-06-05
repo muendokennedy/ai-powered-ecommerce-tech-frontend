@@ -2,6 +2,7 @@
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import { reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
+import axiosClient from '@/axiosClient'
 import {
   Chart,
   CategoryScale,
@@ -37,10 +38,42 @@ Chart.register(
 )
 
 const activeMenuItem = ref('Analytics')
-const totalRevenue = ref(847650)
-const conversionRate = ref(3.24)
-const avgOrderValue = ref(186)
-const activeSessions = ref(2847)
+const totalRevenue = ref(0)
+const conversionRate = ref(0)
+const avgOrderValue = ref(0)
+const activeSessions = ref(0)
+
+// Data populated from backend
+const revenueByMonthLabels = ref([])
+const revenueByMonthValues = ref([])
+const ordersByMonthLabels = ref([])
+const ordersByMonthValues = ref([])
+const clientsCount = ref(0)
+const serverTopProducts = ref([])
+const serverProductCategories = ref([])
+
+async function fetchAnalytics() {
+  try {
+    const res = await axiosClient.get('/api/admin/analytics')
+    const data = res.data || {}
+    // revenue by month
+    const rev = Array.isArray(data.revenueByMonth) ? data.revenueByMonth : []
+    revenueByMonthLabels.value = rev.map(r => r.month)
+    revenueByMonthValues.value = rev.map(r => Number(r.total || 0))
+    // orders
+    const ord = Array.isArray(data.ordersByMonth) ? data.ordersByMonth : []
+    ordersByMonthLabels.value = ord.map(o => o.month)
+    ordersByMonthValues.value = ord.map(o => Number(o.count || 0))
+    // totals
+    totalRevenue.value = Number(data.totalRevenue || 0)
+    avgOrderValue.value = Number(data.avgOrderValue || 0)
+    clientsCount.value = Number(data.clientsCount || 0)
+    serverTopProducts.value = Array.isArray(data.topProducts) ? data.topProducts : []
+    serverProductCategories.value = Array.isArray(data.salesByCategory) ? data.salesByCategory : []
+  } catch (e) {
+    console.error('Failed to load analytics', e)
+  }
+}
 
 const menuItems = reactive([
   { name: 'Dashboard', icon: 'home', active: false },
@@ -67,6 +100,12 @@ const topProducts = reactive([
   { id: 4, name: 'AirPods Pro 2', sku: 'APP-2-USB-C', category: 'Audio', sales: 1832, revenue: 91600, growth: 15.2, performance: 94 },
   { id: 5, name: 'Dell XPS 13', sku: 'DELL-XPS-13-I7', category: 'Laptops', sales: 567, revenue: 113400, growth: 5.8, performance: 82 }
 ])
+
+// Currency formatting (KSH)
+const formatCurrency = (n) => {
+  const num = Number(n) || 0
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
 
 let cashflowChart = null
 let ordersChart = null
@@ -105,11 +144,11 @@ const initializeCharts = async () => {
       cashflowChart = new Chart(cashflowCtx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+        labels: revenueByMonthLabels.value.length ? revenueByMonthLabels.value : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],
         datasets: [
           {
             label: 'Revenue',
-            data: [45000, 52000, 48000, 61000, 55000, 67000, 73000, 69000, 78000],
+            data: revenueByMonthValues.value.length ? revenueByMonthValues.value : [45000,52000,48000,61000,55000,67000,73000,69000,78000],
             borderColor: '#042EFF',
             backgroundColor: 'rgba(4, 46, 255, 0.1)',
             fill: true,
@@ -117,7 +156,7 @@ const initializeCharts = async () => {
           },
           {
             label: 'Expenses',
-            data: [32000, 38000, 35000, 42000, 39000, 45000, 48000, 46000, 52000],
+            data: [],
             borderColor: '#EF4444',
             backgroundColor: 'rgba(239, 68, 68, 0.1)',
             fill: true,
@@ -166,10 +205,10 @@ const initializeCharts = async () => {
       ordersChart = new Chart(ordersCtx, {
       type: 'bar',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+        labels: ordersByMonthLabels.value.length ? ordersByMonthLabels.value : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],
         datasets: [{
           label: 'Orders',
-          data: [285, 356, 298, 412, 378, 445, 492, 456, 523],
+          data: ordersByMonthValues.value.length ? ordersByMonthValues.value : [285,356,298,412,378,445,492,456,523],
           backgroundColor: '#042EFF',
           borderRadius: 6,
           maxBarThickness: 40
@@ -267,9 +306,9 @@ const initializeCharts = async () => {
       productsChart = new Chart(productsCtx, {
       type: 'doughnut',
       data: {
-        labels: productCategories.map(cat => cat.name),
+        labels: serverProductCategories.value.length ? serverProductCategories.value.map(c => c.category) : productCategories.map(cat => cat.name),
         datasets: [{
-          data: productCategories.map(cat => cat.percentage),
+          data: serverProductCategories.value.length ? serverProductCategories.value.map(c => c.percentage || Math.round((c.revenue || 0) / (1 || 1))) : productCategories.map(cat => cat.percentage),
           backgroundColor: ['#042EFF', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'],
           borderWidth: 0,
           cutout: '70%'
@@ -296,9 +335,10 @@ const initializeCharts = async () => {
   console.log('All charts initialization completed')
 }
 
-onMounted(() => {
-  // Initialize charts after component is mounted with longer delay
-  setTimeout(initializeCharts, 500)
+onMounted(async () => {
+  // Fetch analytics from server then initialize charts
+  await fetchAnalytics()
+  setTimeout(initializeCharts, 250)
   // Observe theme toggles and update chart colors
   themeObserver = new MutationObserver(() => {
     const isDark = document.documentElement.classList.contains('dark')
@@ -362,7 +402,7 @@ onUnmounted(() => {
                 </div>
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Total Revenue</p>
-                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">${{ totalRevenue.toLocaleString() }}</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ formatCurrency(totalRevenue) }}</p>
                   <p class="text-xs text-green-600 flex items-center">
                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
@@ -404,7 +444,7 @@ onUnmounted(() => {
                 </div>
                 <div class="ml-4">
                   <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Avg Order Value</p>
-                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">${{ avgOrderValue }}</p>
+                  <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ formatCurrency(avgOrderValue) }}</p>
                   <p class="text-xs text-red-600 flex items-center">
                     <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -498,12 +538,12 @@ onUnmounted(() => {
                   <canvas id="productsChart"></canvas>
                 </div>
                 <div class="ml-8 space-y-3">
-                  <div v-for="category in productCategories" :key="category.name" class="flex items-center">
-                    <div :class="[category.color, 'w-4 h-4 rounded-full mr-3']"></div>
+                  <div v-for="category in (serverProductCategories.length ? serverProductCategories : productCategories)" :key="category.category || category.name" class="flex items-center">
+                    <div :class="[category.color || 'bg-[#042EFF]', 'w-4 h-4 rounded-full mr-3']"></div>
                     <div class="flex-1">
                       <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ category.name }}</span>
-                        <span class="text-sm text-gray-600 dark:text-gray-300">{{ category.percentage }}%</span>
+                        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ category.category || category.name }}</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-300">{{ category.percentage ?? Math.round(((category.revenue||0) / 1)) }}%</span>
                       </div>
                     </div>
                   </div>
@@ -536,7 +576,7 @@ onUnmounted(() => {
                   </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr v-for="product in topProducts" :key="product.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr v-for="product in (serverTopProducts.length ? serverTopProducts : topProducts)" :key="product.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
                     </td>
@@ -552,7 +592,7 @@ onUnmounted(() => {
                       {{ product.sales.toLocaleString() }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      ${{ product.revenue.toLocaleString() }}
+                      {{ formatCurrency(product.revenue) }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                       <span :class="[

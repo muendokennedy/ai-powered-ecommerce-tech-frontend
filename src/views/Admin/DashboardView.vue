@@ -1,47 +1,105 @@
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import { useAdminUserStore } from '@/stores/user'
+import axiosClient from '@/axiosClient'
 
 const dashboardStats = reactive({
-  products: { count: 1247, change: 12.5, trend: 'up' },
-  clients: { count: 8943, change: 8.2, trend: 'up' },
-  orders: { count: 456, change: -3.1, trend: 'down' },
-  revenue: { count: '$125,430', change: 15.7, trend: 'up' }
+  products: { count: 0, change: 0, trend: 'up' },
+  clients: { count: 0, change: 0, trend: 'up' },
+  orders: { count: 0, change: 0, trend: 'up' },
+  revenue: { count: 'KSH 0', change: 0, trend: 'up' }
 })
 
-const recentOrders = reactive([
-  { id: 'ORD-001', customer: 'John Doe', product: 'iPhone 15 Pro', amount: '$1,199', status: 'Delivered', date: '2024-09-10' },
-  { id: 'ORD-002', customer: 'Jane Smith', product: 'MacBook Pro 14"', amount: '$2,399', status: 'Processing', date: '2024-09-09' },
-  { id: 'ORD-003', customer: 'Mike Johnson', product: 'Samsung Galaxy S24', amount: '$899', status: 'Shipped', date: '2024-09-08' },
-  { id: 'ORD-004', customer: 'Sarah Wilson', product: 'Apple Watch Series 9', amount: '$399', status: 'Pending', date: '2024-09-07' }
-])
+const recentOrders = reactive([])
 
-const lowStockProducts = reactive([
-  { name: 'iPhone 15 Pro Max', stock: 5, category: 'Smartphones' },
-  { name: 'Sony WH-1000XM5', stock: 8, category: 'Audio' },
-  { name: 'Dell XPS 13', stock: 3, category: 'Laptops' },
-  { name: 'Samsung QLED 65"', stock: 2, category: 'TVs' }
-])
+const lowStockProducts = reactive([])
+
+// Currency formatting (KSH)
+const formatCurrency = (n) => {
+  const num = Number(n) || 0
+  return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+}
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+
+const getImagePath = (path) => {
+  if (!path || typeof path !== 'string') return ''
+  const value = path.trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  const normalized = value.replace(/^\/+/, '')
+  return `${apiBaseUrl}/storage/${normalized}`
+}
+
+function getOrderTotal(order) {
+  if (!order) return 0
+  const items = Array.isArray(order.items) ? order.items : []
+  const subtotal = items.reduce((s, p) => s + (Number(p.total_price || 0) || (Number(p.price_at_purchase || 0) * Number(p.quantity || 0) || 0)), 0)
+  const shipping = Number(order.shipping_cost || 0)
+  return subtotal + shipping
+}
+
+function formatDate(input) {
+  if (!input) return ''
+  const d = new Date(input)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  const Y = d.getFullYear()
+  const M = pad(d.getMonth() + 1)
+  const D = pad(d.getDate())
+  return `${Y}-${M}-${D}`
+}
+
+async function loadDashboard() {
+  try {
+    const res = await axiosClient.get('/api/admin/dashboard')
+    const data = res.data || {}
+    dashboardStats.products.count = data.totalProducts || 0
+    dashboardStats.clients.count = data.totalClients || 0
+    dashboardStats.orders.count = data.totalOrders || 0
+    dashboardStats.revenue.count = formatCurrency(data.totalRevenue || 0)
+    // compute simple month-over-month change for revenue
+    const thisM = Number(data.revenueThisMonth || 0)
+    const lastM = Number(data.revenueLastMonth || 0)
+    const change = lastM ? ((thisM - lastM) / lastM) * 100 : 0
+    dashboardStats.revenue.change = Math.round(change * 10) / 10
+    dashboardStats.revenue.trend = change >= 0 ? 'up' : 'down'
+
+    // recent orders and low stock
+    recentOrders.splice(0, recentOrders.length, ...(Array.isArray(data.recentOrders) ? data.recentOrders : []))
+    lowStockProducts.splice(0, lowStockProducts.length, ...(Array.isArray(data.lowStock) ? data.lowStock.map(p => ({ name: p.name, stock: p.stock_quantity ?? p.stock ?? p.stockQty ?? 0, category: p.category })) : []))
+  } catch (e) {
+    console.error('Failed to load dashboard data', e)
+  }
+}
+
+onMounted(() => { loadDashboard() })
 
 // Admin user from Pinia store
 const adminUserStore = useAdminUserStore()
 const adminUser = adminUserStore.adminUser
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'Delivered':
-      return 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300'
-    case 'Processing':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300'
-    case 'Shipped':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-500/20 dark:text-purple-300'
-    case 'Pending':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300'
+function getStatusColor(status) {
+  const s = String(status || '').toLowerCase()
+  switch (s) {
+    case 'delivered':
+      return 'bg-green-100 text-green-800';
+    case 'processing':
+      return 'bg-blue-100 text-blue-800';
+    case 'in transit':
+    case 'in_transit':
+    case 'intransit':
+      return 'bg-purple-100 text-purple-800';
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'cancelled':
+    case 'canceled':
+      return 'bg-red-100 text-red-700';
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+      return 'bg-gray-100 text-gray-800';
   }
 }
 </script>
@@ -177,35 +235,19 @@ const getStatusColor = (status) => {
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                    </tr>
+                </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                     <tr v-for="order in recentOrders" :key="order.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.id }}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ order.customer }}</td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.amount }}</td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span :class="['inline-flex px-2 py-1 text-xs font-semibold rounded-full', getStatusColor(order.status)]">
-                          {{ order.status }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <div class="flex space-x-2">
-                          <button class="text-[#042EFF] hover:text-blue-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                            </svg>
-                          </button>
-                          <button class="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ order.order_tracking_number }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ order.user?.name || order.user?.fullName || 'Unknown' }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{{ formatCurrency(getOrderTotal(order)) }}</td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <span :class="['inline-flex px-2 py-1 text-xs font-semibold rounded-full', getStatusColor(order.status)]">
+                              {{ order.status }}
+                            </span>
+                          </td>
+                        </tr>
                   </tbody>
                 </table>
               </div>
@@ -225,7 +267,6 @@ const getStatusColor = (status) => {
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Product</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Stock</th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -236,20 +277,6 @@ const getStatusColor = (status) => {
                         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300">
                           {{ product.stock }} left
                         </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        <div class="flex space-x-2">
-                          <button class="text-[#042EFF] hover:text-blue-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                            </svg>
-                          </button>
-                          <button class="text-gray-600 hover:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                  </svg>
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   </tbody>
