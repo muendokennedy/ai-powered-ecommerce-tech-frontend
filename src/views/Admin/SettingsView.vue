@@ -551,6 +551,15 @@ onMounted(() => {
       // merge transformed authenticated admin
       const authTransformed = transformAdmin(auth)
       Object.assign(currentAdmin, authTransformed)
+      // persist theme from backend into localStorage for immediate reuse
+      try {
+        if (currentAdmin.preferences && currentAdmin.preferences.theme) {
+          localStorage.setItem(THEME_KEY, String(currentAdmin.preferences.theme))
+          applyTheme(currentAdmin.preferences.theme)
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
 
       // populate admins list directly when provided (returned only for primary admin)
       if (Array.isArray(data.admins)) {

@@ -2,6 +2,7 @@
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import { reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
 import {
   Chart,
@@ -42,6 +43,8 @@ const totalRevenue = ref(0)
 const conversionRate = ref(0)
 const avgOrderValue = ref(0)
 const activeSessions = ref(0)
+const newClientsByMonthLabels = ref([])
+const newClientsByMonthValues = ref([])
 
 // Data populated from backend
 const revenueByMonthLabels = ref([])
@@ -51,6 +54,7 @@ const ordersByMonthValues = ref([])
 const clientsCount = ref(0)
 const serverTopProducts = ref([])
 const serverProductCategories = ref([])
+const router = useRouter()
 
 async function fetchAnalytics() {
   try {
@@ -70,6 +74,14 @@ async function fetchAnalytics() {
     clientsCount.value = Number(data.clientsCount || 0)
     serverTopProducts.value = Array.isArray(data.topProducts) ? data.topProducts : []
     serverProductCategories.value = Array.isArray(data.salesByCategory) ? data.salesByCategory : []
+    // conversion and active sessions (from server)
+    conversionRate.value = Number(data.conversionRate ?? data.conversion_rate ?? 0)
+    activeSessions.value = Number(data.activeSessions ?? data.active_sessions ?? 0)
+
+    // new clients by month (for clients chart)
+    const newClients = Array.isArray(data.newClientsByMonth) ? data.newClientsByMonth : []
+    newClientsByMonthLabels.value = newClients.map(n => n.month)
+    newClientsByMonthValues.value = newClients.map(n => Number(n.count || 0))
   } catch (e) {
     console.error('Failed to load analytics', e)
   }
@@ -85,21 +97,7 @@ const menuItems = reactive([
   { name: 'Settings', icon: 'settings', active: false }
 ])
 
-const productCategories = reactive([
-  { name: 'Smartphones', percentage: 35, color: 'bg-[#042EFF]' },
-  { name: 'Laptops', percentage: 28, color: 'bg-green-500' },
-  { name: 'TVs', percentage: 20, color: 'bg-yellow-500' },
-  { name: 'Audio', percentage: 12, color: 'bg-purple-500' },
-  { name: 'Accessories', percentage: 5, color: 'bg-red-500' }
-])
-
-const topProducts = reactive([
-  { id: 1, name: 'iPhone 15 Pro Max', sku: 'IPH-15-PM-256', category: 'Smartphones', sales: 1247, revenue: 152430, growth: 12.3, performance: 92 },
-  { id: 2, name: 'MacBook Pro 14"', sku: 'MBP-14-M3-512', category: 'Laptops', sales: 856, revenue: 189640, growth: 8.7, performance: 87 },
-  { id: 3, name: 'Samsung QLED 65"', sku: 'SAM-Q65-4K', category: 'TVs', sales: 423, revenue: 84600, growth: -2.1, performance: 76 },
-  { id: 4, name: 'AirPods Pro 2', sku: 'APP-2-USB-C', category: 'Audio', sales: 1832, revenue: 91600, growth: 15.2, performance: 94 },
-  { id: 5, name: 'Dell XPS 13', sku: 'DELL-XPS-13-I7', category: 'Laptops', sales: 567, revenue: 113400, growth: 5.8, performance: 82 }
-])
+// placeholder arrays removed; rely on backend-provided `serverTopProducts` and `serverProductCategories`
 
 // Currency formatting (KSH)
 const formatCurrency = (n) => {
@@ -121,10 +119,10 @@ const handleMenuClick = (menuName) => {
 }
 
 const getPerformanceColor = (performance) => {
-  if (performance >= 90) return 'bg-green-500'
-  if (performance >= 75) return 'bg-yellow-500'
-  if (performance >= 50) return 'bg-orange-500'
-  return 'bg-red-500'
+  const p = Number(performance) || 0
+  if (p < 25) return 'bg-red-500'
+  if (p <= 75) return 'bg-yellow-500'
+  return 'bg-green-500'
 }
 
 const initializeCharts = async () => {
@@ -255,10 +253,10 @@ const initializeCharts = async () => {
       clientsChart = new Chart(clientsCtx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+        labels: newClientsByMonthLabels.value.length ? newClientsByMonthLabels.value : revenueByMonthLabels.value,
         datasets: [{
           label: 'New Clients',
-          data: [1200, 1450, 1320, 1680, 1520, 1890, 2100, 1980, 2340],
+          data: newClientsByMonthValues.value.length ? newClientsByMonthValues.value : [],
           borderColor: '#10B981',
           backgroundColor: 'rgba(16, 185, 129, 0.1)',
           fill: true,
@@ -306,9 +304,9 @@ const initializeCharts = async () => {
       productsChart = new Chart(productsCtx, {
       type: 'doughnut',
       data: {
-        labels: serverProductCategories.value.length ? serverProductCategories.value.map(c => c.category) : productCategories.map(cat => cat.name),
+        labels: serverProductCategories.value.length ? serverProductCategories.value.map(c => c.category) : [],
         datasets: [{
-          data: serverProductCategories.value.length ? serverProductCategories.value.map(c => c.percentage || Math.round((c.revenue || 0) / (1 || 1))) : productCategories.map(cat => cat.percentage),
+          data: serverProductCategories.value.length ? serverProductCategories.value.map(c => Number(c.percentage || 0)) : [],
           backgroundColor: ['#042EFF', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'],
           borderWidth: 0,
           cutout: '70%'
@@ -538,12 +536,12 @@ onUnmounted(() => {
                   <canvas id="productsChart"></canvas>
                 </div>
                 <div class="ml-8 space-y-3">
-                  <div v-for="category in (serverProductCategories.length ? serverProductCategories : productCategories)" :key="category.category || category.name" class="flex items-center">
+                  <div v-for="category in serverProductCategories" :key="category.category" class="flex items-center">
                     <div :class="[category.color || 'bg-[#042EFF]', 'w-4 h-4 rounded-full mr-3']"></div>
                     <div class="flex-1">
                       <div class="flex items-center justify-between">
                         <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ category.category || category.name }}</span>
-                        <span class="text-sm text-gray-600 dark:text-gray-300">{{ category.percentage ?? Math.round(((category.revenue||0) / 1)) }}%</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-300">{{ (Number(category.percentage || 0)).toFixed(2) }}%</span>
                       </div>
                     </div>
                   </div>
@@ -557,7 +555,7 @@ onUnmounted(() => {
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Top Performing Products</h3>
-                <button class="bg-[#042EFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                <button @click="router.push({ name: 'admin-stock' })" class="bg-[#042EFF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                   View All Products
                 </button>
               </div>
@@ -576,7 +574,7 @@ onUnmounted(() => {
                   </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr v-for="product in (serverTopProducts.length ? serverTopProducts : topProducts)" :key="product.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <tr v-for="product in serverTopProducts" :key="product.id" class="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
                     </td>
@@ -599,13 +597,13 @@ onUnmounted(() => {
                         'inline-flex items-center text-sm font-medium',
                         product.growth >= 0 ? 'text-green-600' : 'text-red-600'
                       ]">
-                        <svg v-if="product.growth >= 0" class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <svg v-if="Number(product.growth) >= 0" class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
                         </svg>
                         <svg v-else class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
                         </svg>
-                        {{ Math.abs(product.growth) }}%
+                        {{ (Math.abs(Number(product.growth) || 0)).toFixed(1) }}%
                       </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -613,10 +611,10 @@ onUnmounted(() => {
                         <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-3">
                           <div 
                             :class="[getPerformanceColor(product.performance), 'h-2 rounded-full transition-all duration-300']"
-                            :style="{ width: product.performance + '%' }"
+                            :style="{ width: Math.min(Math.max(Number(product.performance) || 0, 0), 100) + '%' }"
                           ></div>
                         </div>
-                        <span class="text-sm text-gray-900 dark:text-gray-100 font-medium">{{ product.performance }}%</span>
+                        <span class="text-sm text-gray-900 dark:text-gray-100 font-medium">{{ (Number(product.performance) || 0).toFixed(1) }}%</span>
                       </div>
                     </td>
                   </tr>
