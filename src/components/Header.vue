@@ -20,12 +20,19 @@ const welcomeName = computed(() => {
   return user.fullName || user.name || user.firstName || user.email || 'User'
 })
 
-const handleLogout = () => {
+
+const handleLogout = async () => {
   userStore.clearUser()
   show.value = false
-  const isProtected = protectedRoutes.some(p => route.path.startsWith(p))
-  if (isProtected) {
-    router.push('/')
+  try{
+    await axiosClient.post('/api/logout')
+  } catch (e) {
+    // ignore errors; we'll still clear local state
+  } finally {
+    const isProtected = protectedRoutes.some(p => route.path.startsWith(p))
+    if (isProtected) {
+      router.push('/')
+    }
   }
 }
 
