@@ -1,5 +1,6 @@
 <script setup>
 import { reactive, ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import AdminToast from '@/components/Admin/AdminToast.vue'
@@ -20,6 +21,9 @@ const messageForm = reactive({ subject: '', body: '' })
 
 // Current logged in admin (will be loaded from server)
 const currentAdmin = reactive({ preferences: { theme: 'Light', language: 'English' } })
+const authenticatedAdmin = ref(null)
+const isLoading = ref(true)
+const router = useRouter()
 
 function normalizePhoneForDisplay(phone) {
   if (!phone) return ''
@@ -468,10 +472,15 @@ function handleSystemThemeChange(e) {
 onMounted(() => {
   // load server settings
   (async () => {
+    isLoading.value = true
     try {
       const res = await axiosClient.get('/api/admin/settings')
       const data = res.data || {}
-      const auth = data.currentAuthenticatedAdmin || {}
+      const auth = data.currentAuthenticatedAdmin || data.authenticatedAdmin || null
+      if (!auth) {
+        router.push('/admin/login')
+        return
+      }
       // helper: transform server admin record into UI-friendly shape
       const transformAdmin = (a) => {
         if (!a) return a
@@ -551,6 +560,7 @@ onMounted(() => {
       // merge transformed authenticated admin
       const authTransformed = transformAdmin(auth)
       Object.assign(currentAdmin, authTransformed)
+      authenticatedAdmin.value = authTransformed
       // persist theme from backend into localStorage for immediate reuse
       try {
         if (currentAdmin.preferences && currentAdmin.preferences.theme) {
@@ -568,6 +578,12 @@ onMounted(() => {
       }
     } catch (e) {
       console.error('Failed to load admin settings', e)
+      if (e?.response?.status === 401 || e?.response?.data?.error === 'unauthenticated') {
+        router.push('/admin/login')
+        return
+      }
+    } finally {
+      isLoading.value = false
     }
   })()
 
@@ -615,15 +631,15 @@ watch(
       :zIndex="70"
       @close="activeNotification = null"
     />
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       
       <!-- Settings Content -->
       <main class="flex-1 overflow-y-auto p-6">
-        <div class="max-w-7xl mx-auto">
+        <div v-if="!isLoading" class="max-w-7xl mx-auto">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
             <p class="text-gray-600 dark:text-gray-400 mt-2">Manage your profile</p>
@@ -876,6 +892,104 @@ watch(
                   </table>
                 </div>
               </div>
+          </div>
+        </div>
+        <div v-else class="max-w-7xl mx-auto">
+          <div class="mb-8">
+            <div class="h-6 bg-gray-200 skeleton-shimmer rounded w-48 mb-2"></div>
+            <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-64"></div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+              <!-- Profile Card Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="flex flex-col items-center text-center">
+                  <div class="rounded-full bg-gray-200 h-28 w-28 mb-4 mx-auto"></div>
+                  <div class="h-6 bg-gray-200 rounded w-48 mx-auto mb-3"></div>
+                  <div class="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 w-full">
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metrics Card Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div class="h-20 bg-gray-200 rounded"></div>
+                  <div class="h-20 bg-gray-200 rounded"></div>
+                  <div class="h-20 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+
+              <!-- Recent Activity Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                <div class="space-y-4">
+                  <div v-for="i in 4" :key="i" class="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-6">
+              <!-- Preferences Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+                <div class="space-y-3">
+                  <div class="h-4 bg-gray-200 rounded w-full"></div>
+                  <div class="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+
+              <!-- Notifications Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between"><div class="h-4 bg-gray-200 rounded w-3/4"></div><div class="h-6 bg-gray-200 rounded w-12"></div></div>
+                  <div class="flex items-center justify-between"><div class="h-4 bg-gray-200 rounded w-3/4"></div><div class="h-6 bg-gray-200 rounded w-12"></div></div>
+                </div>
+              </div>
+
+              <!-- Permissions Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+                <div class="space-y-2">
+                  <div v-for="i in 6" :key="i" class="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Administrators Table Skeleton -->
+          <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mt-6 p-6 animate-pulse">
+            <div class="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
+                  <tr>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-36"></div></th>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-28"></div></th>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></th>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="i in 6" :key="i">
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-48"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-36"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-28"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </main>

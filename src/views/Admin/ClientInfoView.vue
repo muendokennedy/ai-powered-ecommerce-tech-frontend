@@ -1,5 +1,6 @@
 <script setup>
 import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
@@ -38,6 +39,9 @@ const messageForm = reactive({
 
 // Client data (loaded from server)
 const clients = reactive([])
+const isLoading = ref(true)
+const authenticatedAdmin = ref(null)
+const router = useRouter()
 
 function formatCurrencyKSH(n) {
   const num = Number(n) || 0
@@ -73,7 +77,9 @@ function normalizePhoneForDisplay(phone) {
 async function loadClients() {
   try {
     const res = await axiosClient.get('/api/admin/clients')
-    const payload = res.data
+    const payload = res.data || {}
+    // Reuse authenticated admin from the page API response when available
+    authenticatedAdmin.value = payload.authenticatedAdmin || payload.currentAuthenticatedAdmin || payload.admin || payload.adminUser || authenticatedAdmin.value
     const list = Array.isArray(payload.allClients) ? payload.allClients : Array.isArray(payload) ? payload : []
     // Map server objects directly, compute lastOrderDate and totals when needed
     clients.splice(0, clients.length, ...list.map(c => {
@@ -139,7 +145,27 @@ async function loadClients() {
   }
 }
 
-onMounted(() => { loadClients() })
+async function ensureAuthAndLoad() {
+  isLoading.value = true
+  try {
+    // Load clients page data which should carry authenticatedAdmin
+    await loadClients()
+    if (!authenticatedAdmin.value) {
+      router.push('/admin/login')
+      return
+    }
+  } catch (e) {
+    if (e?.response?.status === 401 || e?.response?.data?.error === 'unauthenticated') {
+      router.push('/admin/login')
+    } else {
+      console.error('Auth check failed', e)
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => { ensureAuthAndLoad() })
 
 const statusOptions = ['All', 'Active', 'Inactive']
 
@@ -273,6 +299,7 @@ const getOrderStatusColor = (status) => {
 </script>
 
 <template>
+  <div>
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Top-right Notification -->
     <AdminToast
@@ -283,11 +310,11 @@ const getOrderStatusColor = (status) => {
       :zIndex="60"
       @close="activeNotification = null"
     />
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       
       <!-- Client Info Content -->
       <main class="flex-1 overflow-y-auto p-6">
@@ -298,7 +325,7 @@ const getOrderStatusColor = (status) => {
           </div>
 
           <!-- Client Statistics Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div v-if="!isLoading" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
                 <div class="p-3 bg-[#042EFF] bg-opacity-10 rounded-lg">
@@ -341,6 +368,13 @@ const getOrderStatusColor = (status) => {
             </div>
           </div>
 
+          <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div v-for="i in 3" :key="i" class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 animate-pulse">
+              <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-1/3 mb-4"></div>
+              <div class="h-8 bg-gray-200 skeleton-shimmer rounded w-2/3"></div>
+            </div>
+          </div>
+
           <!-- Clients Table -->
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -374,7 +408,7 @@ const getOrderStatusColor = (status) => {
             </div>
             
             <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <table v-if="!isLoading" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Client</th>
@@ -434,6 +468,18 @@ const getOrderStatusColor = (status) => {
                   </tr>
                 </tbody>
               </table>
+
+              <div v-else class="p-6">
+                <div class="space-y-3 animate-pulse">
+                  <div v-for="i in 6" :key="i" class="grid grid-cols-7 gap-4 items-center">
+                    <div class="col-span-2 h-6 bg-gray-200 rounded"></div>
+                    <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                    <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                    <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                    <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -529,37 +575,6 @@ const getOrderStatusColor = (status) => {
                 <p class="text-gray-500 dark:text-gray-400 mt-2 text-sm">No orders placed yet</p>
               </div>
             </div>
-
-            
-
-            <!-- Preferences Card -->
-            <!-- <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
-              <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3">
-                <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Communication Preferences</h4>
-              </div>
-              <div class="p-5 text-sm">
-                <dl class="divide-y divide-gray-100 dark:divide-gray-700">
-                  <div class="flex items-center justify-between py-2 first:pt-0 last:pb-0">
-                    <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Newsletter</dt>
-                    <dd>
-                      <span :class="['px-2 py-1 rounded-md text-[10px] font-semibold', selectedClient.preferences.newsletter ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ selectedClient.preferences.newsletter ? 'Enabled' : 'Disabled' }}</span>
-                    </dd>
-                  </div>
-                  <div class="flex items-center justify-between py-2">
-                    <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">SMS Notifications</dt>
-                    <dd>
-                      <span :class="['px-2 py-1 rounded-md text-[10px] font-semibold', selectedClient.preferences.smsNotifications ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ selectedClient.preferences.smsNotifications ? 'Enabled' : 'Disabled' }}</span>
-                    </dd>
-                  </div>
-                  <div class="flex items-center justify-between py-2 last:pb-0">
-                    <dt class="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">Email Notifications</dt>
-                    <dd>
-                      <span :class="['px-2 py-1 rounded-md text-[10px] font-semibold', selectedClient.preferences.emailNotifications ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ selectedClient.preferences.emailNotifications ? 'Enabled' : 'Disabled' }}</span>
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div> -->
           </div>
           <!-- Right: Stats & Actions -->
           <div class="space-y-6">
@@ -711,6 +726,7 @@ const getOrderStatusColor = (status) => {
             </button>
           </div>
         </div>
+      </div>
       </div>
 </template>
 

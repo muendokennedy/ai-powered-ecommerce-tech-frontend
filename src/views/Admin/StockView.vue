@@ -22,6 +22,8 @@ const isDeletingProduct = ref(false)
 
 const products = ref([])
 const stockOverview = ref([])
+const authenticatedAdmin = ref(null)
+const isAuthLoading = ref(true)
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 const fallbackImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" fill="none"><rect width="600" height="600" fill="#F3F4F6"/><path d="M188 385l79-96 56 67 39-47 92 116H188z" fill="#D1D5DB"/><circle cx="247" cy="228" r="40" fill="#D1D5DB"/></svg>')}`
@@ -402,6 +404,9 @@ const fetchStockData = async () => {
     const response = await axiosClient.get('api/admin/stock')
     const normalizedProducts = (Array.isArray(response.data?.products) ? response.data.products : []).map(normalizeProduct)
 
+    // Reuse authenticated admin from the page API response when available
+    authenticatedAdmin.value = response.data?.authenticatedAdmin || response.data?.currentAuthenticatedAdmin || response.data?.admin || response.data?.adminUser || authenticatedAdmin.value
+
     products.value = normalizedProducts
     stockOverview.value = normalizeStockOverview(response.data?.stockOverview, normalizedProducts)
 
@@ -526,8 +531,31 @@ const deleteProduct = async (productId) => {
   }
 }
 
+async function ensureAuthAndLoad() {
+  isAuthLoading.value = true
+  try {
+    // Fetch the page data which already includes authenticatedAdmin
+    await fetchStockData()
+
+    // If the page response didn't provide an authenticated admin, block access
+    const auth = authenticatedAdmin.value
+    if (!auth) {
+      router.push('/admin/login')
+      return
+    }
+  } catch (e) {
+    if (e?.response?.status === 401 || e?.response?.data?.error === 'unauthenticated') {
+      router.push('/admin/login')
+    } else {
+      console.error('Auth check failed', e)
+    }
+  } finally {
+    isAuthLoading.value = false
+  }
+}
+
 onMounted(() => {
-  fetchStockData()
+  ensureAuthAndLoad()
 })
 </script>
 
@@ -542,11 +570,11 @@ onMounted(() => {
       </div>
     </Transition>
 
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header ></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       
       <!-- Stock Management Content -->
       <main class="flex-1 overflow-auto p-6">
@@ -571,15 +599,51 @@ onMounted(() => {
               Retry
             </button>
           </div>
-          <div v-if="isLoading && !products.length" class="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center text-gray-600 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <div class="mx-auto mb-4 relative h-14 w-14">
-              <span class="absolute inset-0 rounded-full border-2 border-[#042EFF]/20"></span>
-              <span class="absolute inset-0 rounded-full border-2 border-transparent border-t-[#042EFF] border-r-[#042EFF] loader-orbit"></span>
-              <span class="absolute inset-[10px] rounded-full border-2 border-transparent border-b-blue-400 border-l-blue-400 loader-orbit-reverse"></span>
-              <span class="absolute inset-[22px] rounded-full bg-[#042EFF] loader-pulse"></span>
+          <div v-if="isAuthLoading || isLoading" class="max-w-5xl mx-auto">
+            <!-- Stock overview skeletons -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div v-for="i in 4" :key="i" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-24 mb-4"></div>
+                <div class="h-8 bg-gray-200 rounded w-3/4 mb-3"></div>
+                <div class="space-y-2 mt-3">
+                  <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+                </div>
+              </div>
             </div>
-            <p class="text-base font-semibold text-gray-900 dark:text-gray-100">Loading products</p>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Fetching latest stock details...</p>
+
+            <!-- Products table skeleton -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-x-auto">
+              <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                  <div class="h-6 bg-gray-200 rounded w-48"></div>
+                  <div class="space-x-3 flex">
+                    <div class="h-8 bg-gray-200 rounded w-32"></div>
+                    <div class="h-8 bg-gray-200 rounded w-24"></div>
+                  </div>
+                </div>
+              </div>
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
+                  <tr>
+                    <th class="px-6 py-3"></th>
+                    <th class="px-6 py-3"></th>
+                    <th class="px-6 py-3"></th>
+                    <th class="px-6 py-3"></th>
+                    <th class="px-6 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="i in 6" :key="i" class="animate-pulse">
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-40"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-24"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-16"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-12"></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <template v-else>
@@ -722,9 +786,9 @@ onMounted(() => {
               </table>
             </div>
           </div>
-          <div v-else class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <p class="px-6 py-4 border-b  border-gray-200 dark:border-gray-700 text-center text-gray-700 dark:text-gray-300">There are no products in the store</p>
-          </div>
+            <div v-else class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <p class="px-6 py-4 border-b  border-gray-200 dark:border-gray-700 text-center text-gray-700 dark:text-gray-300">There are no products in the store</p>
+            </div>
           </template>
         </div>
       </main>

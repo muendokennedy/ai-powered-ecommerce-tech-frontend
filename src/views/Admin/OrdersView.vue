@@ -1,6 +1,7 @@
 
 <script setup>
 import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
@@ -40,6 +41,10 @@ function showNotification({ type = 'info', title = '', message = '', duration = 
 
 // Orders data (will be loaded from backend)
 const orders = reactive([])
+const isLoading = ref(true)
+const isLoadingOrders = ref(false)
+const authenticatedAdmin = ref(null)
+const router = useRouter()
 
 // Currency formatting (KSH)
 const formatCurrency = (n) => {
@@ -60,19 +65,43 @@ const getImagePath = (path) => {
 
 // Load orders from admin endpoint and normalize
 async function loadAdminOrders() {
+  isLoadingOrders.value = true
   try {
     const resp = await axiosClient.get('/api/admin/orders')
-    const payload = resp.data
+    const payload = resp.data || {}
+    // Reuse authenticated admin from the page API response when available
+    authenticatedAdmin.value = payload.authenticatedAdmin || payload.currentAuthenticatedAdmin || payload.admin || payload.adminUser || authenticatedAdmin.value
     const list = Array.isArray(payload) ? payload : Array.isArray(payload?.allOrders) ? payload.allOrders : Array.isArray(payload?.data) ? payload.data : []
-    // Use server keys directly; do not normalize or prefetch images here
     orders.splice(0, orders.length, ...list)
   } catch (error) {
     console.error('Failed to load admin orders:', error)
     orders.splice(0, orders.length)
+  } finally {
+    isLoadingOrders.value = false
   }
 }
 
-onMounted(() => { loadAdminOrders() })
+async function ensureAuthAndLoad() {
+  isLoading.value = true
+  try {
+    // Load orders page data which should include authenticatedAdmin
+    await loadAdminOrders()
+    if (!authenticatedAdmin.value) {
+      router.push('/admin/login')
+      return
+    }
+  } catch (e) {
+    if (e?.response?.status === 401 || e?.response?.data?.error === 'unauthenticated') {
+      router.push('/admin/login')
+    } else {
+      console.error('Auth check failed', e)
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => { ensureAuthAndLoad() })
 
 function getStatusColor(status) {
   const s = String(status || '').toLowerCase()
@@ -510,11 +539,11 @@ const paymentDetailRows = computed(() => {
 <template>
   <div>
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       
       <!-- Orders Content -->
       <main class="flex-1 overflow-y-auto p-6">
@@ -556,7 +585,7 @@ const paymentDetailRows = computed(() => {
             </div>
             
             <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <table v-if="!isLoadingOrders && !isLoading" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
@@ -596,6 +625,22 @@ const paymentDetailRows = computed(() => {
                   </tr>
                 </tbody>
               </table>
+
+              <!-- Loading skeleton -->
+              <div v-if="isLoadingOrders || isLoading" class="p-6">
+                <div class="animate-pulse">
+                  <div class="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                  <div class="space-y-3">
+                    <div v-for="i in 6" :key="i" class="grid grid-cols-7 gap-4 items-center">
+                      <div class="col-span-2 h-6 bg-gray-200 rounded"></div>
+                      <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                      <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                      <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                      <div class="col-span-1 h-6 bg-gray-200 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div> <!-- end table wrapper card -->
         </div> <!-- end max-w container -->

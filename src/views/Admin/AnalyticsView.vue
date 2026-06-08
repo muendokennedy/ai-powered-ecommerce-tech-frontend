@@ -55,11 +55,15 @@ const clientsCount = ref(0)
 const serverTopProducts = ref([])
 const serverProductCategories = ref([])
 const router = useRouter()
+const authenticatedAdmin = ref(null)
+const isLoading = ref(true)
 
 async function fetchAnalytics() {
   try {
     const res = await axiosClient.get('/api/admin/analytics')
     const data = res.data || {}
+    // Reuse authenticated admin provided by this page API when available
+    authenticatedAdmin.value = data.authenticatedAdmin || data.currentAuthenticatedAdmin || data.admin || authenticatedAdmin.value
     // revenue by month
     const rev = Array.isArray(data.revenueByMonth) ? data.revenueByMonth : []
     revenueByMonthLabels.value = rev.map(r => r.month)
@@ -334,8 +338,13 @@ const initializeCharts = async () => {
 }
 
 onMounted(async () => {
-  // Fetch analytics from server then initialize charts
+  // Fetch analytics from server (response contains authenticatedAdmin)
   await fetchAnalytics()
+  // If the analytics page did not include an authenticated admin, redirect to login
+  if (!authenticatedAdmin.value) {
+    router.push('/admin/login')
+    return
+  }
   setTimeout(initializeCharts, 250)
   // Observe theme toggles and update chart colors
   themeObserver = new MutationObserver(() => {
@@ -362,6 +371,7 @@ onMounted(async () => {
     // productsChart uses no axes
   })
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  isLoading.value = false
 })
 
 onUnmounted(() => {
@@ -378,10 +388,10 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       <!-- Analytics Content -->
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-7xl mx-auto">
@@ -389,7 +399,7 @@ onUnmounted(() => {
             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Analytics Dashboard</h1>
           </div>
           <!-- Key Metrics Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div v-if="!isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Total Revenue Card -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center">
@@ -474,9 +484,15 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div v-for="i in 4" :key="i" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 animate-pulse">
+              <div class="h-4 bg-gray-200 rounded w-1/3 mb-3"></div>
+              <div class="h-8 bg-gray-200 rounded w-2/3"></div>
+            </div>
+          </div>
 
           <!-- Charts Section -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div v-if="!isLoading" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- Revenue vs Expenses Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center justify-between mb-6">
@@ -508,9 +524,13 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+          <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 animate-pulse h-64"></div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 animate-pulse h-64"></div>
+          </div>
 
           <!-- Second Row Charts -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div v-if="!isLoading" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- New Clients Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center justify-between mb-6">
@@ -548,6 +568,10 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+          </div>
+          <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 animate-pulse h-64"></div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 animate-pulse h-64"></div>
           </div>
 
           <!-- Top Products Performance Table -->

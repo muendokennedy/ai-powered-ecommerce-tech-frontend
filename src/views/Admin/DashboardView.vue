@@ -1,9 +1,9 @@
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
-import { useAdminUserStore } from '@/stores/user'
 import axiosClient from '@/axiosClient'
 
 const dashboardStats = reactive({
@@ -12,10 +12,11 @@ const dashboardStats = reactive({
   orders: { count: 0, change: 0, trend: 'up' },
   revenue: { count: 'KSH 0', change: 0, trend: 'up' }
 })
-
 const recentOrders = reactive([])
-
 const lowStockProducts = reactive([])
+const authenticatedAdmin = ref(null)
+const isLoading = ref(true)
+const router = useRouter()
 
 // Currency formatting (KSH)
 const formatCurrency = (n) => {
@@ -23,16 +24,6 @@ const formatCurrency = (n) => {
   return `KSH ${num.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
 }
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
-
-const getImagePath = (path) => {
-  if (!path || typeof path !== 'string') return ''
-  const value = path.trim()
-  if (!value) return ''
-  if (/^https?:\/\//i.test(value)) return value
-  const normalized = value.replace(/^\/+/, '')
-  return `${apiBaseUrl}/storage/${normalized}`
-}
 
 function getOrderTotal(order) {
   if (!order) return 0
@@ -54,13 +45,23 @@ function formatDate(input) {
 }
 
 async function loadDashboard() {
+  isLoading.value = true
   try {
     const res = await axiosClient.get('/api/admin/dashboard')
     const data = res.data || {}
+
+    // authenticated admin comes with this payload — use it and redirect if missing
+    authenticatedAdmin.value = data.authenticatedAdmin || null
+    if (!authenticatedAdmin.value) {
+      router.push('/admin/login')
+      return
+    }
+
     dashboardStats.products.count = data.totalProducts || 0
     dashboardStats.clients.count = data.totalClients || 0
     dashboardStats.orders.count = data.totalOrders || 0
     dashboardStats.revenue.count = formatCurrency(data.totalRevenue || 0)
+
     // compute simple month-over-month change for revenue
     const thisM = Number(data.revenueThisMonth || 0)
     const lastM = Number(data.revenueLastMonth || 0)
@@ -73,14 +74,19 @@ async function loadDashboard() {
     lowStockProducts.splice(0, lowStockProducts.length, ...(Array.isArray(data.lowStock) ? data.lowStock.map(p => ({ name: p.name, stock: p.stock_quantity ?? p.stock ?? p.stockQty ?? 0, category: p.category })) : []))
   } catch (e) {
     console.error('Failed to load dashboard data', e)
+    if (e?.response?.status === 401) {
+      router.push('/admin/login')
+      return
+    }
+  } finally {
+    isLoading.value = false
   }
 }
 
+
+
 onMounted(() => { loadDashboard() })
 
-// Admin user from Pinia store
-const adminUserStore = useAdminUserStore()
-const adminUser = adminUserStore.adminUser
 
 function getStatusColor(status) {
   const s = String(status || '').toLowerCase()
@@ -106,20 +112,20 @@ function getStatusColor(status) {
 
 <template>
   <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       <!-- Dashboard Content -->
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-7xl mx-auto">
           <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
-            <p v-if="adminUser" class="mt-1 text-sm text-gray-600 dark:text-gray-300">Welcome, {{ adminUser.fullName }} <span class="opacity-70">({{ adminUser.email }})</span></p>
+            <p v-if="authenticatedAdmin" class="mt-1 text-sm text-gray-600 dark:text-gray-300">Welcome, {{ authenticatedAdmin.fullName }}</p>
           </div>
 
           <!-- Stats Cards -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div v-if="!isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Products Card -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center justify-between">
@@ -217,10 +223,23 @@ function getStatusColor(status) {
             </div>
           </div>
 
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div v-for="i in 4" :key="i" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 border border-gray-100 dark:border-gray-700 animate-pulse">
+              <div class="h-5 bg-gray-200 rounded w-1/2 mb-3"></div>
+              <div class="h-8 bg-gray-200 rounded w-3/4"></div>
+            </div>
+          </div>
+
           <!-- Tables Section -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Recent Orders Table -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-100 dark:border-gray-700">
+              <div v-if="isLoading" class="p-6">
+                <div class="space-y-3">
+                  <div v-for="i in 4" :key="i" class="h-6 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+              <div v-else>
               <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Orders</h2>
                 <button class="bg-[#042EFF] cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -252,8 +271,16 @@ function getStatusColor(status) {
                 </table>
               </div>
             </div>
+          </div>
+          
             <!-- Low Stock Products Table -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-100 dark:border-gray-700">
+              <div v-if="isLoading" class="p-6">
+                <div class="space-y-3">
+                  <div v-for="i in 6" :key="i" class="h-4 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+              <div v-else>
               <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Low Stock Alert</h2>
                 <button class="bg-[#042EFF] cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
@@ -284,7 +311,10 @@ function getStatusColor(status) {
               </div>
             </div>
           </div>
+          </div>
+
         </div>
+        
       </main>
     </div>
   </div>

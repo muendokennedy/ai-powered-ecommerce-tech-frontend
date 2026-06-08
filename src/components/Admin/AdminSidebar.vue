@@ -2,11 +2,11 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
-import { useAdminUserStore } from '@/stores/user'
 
 const route = useRoute()
 const router = useRouter()
-const adminUserStore = useAdminUserStore()
+
+const { admin } = defineProps({ admin: { type: Object, default: null } })
 
 // Collapsible sidebar state with persistence
 const collapsed = ref(false)
@@ -81,7 +81,7 @@ async function onLogout() {
   } catch (e) {
     // ignore errors; we'll still clear local state
   } finally {
-    adminUserStore.clearAdminUser()
+    try { localStorage.removeItem('motech-admin-user-store') } catch (e) {}
     router.push('/admin/login')
   }
 }
@@ -89,6 +89,7 @@ async function onLogout() {
 </script>
 
 <template>
+  <div>
       <!-- Sidebar -->
   <div :class="['relative z-20 isolate overflow-visible flex flex-col shrink-0 text-white dark:text-gray-100 transition-all duration-300', collapsed ? 'w-20' : 'w-72']">
     <!-- Background: solid brand blue in light, keep dark gradient in dark -->
@@ -171,15 +172,7 @@ async function onLogout() {
 
       <!-- Bottom: Profile & Logout -->
     <div class="px-3 py-4 border-t border-white/20 dark:border-white/10">
-        <div class="flex items-center gap-3 mb-3 overflow-hidden">
-      <img class="h-9 w-9 rounded-full ring-2 ring-white/50 dark:ring-white/40" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=60&h=60&fit=crop&crop=face" alt="Admin" />
-          <transition name="fade">
-            <div v-if="!collapsed" class="leading-tight">
-        <p class="text-sm font-semibold text-white dark:text-white">Admin</p>
-        <p class="text-[11px] text-white/80 dark:text-white/70">Online</p>
-            </div>
-          </transition>
-        </div>
+
   <button @click="onLogout" class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-white/90 hover:bg-white/10 hover:text-white dark:text-white/80 dark:hover:bg-gray-800 dark:hover:text-white transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
           <span v-if="!collapsed">Logout</span>
@@ -202,6 +195,7 @@ async function onLogout() {
         </div>
       </div>
     </teleport>
+  </div>
 </template>
 
 <style scoped>
