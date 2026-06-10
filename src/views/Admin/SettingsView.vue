@@ -20,7 +20,8 @@ const sendingMessage = ref(false)
 const messageForm = reactive({ subject: '', body: '' })
 
 // Current logged in admin (will be loaded from server)
-const currentAdmin = reactive({ preferences: { theme: 'Light', language: 'English' } })
+// include defaults for notifications and permissions to avoid undefined access in template
+const currentAdmin = reactive({ preferences: { theme: 'Light', language: 'English' }, notifications: {}, permissions: {} })
 const authenticatedAdmin = ref(null)
 const isLoading = ref(true)
 const router = useRouter()
@@ -32,13 +33,17 @@ function normalizePhoneForDisplay(phone) {
 
 // Persist partial admin updates to backend
 const persistAdminUpdate = async (partial) => {
-  if (!currentAdmin.id) return
+  if (!currentAdmin.id) return null
   try {
-    await axiosClient.post(`/api/admins/${currentAdmin.id}/update`, partial)
+    // strip Vue reactivity proxies by serializing the payload
+    const payload = JSON.parse(JSON.stringify(partial))
+    const res = await axiosClient.post(`/api/admins/${currentAdmin.id}/update`, payload)
     showNotification({ type: 'success', title: 'Saved', message: 'Changes saved.' })
+    return res
   } catch (err) {
     console.error('Failed to persist admin update', err)
     showNotification({ type: 'error', title: 'Save failed', message: 'Could not save changes to server.' })
+    throw err
   }
 }
 
@@ -322,12 +327,34 @@ const updatePreference = (key, value) => {
   persistAdminUpdate({ preferences: currentAdmin.preferences })
 }
 
+// Notifications are stored as a JSON column on the admin model.
+// Keep notifications separate from preferences and persist them to the same update endpoint.
+const updateNotification = (key, value) => {
+  if (!currentAdmin.notifications) currentAdmin.notifications = {}
+  currentAdmin.notifications[key] = value
+  // persist notifications JSON to backend
+  persistAdminUpdate({ notifications: currentAdmin.notifications })
+}
+
 // --- Permission Editing State for Admin Details Modal ---
 const isEditingPermissions = ref(false)
 const permissionDraft = ref({})
 
+const canEditPermissions = computed(() => {
+  if (!selectedAdmin.value) return false
+  const role = (selectedAdmin.value.role || '').toString().toLowerCase()
+  const isPrimary = role.includes('primary')
+  // Primary admins cannot edit their own permissions
+  if (isPrimary && selectedAdmin.value.id === currentAdmin.id) return false
+  return true
+})
+
 const startEditPermissions = () => {
   if (!selectedAdmin.value) return
+  if (!canEditPermissions.value) {
+    showNotification({ type: 'warning', title: 'Action Blocked', message: 'Primary Admin cannot edit their own permissions.' })
+    return
+  }
   // Create a shallow copy of permissions to edit
   permissionDraft.value = { ...selectedAdmin.value.permissions }
   isEditingPermissions.value = true
@@ -343,64 +370,89 @@ const cancelEditPermissions = () => {
   permissionDraft.value = {}
 }
 
-const savePermissions = () => {
+const savePermissions = async () => {
   if (!selectedAdmin.value || !isEditingPermissions.value) return
-  // Persist to selectedAdmin
-  selectedAdmin.value.permissions = { ...permissionDraft.value }
-  // Persist to admins array
-  const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
-  if (idx > -1) {
-    admins[idx].permissions = { ...permissionDraft.value }
+  const newPermissions = { ...permissionDraft.value }
+  showNotification({ type: 'info', title: 'Saving', message: 'Saving permissions...' })
+  try {
+    if (selectedAdmin.value.id === currentAdmin.id) {
+      // updating own permissions
+      await persistAdminUpdate({ permissions: newPermissions })
+      currentAdmin.permissions = newPermissions
+      const idx = admins.findIndex(a => a.id === currentAdmin.id)
+      if (idx > -1) admins[idx].permissions = newPermissions
+      selectedAdmin.value.permissions = newPermissions
+    } else {
+      // primary admin editing another admin: include target admin id in payload
+      await persistAdminUpdate({ admin_id: selectedAdmin.value.id, permissions: newPermissions })
+      const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
+      if (idx > -1) admins[idx].permissions = newPermissions
+      selectedAdmin.value.permissions = newPermissions
+    }
+    isEditingPermissions.value = false
+    permissionDraft.value = {}
+    showNotification({ type: 'success', title: 'Permissions Updated', message: 'Administrator permissions were saved.' })
+  } catch (err) {
+    console.error('Permissions save failed', err)
+    showNotification({ type: 'error', title: 'Save failed', message: 'Could not save permissions to server.' })
+    // keep editing mode so user can retry
+    isEditingPermissions.value = true
   }
-  isEditingPermissions.value = false
-  // persist permissions for this selected admin (if it's the current admin persist to server)
-  if (selectedAdmin.value.id === currentAdmin.id) {
-    currentAdmin.permissions = { ...permissionDraft.value }
-    persistAdminUpdate({ permissions: currentAdmin.permissions })
-  }
-  showNotification({ type: 'success', title: 'Permissions Updated', message: 'Administrator permissions were saved.' })
 }
 
 // --- Suspend / Activate Account Logic ---
 const isTogglingStatus = ref(false)
-function performStatusToggle(newStatus){
-  if (!selectedAdmin.value) return
-  isTogglingStatus.value = true
-  setTimeout(() => {
-    selectedAdmin.value.status = newStatus
-    const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
-    if (idx > -1) admins[idx].status = newStatus
-    isTogglingStatus.value = false
-    showNotification({ type: 'success', title: 'Status Updated', message: `${selectedAdmin.value.name} is now ${newStatus}.` })
-  }, 600)
-}
-const toggleSuspendAdmin = () => {
+
+// Toggle suspend/activate using unified status endpoint
+const toggleSuspendAdmin = async () => {
   if (!selectedAdmin.value) return
   if (isTogglingStatus.value) return
+  const roleLower = (selectedAdmin.value.role || '').toString().toLowerCase()
   if (selectedAdmin.value.status === 'Active') {
-    if ((selectedAdmin.value.role || '').toString().toLowerCase() === 'primary admin') {
+    if (roleLower.includes('primary')) {
       showNotification({ type: 'warning', title: 'Protected Account', message: 'Primary Admin cannot be suspended.' })
       return
     }
     showSuspendConfirmModal.value = true
-  } else {
-    performStatusToggle('Active')
+    return
+  }
+
+  // Reactivate an inactive admin
+  const id = selectedAdmin.value.id
+  isTogglingStatus.value = true
+  showNotification({ type: 'info', title: 'Activating', message: 'Reactivating admin...' })
+  try {
+    await axiosClient.post(`/api/admins/admin/status/change/${id}`, { status: 'Active' })
+    selectedAdmin.value.status = 'Active'
+    const idx = admins.findIndex(a => a.id === id)
+    if (idx > -1) admins[idx].status = 'Active'
+    showNotification({ type: 'success', title: 'Activated', message: `${selectedAdmin.value.name} has been reactivated.` })
+  } catch (err) {
+    console.error('Activation failed', err)
+    showNotification({ type: 'error', title: 'Failed', message: 'Could not reactivate administrator.' })
+  } finally {
+    isTogglingStatus.value = false
   }
 }
-function confirmSuspend(){
+
+const confirmSuspend = async () => {
   if (!selectedAdmin.value) return
   showSuspendConfirmModal.value = false
   const id = selectedAdmin.value.id
+  isTogglingStatus.value = true
   showNotification({ type: 'info', title: 'Suspending', message: 'Suspending admin...' })
-  axiosClient.post(`/api/admins/admin/suspend/${id}`).then(() => {
+  try {
+    await axiosClient.post(`/api/admins/admin/status/change/${id}`, { status: 'Inactive' })
     selectedAdmin.value.status = 'Inactive'
     const idx = admins.findIndex(a => a.id === id)
     if (idx > -1) admins[idx].status = 'Inactive'
     showNotification({ type: 'success', title: 'Suspended', message: `${selectedAdmin.value.name} has been suspended.` })
-  }).catch(err => {
+  } catch (err) {
     console.error('Suspend failed', err)
     showNotification({ type: 'error', title: 'Failed', message: 'Could not suspend administrator.' })
-  })
+  } finally {
+    isTogglingStatus.value = false
+  }
 }
 function cancelSuspend(){
   showSuspendConfirmModal.value = false
@@ -509,6 +561,12 @@ onMounted(() => {
           try { admin.permissions = JSON.parse(admin.permissions) } catch { admin.permissions = {} }
         }
 
+        // normalize notifications JSON column
+        if (!admin.notifications) admin.notifications = {}
+        if (typeof admin.notifications === 'string') {
+          try { admin.notifications = JSON.parse(admin.notifications) } catch { admin.notifications = {} }
+        }
+
         // normalize status: 1 -> 'Active', 0 -> 'Inactive'
         if (admin.status === 1 || admin.status === '1') admin.status = 'Active'
         else if (admin.status === 0 || admin.status === '0') admin.status = 'Inactive'
@@ -560,7 +618,7 @@ onMounted(() => {
       // merge transformed authenticated admin
       const authTransformed = transformAdmin(auth)
       Object.assign(currentAdmin, authTransformed)
-      authenticatedAdmin.value = authTransformed
+      authenticatedAdmin.value = data.currentAuthenticatedAdmin
       // persist theme from backend into localStorage for immediate reuse
       try {
         if (currentAdmin.preferences && currentAdmin.preferences.theme) {
@@ -782,28 +840,28 @@ watch(
                 </div>
                 
                 <div class="p-6 space-y-4">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Notifications</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        :checked="!!currentAdmin.preferences?.emailNotifications"
-                        @change="updatePreference('emailNotifications', $event.target.checked)"
-                        class="sr-only peer"
-                      >
-                      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
-                    </label>
-                  </div>
+                          <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Notifications</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                :checked="!!currentAdmin.notifications?.emailNotifications"
+                                @change="updateNotification('emailNotifications', $event.target.checked)"
+                                class="sr-only peer"
+                              >
+                              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
+                            </label>
+                          </div>
 
                   <div class="flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">SMS Notifications</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
-                        type="checkbox" 
-                        :checked="!!currentAdmin.preferences?.smsNotifications"
-                        @change="updatePreference('smsNotifications', $event.target.checked)"
-                        class="sr-only peer"
-                      >
+                          type="checkbox" 
+                          :checked="!!currentAdmin.notifications?.smsNotifications"
+                          @change="updateNotification('smsNotifications', $event.target.checked)"
+                          class="sr-only peer"
+                        >
                       <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
                     </label>
                   </div>
@@ -813,8 +871,8 @@ watch(
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        :checked="!!currentAdmin.preferences?.weeklyReports"
-                        @change="updatePreference('weeklyReports', $event.target.checked)"
+                        :checked="!!currentAdmin.notifications?.weeklyReports"
+                        @change="updateNotification('weeklyReports', $event.target.checked)"
                         class="sr-only peer"
                       >
                       <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
@@ -1164,7 +1222,7 @@ watch(
                 <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Permissions</h4>
                   <div class="flex items-center gap-2">
-                    <button v-if="!isEditingPermissions" @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
+                    <button v-if="!isEditingPermissions && canEditPermissions" @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
                       <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       Edit
                     </button>
