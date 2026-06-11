@@ -37,7 +37,7 @@ const persistAdminUpdate = async (partial) => {
   try {
     // strip Vue reactivity proxies by serializing the payload
     const payload = JSON.parse(JSON.stringify(partial))
-    const res = await axiosClient.post(`/api/admins/${currentAdmin.id}/update`, payload)
+    const res = await axiosClient.post(`/api/admins/${partial.admin_id}/update`, payload)
     showNotification({ type: 'success', title: 'Saved', message: 'Changes saved.' })
     return res
   } catch (err) {
@@ -164,6 +164,7 @@ const viewAdminDetails = (admin) => {
     name: admin.name ?? admin.fullName ?? '',
     email: admin.email ?? '',
     phone: admin.phone ?? '',
+    location: admin.location ?? '',
     role: admin.role ?? '',
     department: admin.department ?? '',
     avatar: admin.avatar ?? admin.profileImg ?? '',
@@ -362,7 +363,7 @@ const startEditPermissions = () => {
 
 const togglePermission = (key) => {
   if (!isEditingPermissions.value) return
-  permissionDraft.value[key] = !permissionDraft.value[key]
+  permissionDraft.value[key] = permissionDraft.value[key] === 'enabled' ? 'disabled' : 'enabled'
 }
 
 const cancelEditPermissions = () => {
@@ -384,7 +385,7 @@ const savePermissions = async () => {
       selectedAdmin.value.permissions = newPermissions
     } else {
       // primary admin editing another admin: include target admin id in payload
-      await persistAdminUpdate({ admin_id: selectedAdmin.value.id, permissions: newPermissions })
+      await persistAdminUpdate({ admin_id: selectedAdmin.value.id, permissions: JSON.stringify(newPermissions) })
       const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
       if (idx > -1) admins[idx].permissions = newPermissions
       selectedAdmin.value.permissions = newPermissions
@@ -886,18 +887,17 @@ watch(
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                   <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">My Permissions</h3>
                 </div>
-                
+              
                 <div class="p-6 space-y-3">
                   <div v-for="(hasPermission, permission) in currentAdmin.permissions" :key="permission" class="flex items-center justify-between">
                     <span class="text-sm text-gray-700 dark:text-gray-300">{{ formatPermissionLabel(permission) }}</span>
-                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', hasPermission ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
-                      {{ hasPermission ? 'Granted' : 'Denied' }}
+                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', (hasPermission === 'enabled')  ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
+                      {{ hasPermission === 'enabled' ? 'Granted' : hasPermission === 'disabled' ? 'Denied' : 'unknown' }}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- Devices list removed per requirements -->
             <!-- System Administrators Table -->
               <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -1222,17 +1222,20 @@ watch(
                 <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Permissions</h4>
                   <div class="flex items-center gap-2">
-                    <button v-if="!isEditingPermissions && canEditPermissions" @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
+                    <div>
+                      <button v-if="!isEditingPermissions && canEditPermissions"  @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
                       <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       Edit
                     </button>
-                    <span v-else class="inline-flex items-center gap-2">
+                    <span class="inline-flex items-center gap-2">
                       <button @click="savePermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-[#042EFF] text-white text-xs font-medium hover:bg-blue-600 shadow-sm transition-colors">
                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Save
                       </button>
                       <button @click="cancelEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">Cancel</button>
                     </span>
+                    </div>
+
                     <span class="text-xs text-gray-400 font-mono">{{ Object.keys(selectedAdmin.permissions).length }}</span>
                   </div>
                 </div>
@@ -1240,10 +1243,10 @@ watch(
                   <div v-for="(hasPermission, permission) in (isEditingPermissions ? permissionDraft : selectedAdmin.permissions)" :key="permission" class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 ring-1 ring-gray-100 dark:ring-gray-700 hover:ring-blue-200 dark:hover:ring-blue-400/40 transition-colors group">
                     <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 pr-3">{{ formatPermissionLabel(permission) }}</span>
                     <!-- View Mode Badge -->
-                    <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
+                    <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', (hasPermission === 'enabled') ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission === 'enabled' ? 'Granted' : hasPermission === 'disabled' ? 'Denied' : 'Unknown' }}</span>
                     <!-- Edit Mode Toggle -->
-                    <button v-else @click="togglePermission(permission)" :class="[ 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2', permissionDraft[permission] ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400']" type="button">
-                      <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-gray-200 transition" :class="permissionDraft[permission] ? 'translate-x-5' : 'translate-x-1'"></span>
+                    <button v-else @click="togglePermission(permission)" :class="[ 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2', (permissionDraft[permission] === 'enabled') ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400']" type="button">
+                      <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-gray-200 transition" :class="permissionDraft[permission] === 'enabled' ? 'translate-x-5' : 'translate-x-1'"></span>
                     </button>
                   </div>
                 </div>
