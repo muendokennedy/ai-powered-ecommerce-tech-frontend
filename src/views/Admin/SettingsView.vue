@@ -285,7 +285,7 @@ const diffInDays = (from) => {
   return Math.max(0, Math.floor((now - start)/(1000*60*60*24)))
 }
 const profileMetrics = computed(() => {
-  const a = currentAdminRecord.value
+  const a = authenticatedAdmin.value
   if (!a) return []
   const permissionsEnabled = Object.values(a.permissions || {}).filter(val => val === true || String(val).toLowerCase() === 'enabled').length
   // Days active: from active_since to lastLogin (if present) otherwise to now
@@ -304,10 +304,10 @@ const profileMetrics = computed(() => {
     { label: 'Permissions Enabled', value: permissionsEnabled },
     { label: 'Days Active', value: daysActive },
     { label: 'Last Login', value: lastLoginDisplay },
-    { label: 'Joined', value: formatDate(a.joinDate) }
+    { label: 'Joined', value: formatDate(a.created_at) }
   ]
 })
-const recentActivity = computed(() => (currentAdminRecord.value?.activityLog || []).slice(0,6))
+const recentActivity = computed(() => (authenticatedAdmin.value?.actions || []).slice(0,6))
 
 // helper to display permission labels in Title Case (stock_management -> Stock Management)
 const formatPermissionLabel = (s) => {
@@ -588,6 +588,7 @@ onMounted(() => {
 
         // parse actions -> activityLog with friendly action text and date
         const acts = Array.isArray(admin.actions) ? admin.actions : []
+
         admin.activityLog = acts.map((it) => {
           let parsed = it.action
           if (typeof parsed === 'string') {
@@ -783,8 +784,8 @@ watch(
                     <li v-for="(item,idx) in recentActivity" :key="idx" class="flex items-start space-x-3">
                       <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#042EFF] ring-4 ring-[#042EFF]/10"></div>
                       <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ item.action }}</p>
-                        <p class="text-xs text-gray-500">{{ item.date ? new Date(item.date).toLocaleString() : '' }}</p>
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ JSON.parse(item.action).activity }}</p>
+                        <p class="text-xs text-gray-500">{{ item.created_at ? new Date(item.created_at).toLocaleString() : '' }}</p>
                       </div>
                     </li>
                   </ul>
@@ -899,7 +900,7 @@ watch(
               </div>
             </div>
             <!-- System Administrators Table -->
-              <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div v-if="authenticatedAdmin.role === 'primary admin'" class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                   <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">System Administrators</h3>
                 </div>

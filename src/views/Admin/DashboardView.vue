@@ -242,7 +242,7 @@ function getStatusColor(status) {
               <div v-else>
               <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Orders</h2>
-                <button class="bg-[#042EFF] cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                <button  @click="router.push({ name: 'admin-orders' })" class="bg-[#042EFF] cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                   View All Orders
                 </button>
               </div>
@@ -283,7 +283,7 @@ function getStatusColor(status) {
               <div v-else>
               <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Low Stock Alert</h2>
-                <button class="bg-[#042EFF] cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                <button @click="router.push({ name: 'admin-stock' })" class="bg-[#042EFF] cursor-pointer text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
                   Manage Stock
                 </button>
               </div>

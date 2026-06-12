@@ -212,13 +212,21 @@ const deleteClient = async () => {
   if (!clientToDelete.value) return
   const id = clientToDelete.value.id
   try {
-    await axiosClient.post(`/api/clients/${id}/delete`)
+    await axiosClient.delete(`/api/clients/${id}/delete`)
     const index = clients.findIndex(c => c.id === id)
     if (index > -1) clients.splice(index, 1)
     showNotification({ type: 'success', title: 'Deleted', message: `Client ${clientToDelete.value.name} deleted.` })
   } catch (err) {
-    console.error('Failed to delete client', err)
+    const status = err.response?.status
+    const message = err.response?.data?.message
+
+
+    if(status === 403){
+      showNotification({ type: 'error', title: 'Delete failed', message: message })
+    } else {
     showNotification({ type: 'error', title: 'Delete failed', message: `Could not delete client ${clientToDelete.value?.name || id}.` })
+
+    }
   } finally {
     showDeleteConfirmModal.value = false
     clientToDelete.value = null
