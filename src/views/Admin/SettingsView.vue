@@ -159,6 +159,24 @@ const saveProfile = () => {
 
 const viewAdminDetails = (admin) => {
   // ensure selectedAdmin has the fields the modal expects to avoid template/runtime errors
+    const actions = admin.actions ?? []
+
+  // Total actions = number of action records
+  const totalActions = actions.length
+
+  // Latest login from actions
+  let lastLogin = null
+
+  actions.forEach(action => {
+    if (!action.last_login) return
+
+    const loginDate = new Date(action.last_login)
+
+    if (!lastLogin || loginDate > lastLogin) {
+      lastLogin = loginDate
+    }
+  })
+
   const safe = {
     id: admin.id ?? null,
     name: admin.name ?? admin.fullName ?? '',
@@ -168,14 +186,37 @@ const viewAdminDetails = (admin) => {
     role: admin.role ?? '',
     department: admin.department ?? '',
     avatar: admin.avatar ?? admin.profileImg ?? '',
-    joinDate: admin.joinDate ?? admin.accountCreated ?? admin.created_at ?? null,
-    totalActions: admin.totalActions ?? 0,
-    accountCreated: admin.accountCreated ?? admin.joinDate ?? admin.created_at ?? null,
-    status: admin.status ?? (admin.online ? 'Active' : 'Inactive') ,
+
+    // Prefer explicitly supplied values, otherwise use created_at
+    joinDate:
+      admin.joinDate ??
+      admin.accountCreated ??
+      admin.created_at ??
+      null,
+
+    // Count actions from the actions array
+    totalActions,
+
+    accountCreated:
+      admin.accountCreated ??
+      admin.joinDate ??
+      admin.created_at ??
+      null,
+
+    status:
+      admin.status ??
+      (admin.online ? 'Active' : 'Inactive'),
+
     permissions: admin.permissions ?? {},
-    activityLog: admin.activityLog ?? admin.actions ?? [],
-    lastLogin: admin.lastLogin ?? null
+
+    activityLog: actions,
+
+    // Latest login derived from actions
+    lastLogin:
+      admin.lastLogin ??
+      (lastLogin ? lastLogin.toISOString() : null)
   }
+
   selectedAdmin.value = safe
   isEditingPermissions.value = false
   permissionDraft.value = {}
@@ -287,24 +328,73 @@ const diffInDays = (from) => {
 const profileMetrics = computed(() => {
   const a = authenticatedAdmin.value
   if (!a) return []
-  const permissionsEnabled = Object.values(a.permissions || {}).filter(val => val === true || String(val).toLowerCase() === 'enabled').length
-  // Days active: from active_since to lastLogin (if present) otherwise to now
+
+  const permissionsEnabled = Object.values(a.permissions || {})
+    .filter(val => val === true || String(val).toLowerCase() === 'enabled')
+    .length
+
+  const actions = a.actions || []
+
+  // Total actions
+  const totalActions = actions.length
+
+  // Last login (latest date from actions)
+  let lastLoginDisplay = '—'
+
+  if (actions.length) {
+    const latestLogin = actions
+      .map(action => action.last_login)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b) - new Date(a))[0]
+
+    if (latestLogin) {
+      lastLoginDisplay = new Date(latestLogin).toLocaleString()
+    }
+  }
+
+  // Days active: active_since -> latest login (or now if none found)
   let daysActive = '—'
+
   try {
     const start = a.active_since ? new Date(a.active_since) : null
+
     if (start) {
-      const end = a.lastLogin ? new Date(a.lastLogin) : new Date()
-      daysActive = Math.max(0, Math.floor((end - start)/(1000*60*60*24))) + 1
+      const latestLogin = actions
+        .map(action => action.last_login)
+        .filter(Boolean)
+        .sort((a, b) => new Date(b) - new Date(a))[0]
+
+      const end = latestLogin ? new Date(latestLogin) : new Date()
+
+      daysActive =
+        Math.max(
+          0,
+          Math.floor((end - start) / (1000 * 60 * 60 * 24))
+        ) + 1
     }
   } catch (e) {}
 
-  const lastLoginDisplay = a.lastLogin ? new Date(a.lastLogin).toLocaleString() : '—'
   return [
-    { label: 'Total Actions', value: a.totalActions?.toLocaleString?.() || '—' },
-    { label: 'Permissions Enabled', value: permissionsEnabled },
-    { label: 'Days Active', value: daysActive },
-    { label: 'Last Login', value: lastLoginDisplay },
-    { label: 'Joined', value: formatDate(a.created_at) }
+    {
+      label: 'Total Actions',
+      value: totalActions.toLocaleString()
+    },
+    {
+      label: 'Permissions Enabled',
+      value: permissionsEnabled
+    },
+    {
+      label: 'Days Active',
+      value: daysActive
+    },
+    {
+      label: 'Last Login',
+      value: lastLoginDisplay
+    },
+    {
+      label: 'Joined',
+      value: formatDate(a.created_at)
+    }
   ]
 })
 const recentActivity = computed(() => (authenticatedAdmin.value?.actions || []).slice(0,6))
@@ -1256,8 +1346,8 @@ watch(
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                   <div v-for="activity in selectedAdmin.activityLog" :key="activity.date" class="flex items-start p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
                     <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
-                      <p class="text-xs text-gray-500 mt-1 font-mono">{{ activity.date }}</p>
+                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ JSON.parse(activity.action).activity }}</p>
+                      <p class="text-xs text-gray-500 mt-1 font-mono">{{ activity.created_at }}</p>
                     </div>
                     <div class="ml-4 flex items-center text-green-600">
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
