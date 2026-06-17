@@ -13,6 +13,7 @@ const selectedClient = ref(null)
 const clientToDelete = ref(null)
 const searchQuery = ref('')
 const statusFilter = ref('All')
+const THEME_KEY = 'theme'
 
 // Notification state (slide-in-right)
 const activeNotification = ref(null)
@@ -165,7 +166,49 @@ async function ensureAuthAndLoad() {
   }
 }
 
-onMounted(() => { ensureAuthAndLoad() })
+let systemDarkQuery = null
+
+function setDarkMode(enabled) {
+  const root = document.documentElement
+  const body = document.body
+
+  if (enabled) {
+    root.classList.add('dark')
+    body.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+  }
+}
+
+
+function applyTheme(theme) {
+  // Clean up previous system listener when switching away from Auto
+  if (systemDarkQuery && systemDarkQuery.removeEventListener) {
+    systemDarkQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
+  if (theme === 'Dark') {
+    setDarkMode(true)
+    return
+  }
+
+  if (theme === 'Light') {
+    setDarkMode(false)
+    return
+  }
+}
+
+onMounted(() => {
+   ensureAuthAndLoad() 
+
+     let initial = 'Light'
+  const saved = localStorage.getItem(THEME_KEY)
+    if (saved) {
+      initial = saved 
+    } 
+  applyTheme(initial)
+  })
 
 const statusOptions = ['All', 'Active', 'Inactive']
 

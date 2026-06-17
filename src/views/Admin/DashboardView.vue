@@ -17,6 +17,7 @@ const lowStockProducts = reactive([])
 const authenticatedAdmin = ref(null)
 const isLoading = ref(true)
 const router = useRouter()
+const THEME_KEY = 'theme'
 
 // Currency formatting (KSH)
 const formatCurrency = (n) => {
@@ -83,9 +84,51 @@ async function loadDashboard() {
   }
 }
 
+let systemDarkQuery = null
+
+function setDarkMode(enabled) {
+  const root = document.documentElement
+  const body = document.body
+
+  if (enabled) {
+    root.classList.add('dark')
+    body.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+  }
+}
 
 
-onMounted(() => { loadDashboard() })
+function applyTheme(theme) {
+  // Clean up previous system listener when switching away from Auto
+  if (systemDarkQuery && systemDarkQuery.removeEventListener) {
+    systemDarkQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
+  if (theme === 'Dark') {
+    setDarkMode(true)
+    return
+  }
+
+  if (theme === 'Light') {
+    setDarkMode(false)
+    return
+  }
+}
+
+
+
+onMounted(() => {
+   loadDashboard() 
+
+     let initial = 'Light'
+        const saved = localStorage.getItem(THEME_KEY)
+        if (saved) {
+          initial = saved 
+        } 
+      applyTheme(initial)
+  })
 
 
 function getStatusColor(status) {

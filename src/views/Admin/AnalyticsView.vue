@@ -57,6 +57,7 @@ const serverProductCategories = ref([])
 const router = useRouter()
 const authenticatedAdmin = ref(null)
 const isLoading = ref(true)
+const THEME_KEY = 'theme'
 
 async function fetchAnalytics() {
   try {
@@ -337,7 +338,46 @@ const initializeCharts = async () => {
   console.log('All charts initialization completed')
 }
 
+let systemDarkQuery = null
+
+function setDarkMode(enabled) {
+  const root = document.documentElement
+  const body = document.body
+
+  if (enabled) {
+    root.classList.add('dark')
+    body.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+  }
+}
+
+
+function applyTheme(theme) {
+  // Clean up previous system listener when switching away from Auto
+  if (systemDarkQuery && systemDarkQuery.removeEventListener) {
+    systemDarkQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
+  if (theme === 'Dark') {
+    setDarkMode(true)
+    return
+  }
+
+  if (theme === 'Light') {
+    setDarkMode(false)
+    return
+  }
+}
+
 onMounted(async () => {
+    let initial = 'Light'
+    const saved = localStorage.getItem(THEME_KEY)
+    if (saved) {
+      initial = saved 
+    } 
+  applyTheme(initial)
   // Fetch analytics from server (response contains authenticatedAdmin)
   await fetchAnalytics()
   // If the analytics page did not include an authenticated admin, redirect to login
@@ -345,6 +385,7 @@ onMounted(async () => {
     router.push('/admin/login')
     return
   }
+
   setTimeout(initializeCharts, 250)
   // Observe theme toggles and update chart colors
   themeObserver = new MutationObserver(() => {

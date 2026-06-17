@@ -24,6 +24,7 @@ const products = ref([])
 const stockOverview = ref([])
 const authenticatedAdmin = ref(null)
 const isAuthLoading = ref(true)
+const THEME_KEY = 'theme'
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 const fallbackImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" fill="none"><rect width="600" height="600" fill="#F3F4F6"/><path d="M188 385l79-96 56 67 39-47 92 116H188z" fill="#D1D5DB"/><circle cx="247" cy="228" r="40" fill="#D1D5DB"/></svg>')}`
@@ -554,7 +555,46 @@ async function ensureAuthAndLoad() {
   }
 }
 
+let systemDarkQuery = null
+
+function setDarkMode(enabled) {
+  const root = document.documentElement
+  const body = document.body
+
+  if (enabled) {
+    root.classList.add('dark')
+    body.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+  }
+}
+
+
+function applyTheme(theme) {
+  // Clean up previous system listener when switching away from Auto
+  if (systemDarkQuery && systemDarkQuery.removeEventListener) {
+    systemDarkQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
+  if (theme === 'Dark') {
+    setDarkMode(true)
+    return
+  }
+
+  if (theme === 'Light') {
+    setDarkMode(false)
+    return
+  }
+}
+
 onMounted(() => {
+  let initial = 'Light'
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved) {
+    initial = saved 
+  } 
+  applyTheme(initial)
   ensureAuthAndLoad()
 })
 </script>

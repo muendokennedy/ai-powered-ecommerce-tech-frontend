@@ -37,7 +37,7 @@ const persistAdminUpdate = async (partial) => {
   try {
     // strip Vue reactivity proxies by serializing the payload
     const payload = JSON.parse(JSON.stringify(partial))
-    const res = await axiosClient.post(`/api/admins/${partial.admin_id}/update`, payload)
+    const res = await axiosClient.post(`/api/admins/${partial.admin_id || currentAdmin.id}/update`, payload)
     showNotification({ type: 'success', title: 'Saved', message: 'Changes saved.' })
     return res
   } catch (err) {
@@ -670,11 +670,6 @@ watch(
   () => currentAdmin.preferences?.theme ?? 'Light',
   (val) => {
     applyTheme(val)
-    showNotification({
-      type: 'success',
-      title: 'Theme Updated',
-      message: val === 'Auto' ? 'Following system appearance.' : `Switched to ${val} theme.`
-    })
   }
 )
 

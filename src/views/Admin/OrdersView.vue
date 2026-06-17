@@ -63,6 +63,8 @@ const getImagePath = (path) => {
   return `${apiBaseUrl}/storage/${normalized}`
 }
 
+const THEME_KEY = 'theme'
+
 // Load orders from admin endpoint and normalize
 async function loadAdminOrders() {
   isLoadingOrders.value = true
@@ -101,7 +103,49 @@ async function ensureAuthAndLoad() {
   }
 }
 
-onMounted(() => { ensureAuthAndLoad() })
+let systemDarkQuery = null
+
+function setDarkMode(enabled) {
+  const root = document.documentElement
+  const body = document.body
+
+  if (enabled) {
+    root.classList.add('dark')
+    body.classList.add('dark')
+  } else {
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+  }
+}
+
+
+function applyTheme(theme) {
+  // Clean up previous system listener when switching away from Auto
+  if (systemDarkQuery && systemDarkQuery.removeEventListener) {
+    systemDarkQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+
+  if (theme === 'Dark') {
+    setDarkMode(true)
+    return
+  }
+
+  if (theme === 'Light') {
+    setDarkMode(false)
+    return
+  }
+}
+
+onMounted(() => {
+    let initial = 'Light'
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved) {
+    initial = saved 
+  } 
+  applyTheme(initial)
+ ensureAuthAndLoad() 
+
+})
 
 function getStatusColor(status) {
   const s = String(status || '').toLowerCase()
