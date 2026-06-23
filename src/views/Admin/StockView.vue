@@ -1,9 +1,11 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
+import { debounce } from 'lodash'
+
 
 const router = useRouter()
 const searchQuery = ref('')
@@ -25,6 +27,10 @@ const stockOverview = ref([])
 const authenticatedAdmin = ref(null)
 const isAuthLoading = ref(true)
 const THEME_KEY = 'theme'
+
+const backendProducts = ref([])
+const searching = ref(false)
+const noProductsFound = ref(false)
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
 const fallbackImage = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600" fill="none"><rect width="600" height="600" fill="#F3F4F6"/><path d="M188 385l79-96 56 67 39-47 92 116H188z" fill="#D1D5DB"/><circle cx="247" cy="228" r="40" fill="#D1D5DB"/></svg>')}`
@@ -378,6 +384,45 @@ const getStockLevel = (stock, threshold) => {
   return 'In Stock'
 }
 
+const searchBackend = async () => {
+  const query = searchQuery.value.trim()
+
+  if(!query) {
+    backendProducts.value = []
+    noProductsFound.value = false
+    return
+  }
+
+  if(filteredProducts.value.length > 0){
+    backendProducts.value = []
+    noProductsFound.value = false
+    return
+  }
+
+  try{
+    searching.value = true
+    const response = await axiosClient.get('api/admin/stock', {
+      params: {
+        search: query
+      }
+    })
+
+    if(response.data && Array.isArray(response.data.products)){
+      backendProducts.value = response.data.products.map(normalizeProduct)
+      noProductsFound.value = backendProducts.value.length === 0
+    } else {
+      backendProducts.value = []
+      noProductsFound.value = true
+    }
+  } catch(error){
+    console.error('Error searching backend products:', error)
+    backendProducts.value = []
+    noProductsFound.value = true
+  } finally {
+    searching.value = false
+  }
+}
+
 const filteredProducts = computed(() => {
   let filtered = products.value
   
@@ -396,6 +441,17 @@ const filteredProducts = computed(() => {
   
   return filtered
 })
+
+const displayedProducts = computed(() => {
+  if(filteredProducts.value.length > 0){
+    return filteredProducts.value
+  }
+  return backendProducts.value
+})
+
+watch(searchQuery, debounce(() => {
+  searchBackend()
+}, 500))
 
 const fetchStockData = async () => {
   isLoading.value = true
@@ -731,7 +787,7 @@ onMounted(() => {
           </div>
 
           <!-- Products Table -->
-          <div v-if="filteredProducts.length" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
             <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div class="flex items-center justify-between">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Product Inventory</h3>
@@ -762,7 +818,7 @@ onMounted(() => {
               </div>
             </div>
             
-            <div class="overflow-x-auto">
+            <div v-if="displayedProducts.length" class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-50 dark:bg-gray-900/40">
                   <tr>
@@ -777,7 +833,7 @@ onMounted(() => {
                   </tr>
                 </thead>
                 <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr  v-for="product in filteredProducts" :key="product.id" @click.stop="viewProduct(product)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
+                  <tr  v-for="product in displayedProducts" :key="product.id" @click.stop="viewProduct(product)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                     <td class="px-6 py-4 whitespace-nowrap">
                       <div class="flex items-center">
                         <img :src="getPrimaryProductImage(product)" :alt="product.name" class="h-12 w-12 rounded-lg object-cover mr-4">
@@ -825,10 +881,11 @@ onMounted(() => {
                 </tbody>
               </table>
             </div>
-          </div>
-            <div v-else class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div v-else class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
               <p class="px-6 py-4 border-b  border-gray-200 dark:border-gray-700 text-center text-gray-700 dark:text-gray-300">There are no products in the store</p>
             </div>
+          </div>
+
           </template>
         </div>
       </main>
