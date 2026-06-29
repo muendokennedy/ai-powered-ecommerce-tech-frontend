@@ -1,48 +1,35 @@
 <script setup>
-import { onMounted } from 'vue'
-import { useUserStore } from '@/stores/user'
-import axiosClient from '@/axiosClient'
+import {computed, watch } from 'vue'
 
-
-const storedUser = useUserStore()
-
-
-onMounted(() => {
-  storedUser.fetchUser()
+const { admin } = defineProps({
+  admin: { type: Object, default: null }
 })
 
-
-
+// const displayImage
 </script>
 <template>
       <!-- Top Navigation -->
   <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div class="flex items-center justify-between">
-          <!-- Search Bar -->
-          <div class="flex-1 max-w-md relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-      <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search products, orders, customers..."
-      class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg leading-5 bg-white dark:bg-gray-900 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-[#042EFF] focus:border-[#042EFF]"
-            />
-          </div>
-
+        <div class="flex justify-center flex-col items-end">
           <!-- Profile -->
           <div class="flex items-center space-x-4">
-            <div class="text-right">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ storedUser.user?.fullName }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ storedUser.user?.email }}</p>
+            <div v-if="!admin" class="flex items-center space-x-4">
+              <div class="h-10 w-10 rounded-full bg-gray-200 skeleton-shimmer"></div>
+              <div class="text-right">
+                <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-32 mb-2"></div>
+                <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-20"></div>
+              </div>
             </div>
-            <img
-              class="h-10 w-10 rounded-full border-2 border-[#042EFF]"
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-              alt="Admin Profile"
-            />
+            <div v-else class="flex items-center space-x-4">
+              <div class="text-right">
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ admin.fullName }}</p>
+              </div>
+              <img v-if="admin.profileImg"
+                class="h-10 w-10 rounded-full border-2 border-[#042EFF]"
+                :src="`http://localhost:8000${admin.profileImg}`"
+                alt="Admin Profile"
+              />
+            </div>
           </div>
         </div>
       </header>

@@ -4,13 +4,19 @@ import { useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { StarIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/solid'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
+import axiosClient from '@/axiosClient'
 
 // Reactive data
 const selectedPaymentMethod = ref('')
 const showLocationModal = ref(false) // legacy – no longer used for UX, kept to avoid breakage
 const showOrderSummaryModal = ref(false)
 const showErrorMessage = ref(false)
-const isLoggedIn = ref(localStorage.getItem('isLoggedIn') === 'true') // Check login status from localStorage
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
+const isLoggedIn = computed(() => !!userStore.user && !adminUserStore.adminUser)
+const isLoadingOrderItems = ref(false)
+const cartProductsData = ref([])
 const userLocation = ref({
   address: '',
   apartment: '',
@@ -20,6 +26,9 @@ const userLocation = ref({
   postalCode: '',
   country: ''
 })
+
+// Nairobi, Kenya coordinates (reference point for shipping calculation)
+const NAIROBI_COORDS = { lat: -1.2921, lng: 36.8219 }
 const personalInfo = ref({
   name: '',
   email: '',
@@ -347,6 +356,10 @@ const mpesaDetails = ref({
   phoneNumber: ''
 })
 
+const codDetails = ref({
+  name: ''
+})
+
 // Payment validation error state
 const paymentErrors = ref({
   cardNumber: '',
@@ -355,8 +368,31 @@ const paymentErrors = ref({
   cvv: '',
   paypalEmail: '',
   paypalPassword: '',
-  mpesaPhone: ''
+  mpesaPhone: '',
+  codName: ''
 })
+
+// Distance calculation function (Haversine formula)
+function calculateDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371 // Earth's radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+// Calculate shipping cost based on distance (Kenya-specific)
+// 100 KSH per 50 kilometers
+function calculateShippingCost(distance) {
+  // Calculate: (distance / 50) * 100 = distance * 2
+  const baseCost = Math.ceil((distance / 50) * 100)
+  // Minimum shipping: 100 KSH
+  return Math.max(baseCost, 100)
+}
 
 function clearPaymentError(field) {
   if (paymentErrors.value[field]) paymentErrors.value[field] = ''
@@ -426,22 +462,90 @@ function validatePaymentDetails() {
     else if (!/^(\+?254|0)?7\d{8}$/.test(phone)) errs.mpesaPhone = 'Enter valid Safaricom number'
     return !errs.mpesaPhone
   }
+  if (selectedPaymentMethod.value === 'cod') {
+    errs.codName = ''
+    const name = codDetails.value.name.trim()
+    if (!name) errs.codName = 'Full name is required'
+    else if (name.length < 2) errs.codName = 'Name must be at least 2 characters'
+    return !errs.codName
+  }
   return true
 }
 
-// Load cart items from session storage (populated in CartView / Product actions)
+// Load cart items from API endpoint
 const orderItems = ref([])
 
-function loadCartItems() {
-  const raw = sessionStorage.getItem('cartItems')
-  let parsed = []
-  if (raw) {
-    try { parsed = JSON.parse(raw) || [] } catch (_) { parsed = [] }
+// Helper to resolve backend storage image URLs (matches CartView behaviour)
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+function getImagePath(path) {
+  if (!path) return ''
+  const value = String(path).trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  const normalized = value.replace(/^\/+/, '')
+  if (/^storage\//i.test(normalized)) return `${apiBaseUrl}/${normalized}`
+  if (/^(products|product_images)\//i.test(normalized)) return `${apiBaseUrl}/storage/${normalized}`
+  return `${apiBaseUrl}/storage/${normalized}`
+}
+
+async function loadCartItems() {
+  isLoadingOrderItems.value = true
+  try {
+    // First try to fetch from API
+    const response = await axiosClient.post('/api/cart/products')
+    const payload = response.data || {}
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload.items)
+        ? payload.items
+        : Array.isArray(payload.data)
+          ? payload.data
+          : Array.isArray(payload.cartItems)
+            ? payload.cartItems
+            : []
+
+
+    // Map API response to order items format (handle cart_item_id / product_id shapes)
+    orderItems.value = list.map(p => ({
+      id: p.cart_item_id,
+      productId: p.product_id,
+      name: p.name || p.product_name || '',
+      brand: p.brand || '',
+      price: Number(p.discount_price ?? p.discountPrice ?? p.price) || 0,
+      oldPrice: Number(p.base_price ?? p.old_price ?? p.oldPrice) || null,
+      // Resolve to full backend URL when API returns storage-relative paths
+      image: getImagePath(p.image_path || p.image || ''),
+      quantity: Number(String(p.quantity || '1').replace(/[^0-9.]/g, '')) || 1,
+      rating: Number(p.rating) || 5,
+      images: Array.isArray(p.images) ? p.images : []
+    }))
+
+    cartProductsData.value = orderItems.value
+  } catch (error) {
+    // Fallback to session storage if API fails
+    const raw = sessionStorage.getItem('cartItems')
+    let parsed = []
+    if (raw) {
+      try { parsed = JSON.parse(raw) || [] } catch (_) { parsed = [] }
+    }
+    orderItems.value = Array.isArray(parsed)
+      ? parsed.map(p => ({
+          id: p.cart_item_id ?? p.id ?? p.product_id,
+          productId: p.product_id,
+          name: p.name || p.product_name || '',
+          brand: p.brand || '',
+          price: Number(p.discount_price ?? p.discountPrice ?? p.price) || 0,
+          oldPrice: Number(p.base_price ?? p.old_price ?? p.oldPrice) || null,
+          image: getImagePath(p.image_path || p.image || ''),
+          quantity: Number(p.quantity) || 1,
+          rating: Number(p.rating) || 5,
+          images: Array.isArray(p.images) ? p.images : []
+        }))
+      : []
+    cartProductsData.value = orderItems.value
+  } finally {
+    isLoadingOrderItems.value = false
   }
-  // Ensure each item has a quantity (default 1) and keep shape consistent
-  orderItems.value = Array.isArray(parsed)
-    ? parsed.map(p => ({ ...p, quantity: p.quantity || 1 }))
-    : []
 }
 
 onMounted(() => {
@@ -488,8 +592,22 @@ const router = useRouter()
 
 // Reactive totals
 const subtotal = computed(() => orderItems.value.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0))
-const shipping = computed(() => orderItems.value.length ? 15 : 0)
-const tax = computed(() => Math.round(subtotal.value * 0.08))
+
+// Calculate shipping based on delivery coordinates
+const shipping = computed(() => {
+  if (!orderItems.value.length) return 0
+  if (!coords.value.lat || !coords.value.lng) return 100 // Default shipping if no coordinates (100 KSH)
+  try {
+    const distance = calculateDistance(NAIROBI_COORDS.lat, NAIROBI_COORDS.lng, coords.value.lat, coords.value.lng)
+    return calculateShippingCost(distance)
+  } catch (e) {
+    return 100 // Default if calculation fails (100 KSH)
+  }
+})
+
+// Tax is now removed (always 0)
+const tax = computed(() => 0)
+
 const total = computed(() => subtotal.value + shipping.value + tax.value)
 
 // Order summary for modal
@@ -509,14 +627,6 @@ const placingOrder = ref(false)
 async function placeOrder() {
   try {
     placingOrder.value = true
-    // Simulate payment processing delay
-    await new Promise(r => setTimeout(r, 1200))
-
-    // Generate unique order id
-    const now = new Date()
-    const pad2 = (n) => String(n).padStart(2, '0')
-    const idSuffix = String(now.getTime()).slice(-6)
-    const id = `ORD-${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}-${idSuffix}`
 
     // Compose delivery address from userLocation fields
     const composeAddress = () => {
@@ -525,46 +635,94 @@ async function placeOrder() {
         .filter(p => p && String(p).trim()).join(', ')
     }
 
-    // Normalize items
+    // Normalize items (send only the fields required by backend)
     const items = orderItems.value.map(it => ({
-      id: it.id,
+      id: Number(it.productId),
       name: it.name,
-      price: it.price,
-      quantity: it.quantity || 1,
-      image: it.image || ''
+      price: Number(it.price) || 0,
+      quantity: Number(it.quantity) || 1
     }))
 
-    const order = {
-      id,
-      orderDate: now.toISOString(),
-      status: 'Pending',
-      items,
-      subtotal: Number(subtotal.value || 0),
-      deliveryFee: Number(shipping.value || 0),
-      tax: Number(tax.value || 0),
-      totalAmount: Number(total.value || 0),
-      deliveryAddress: composeAddress(),
-      paymentMethod: selectedPaymentMethod.value || 'unknown',
-      estimatedDelivery: new Date(now.getTime() + 4*24*60*60*1000).toISOString(),
-      trackingNumber: null
+    // Prepare payment details based on method
+    let paymentDetails = {}
+    if (selectedPaymentMethod.value === 'card') {
+      paymentDetails = {
+        type: 'card',
+        cardNumber: cardDetails.value.cardNumber.replace(/\s+/g, ''),
+        cardholderName: cardDetails.value.cardholderName,
+        expiryDate: cardDetails.value.expiryDate,
+        cvv: cardDetails.value.cvv
+      }
+    } else if (selectedPaymentMethod.value === 'paypal') {
+      paymentDetails = {
+        type: 'paypal',
+        email: paypalDetails.value.email
+      }
+    } else if (selectedPaymentMethod.value === 'mpesa') {
+      paymentDetails = {
+        type: 'mpesa',
+        phoneNumber: mpesaDetails.value.phoneNumber
+      }
+    } else if (selectedPaymentMethod.value === 'cod') {
+      paymentDetails = {
+        type: 'cod',
+        recipientName: codDetails.value.name
+      }
     }
 
-    // Persist to localStorage 'orders'
-    let stored = []
-    try {
-      const raw = localStorage.getItem('orders')
-      if (raw) stored = JSON.parse(raw) || []
-    } catch { stored = [] }
-    if (!Array.isArray(stored)) stored = []
-    stored.push(order)
-    try { localStorage.setItem('orders', JSON.stringify(stored)) } catch {}
+    // Prepare checkout data
+    const checkoutData = {
+      personal: {
+        name: personalInfo.value.name,
+        email: personalInfo.value.email,
+        phone: getInternationalPhone()
+      },
+      delivery: {
+        address: userLocation.value.address,
+        apartment: userLocation.value.apartment || null,
+        landmark: userLocation.value.landmark || null,
+        city: userLocation.value.city,
+        state: userLocation.value.state,
+        // Preserve leading zeros by sending postalCode as a string
+        postalCode: userLocation.value.postalCode != null ? String(userLocation.value.postalCode) : null,
+        country: userLocation.value.country,
+        instructions: userLocation.value.instructions || null,
+        coordinates: {
+          lat: coords.value.lat != null ? Number(coords.value.lat) : null,
+          lng: coords.value.lng != null ? Number(coords.value.lng) : null
+        }
+      },
+      order: {
+        items: items,
+        subtotal: Number(subtotal.value) || 0,
+        shippingCost: Number(shipping.value) || 0,
+        tax: Number(tax.value) || 0,
+        total: Number(total.value) || 0,
+      },
+      payment: paymentDetails
+    }
 
-    // Clear cart after successful order placement
-    try { sessionStorage.setItem('cartItems', JSON.stringify([])) } catch {}
+    // Make POST request to backend
+    const response = await axiosClient.post('/api/checkout', checkoutData)
 
-    showOrderSummaryModal.value = false
-    // Navigate to orders page and auto-expand new order using query param
-    router.push({ name: 'orders', query: { newId: id } })
+    // Simulate payment processing delay (if needed by backend)
+    await new Promise(r => setTimeout(r, 1200))
+
+    // Handle successful response
+    if (response.status === 200 || response.status === 201) {
+      const orderId = response.data?.order?.id || `ORD-${Date.now()}`
+      
+      // Clear cart after successful order placement
+      try { sessionStorage.setItem('cartItems', JSON.stringify([])) } catch {}
+
+      showOrderSummaryModal.value = false
+      // Navigate to orders page and auto-expand new order using query param
+      router.push({ name: 'orders', query: { newId: orderId } })
+    }
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || error.message || 'An error occurred while placing your order'
+    console.error('Checkout error:', error)
+    alert(`Error: ${errorMessage}`)
   } finally {
     placingOrder.value = false
   }
@@ -607,24 +765,24 @@ const completeOrder = () => {
   }
 }
 
-const handleLocationSubmit = () => {
-  // Validate once more in case user changed values in modal
-  if (!validateLocation()) {
-    if (deliverySectionEl.value) {
-      deliverySectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-    showLocationModal.value = false
-    return
-  }
-  // Process order
-  showLocationModal.value = false
-  const fullPhone = getInternationalPhone()
-  alert(`Order placed successfully!\nPhone: ${fullPhone}`)
-}
+// const handleLocationSubmit = () => {
+//   // Validate once more in case user changed values in modal
+//   if (!validateLocation()) {
+//     if (deliverySectionEl.value) {
+//       deliverySectionEl.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+//     }
+//     showLocationModal.value = false
+//     return
+//   }
+//   // Process order
+//   showLocationModal.value = false
+//   const fullPhone = getInternationalPhone()
+//   alert(`Order placed successfully!\nPhone: ${fullPhone}`)
+// }
 
-const closeModals = () => {
-  showLocationModal.value = false
-}
+// const closeModals = () => {
+//   showLocationModal.value = false
+// }
 
 function validateLocation() {
   let ok = true
@@ -861,7 +1019,25 @@ function getInternationalPhone() {
               <span>order summary</span>
             </h2>
             
-            <div class="order-items p-4 space-y-4">
+            <!-- Loading Skeleton -->
+            <div v-if="isLoadingOrderItems" class="order-items p-4 space-y-4 animate-pulse">
+              <div
+                v-for="i in 3"
+                :key="`skeleton-${i}`"
+                class="order-item flex items-center gap-4 pb-4 border-b border-gray-200"
+              >
+                <div class="w-16 h-16 bg-gray-200 skeleton-shimmer rounded flex-none"></div>
+                <div class="item-details flex-1 space-y-2">
+                  <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-3/4"></div>
+                  <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-1/2"></div>
+                  <div class="h-3 bg-gray-200 skeleton-shimmer rounded w-2/3"></div>
+                </div>
+                <div class="h-5 w-16 bg-gray-200 skeleton-shimmer rounded"></div>
+              </div>
+            </div>
+
+            <!-- Order Items (when loaded) -->
+            <div v-else class="order-items p-4 space-y-4">
               <div v-if="!orderItems.length" class="text-sm text-gray-600 italic">No items in cart.</div>
               <div
                 v-for="item in orderItems"
@@ -884,11 +1060,11 @@ function getInternationalPhone() {
                     </div>
                   </div>
                   <div class="quantity-price text-xs text-[#384857] mt-1">
-                    Qty: {{ item.quantity }} × ${{ item.price }}
+                    Qty: {{ item.quantity }} × KSH {{ Math.round(item.price) }}
                   </div>
                 </div>
                 <div class="item-total text-[#FF412C] font-semibold">
-                  ${{ (item.price * item.quantity).toFixed(2) }}
+                  KSH {{ Math.round(item.price * item.quantity) }}
                 </div>
               </div>
             </div>
@@ -896,20 +1072,16 @@ function getInternationalPhone() {
             <div class="order-totals p-4 space-y-3">
               <div class="subtotal flex justify-between text-[#384857]">
                 <span>Subtotal:</span>
-                <span>${{ subtotal.toFixed(2) }}</span>
+                <span>KSH {{ Math.round(subtotal) }}</span>
               </div>
               <div class="shipping flex justify-between text-[#384857]">
                 <span>Shipping:</span>
-                <span>${{ shipping.toFixed(2) }}</span>
-              </div>
-              <div class="tax flex justify-between text-[#384857]">
-                <span>Tax:</span>
-                <span>${{ tax.toFixed(2) }}</span>
+                <span>KSH {{ Math.round(shipping) }}</span>
               </div>
               <div class="border-t pt-3">
                 <div class="total flex justify-between text-[#384857] font-semibold text-lg">
                   <span>Total:</span>
-                  <span class="text-[#FF412C]">${{ total.toFixed(2) }}</span>
+                  <span class="text-[#FF412C]">KSH {{ Math.round(total) }}</span>
                 </div>
               </div>
             </div>
@@ -1098,6 +1270,44 @@ function getInternationalPhone() {
                   </div>
                 </div>
               </div>
+
+              <!-- Cash on Delivery -->
+              <div class="cod-payment">
+                <div 
+                  @click="selectPaymentMethod('cod')"
+                  class="payment-option flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all duration-300 hover:border-[#68a4fe]"
+                  :class="selectedPaymentMethod === 'cod' ? 'border-[#68a4fe] bg-blue-50' : 'border-gray-300'"
+                >
+                  <input 
+                    type="radio" 
+                    name="payment" 
+                    value="cod" 
+                    v-model="selectedPaymentMethod"
+                    class="w-4 h-4 text-[#68a4fe]"
+                  >
+                  <div class="flex items-center mx-4 space-x-2">
+                    <i class="fa-solid fa-money-bill text-[#68a4fe] text-xl"></i>
+                  </div>
+                  <span class="text-[#384857] font-medium">Cash on Delivery</span>
+                </div>
+                
+                <!-- Cash on Delivery Details Form (Expandable) -->
+                <div v-if="selectedPaymentMethod === 'cod'" class="cod-form mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                  <div>
+                    <input
+                      v-model="codDetails.name"
+                      @input="clearPaymentError('codName')"
+                      type="text"
+                      placeholder="Full name (e.g., John Doe)"
+                      :class="['w-full p-3 border-2 rounded-md outline-none focus:border-[#68a4fe]', paymentErrors.codName ? 'border-red-400' : 'border-gray-300']"
+                    />
+                    <p v-if="paymentErrors.codName" class="mt-1 text-xs text-red-600">{{ paymentErrors.codName }}</p>
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    <p>Pay with cash when the item is delivered to you. The driver will collect the payment upon delivery.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1155,19 +1365,34 @@ function getInternationalPhone() {
                   <p class="text-gray-500">Qty: {{ it.quantity }}</p>
                 </div>
               </div>
-              <div class="text-[#384857] font-semibold">${{ (it.price * it.quantity).toFixed(2) }}</div>
+              <div class="text-[#384857] font-semibold">KSH {{ Math.round(it.price * it.quantity) }}</div>
             </div>
           </div>
         </section>
         <!-- Totals and payment -->
         <section>
           <h4 class="text-[#384857] font-semibold mb-2">Payment</h4>
-          <p class="text-sm text-gray-700 mb-3">Method: <span class="capitalize font-medium">{{ orderSummary.payment }}</span></p>
+          <p class="text-sm text-gray-700 mb-3">Method: <span class="capitalize font-medium">{{ 
+            selectedPaymentMethod === 'cod' ? 'Cash on Delivery' : selectedPaymentMethod 
+          }}</span></p>
+          <div v-if="selectedPaymentMethod === 'card'" class="text-sm text-gray-700 mb-3">
+            <p><span class="font-medium">Card Number:</span> •••• •••• •••• {{ cardDetails.cardNumber.slice(-4) }}</p>
+            <p><span class="font-medium">Cardholder:</span> {{ cardDetails.cardholderName }}</p>
+          </div>
+          <div v-if="selectedPaymentMethod === 'paypal'" class="text-sm text-gray-700 mb-3">
+            <p><span class="font-medium">PayPal Email:</span> {{ paypalDetails.email }}</p>
+          </div>
+          <div v-if="selectedPaymentMethod === 'mpesa'" class="text-sm text-gray-700 mb-3">
+            <p><span class="font-medium">Phone Number:</span> {{ mpesaDetails.phoneNumber }}</p>
+          </div>
+          <div v-if="selectedPaymentMethod === 'cod'" class="text-sm text-gray-700 mb-3">
+            <p><span class="font-medium">Recipient Name:</span> {{ codDetails.name }}</p>
+            <p><span class="font-medium">Instructions:</span> Pay cash to the delivery driver upon receipt</p>
+          </div>
           <div class="bg-gray-50 rounded-md p-3 text-sm text-[#384857] space-y-1">
-            <div class="flex justify-between"><span>Subtotal</span><span>${{ subtotal.toFixed(2) }}</span></div>
-            <div class="flex justify-between"><span>Shipping</span><span>${{ shipping.toFixed(2) }}</span></div>
-            <div class="flex justify-between"><span>Tax</span><span>${{ tax.toFixed(2) }}</span></div>
-            <div class="flex justify-between font-semibold text-lg pt-2 border-t"><span>Total</span><span class="text-[#FF412C]">${{ total.toFixed(2) }}</span></div>
+            <div class="flex justify-between"><span>Subtotal</span><span>KSH {{ Math.round(subtotal) }}</span></div>
+            <div class="flex justify-between"><span>Shipping</span><span>KSH {{ Math.round(shipping) }}</span></div>
+            <div class="flex justify-between font-semibold text-lg pt-2 border-t"><span>Total</span><span class="text-[#FF412C]">KSH {{ Math.round(total) }}</span></div>
           </div>
         </section>
       </div>
@@ -1185,6 +1410,22 @@ function getInternationalPhone() {
 </template>
 
 <style scoped>
+/* Skeleton loading animation */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e0e0e0 0%, #f0f0f0 50%, #e0e0e0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 /* Additional custom styles if needed */
 .payment-option {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -1195,7 +1436,7 @@ function getInternationalPhone() {
 }
 
 /* Smooth transitions for expandable forms */
-.card-form, .paypal-form, .mpesa-form {
+.card-form, .paypal-form, .mpesa-form, .cod-form {
   animation: slideDown 0.3s ease-out;
 }
 

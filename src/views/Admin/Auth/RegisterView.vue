@@ -2,7 +2,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axiosClient from '@/axiosClient'
-import { useUserStore } from '@/stores/user'
+import { useAdminUserStore, useUserStore } from '@/stores/user'
 
 // Departments aligned with SettingsView
 const departments = ['Operations','Customer Service','Inventory','Marketing']
@@ -28,6 +28,7 @@ const emailInput = ref(null)
 const newAvatarPreview = ref('')
 const isDraggingAvatar = ref(false)
 const fileInputRef = ref(null)
+const avatarFile = ref(null)
 
 function triggerAvatarSelect() {
   if (fileInputRef.value) {
@@ -52,6 +53,7 @@ function handleAvatarFileList(files) {
   }
 
   newAvatarPreview.value = URL.createObjectURL(file)
+  avatarFile.value = file
   errors.avatar = ''
 }
 
@@ -135,25 +137,49 @@ const onSubmit = async () => {
   if (!isValid) return
 
   loading.value = true
-  const userStore = useUserStore()
   // Build payload expected by backend
-  const payload = {
-    fullName: form.name,
-    email: form.email,
-    phone: form.phone,
-    department: form.department,
-    location: form.location,
-    password: form.password,
-    password_confirmation: form.confirmPassword,
-    remember: !!form.remember,
-  }
-
   try {
-    const res = await axiosClient.post('/admin/register', payload)
+    let response
+    if (avatarFile.value) {
+      const fd = new FormData()
+      fd.append('fullName', form.name)
+      fd.append('email', form.email)
+      fd.append('phone', form.phone)
+      fd.append('department', form.department)
+      fd.append('location', form.location)
+      fd.append('password', form.password)
+      fd.append('password_confirmation', form.confirmPassword)
+      fd.append('remember', form.remember ? '1' : '0')
+      fd.append('profileImg', avatarFile.value)
 
+      response = await axiosClient.post('/admin/register', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    } else {
+      const payload = {
+        fullName: form.name,
+        email: form.email,
+        phone: form.phone,
+        department: form.department,
+        location: form.location,
+        password: form.password,
+        password_confirmation: form.confirmPassword,
+        remember: !!form.remember,
+      }
+      response = await axiosClient.post('/admin/register', payload)
+    }
+
+    const adminUserStore = useAdminUserStore()
     const userStore = useUserStore()
-    if (typeof userStore.fetchUser === 'function') {
-      try { await userStore.fetchUser() } catch (_) {}
+    const registeredAdmin =
+      response?.data?.admin ||
+      response?.data?.user ||
+      response?.data?.data?.admin ||
+      response?.data?.data?.user ||
+      response?.data?.data ||
+      { fullName: form.name, email: form.email }
+
+    userStore.clearUser()
+    if (typeof adminUserStore.setAdminUser === 'function') {
+      adminUserStore.setAdminUser(registeredAdmin)
     }
     
     await router.push('/admin/dashboard')
@@ -164,8 +190,16 @@ const onSubmit = async () => {
     if (validation && typeof validation === 'object') {
       // Clear previous errors first
       Object.keys(errors).forEach(k => delete errors[k])
+      // Map backend field names to frontend keys
+      const keyMap = {
+        fullName: 'name',
+        password_confirmation: 'confirmPassword',
+        password_confirmation: 'confirmPassword',
+      }
+
       for (const [key, msgs] of Object.entries(validation)) {
-        errors[key] = Array.isArray(msgs) ? msgs[0] : String(msgs)
+        const mapped = keyMap[key] || key
+        errors[mapped] = Array.isArray(msgs) ? msgs[0] : String(msgs)
       }
     } else {
       // Fallback generic error
@@ -187,7 +221,7 @@ onMounted(() => {
   <section class="min-h-screen">
     <main class="bg-[#E4E7F3] pt-20 px-[3%] pb-10 min-h-screen">
       <div class="bg-white p-6 sm:p-8 rounded-md w-full max-w-3xl mx-auto shadow-sm">
-        <form @submit.prevent="onSubmit" novalidate>
+        <form @submit.prevent="onSubmit">
           <h2 class="text-center text-2xl text-[#042EFF] font-semibold capitalize py-4 border-b-2">Create admin account</h2>
 
           <!-- Avatar in-place -->
@@ -288,7 +322,6 @@ onMounted(() => {
               <p v-if="errors.confirmPassword" class="mt-1 text-xs text-red-600">{{ errors.confirmPassword }}</p>
             </div>
           </div>
-
           <!-- Submit -->
           <button type="submit" :disabled="loading" class="cursor-pointer mt-6 text-white bg-[#042EFF] w-full px-4 py-3 rounded-md capitalize hover:bg-[#384857] transition-all duration-300 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center">
             <svg v-if="loading" class="animate-spin  mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>

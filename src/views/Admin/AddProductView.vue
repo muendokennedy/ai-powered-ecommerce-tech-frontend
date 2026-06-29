@@ -3,6 +3,7 @@ import { reactive, ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
+import axiosClient from '@/axiosClient.js'
 
 const router = useRouter()
 
@@ -211,6 +212,9 @@ const nameSelected = ref(false)
 const searchQuery = ref('')
 const autoFillNotification = ref(false)
 const isAutoFilling = ref(false)
+const validationErrors = reactive({})
+const showSuccessNotification = ref(false)
+const successMessage = ref('')
 // Image preview URLs & drag state
 const imagePreviews = reactive({
   primaryImage: null,
@@ -264,9 +268,63 @@ const specificationTemplates = {
   }
 }
 
+// Map internal specification keys to human-readable labels per category
+const specificationLabels = {
+  Phones: {
+    storage: 'Storage',
+    ram: 'RAM',
+    displaySize: 'Display Size',
+    camera: 'Camera',
+    battery: 'Battery',
+    operatingSystem: 'Operating System',
+    color: 'Color'
+  },
+  Laptops: {
+    processor: 'Processor',
+    ram: 'RAM',
+    storageType: 'Storage Type',
+    storageSize: 'Storage Size',
+    graphicsCard: 'Graphics Card',
+    displaySize: 'Display Size',
+    operatingSystem: 'Operating System',
+    batteryLife: 'Battery Life'
+  },
+  Televisions: {
+    screenSize: 'Screen Size',
+    resolution: 'Resolution',
+    displayTechnology: 'Display Technology',
+    smartTvOs: 'Smart TV OS',
+    hdrSupport: 'HDR Support',
+    refreshRate: 'Refresh Rate',
+    audioOutput: 'Audio Output'
+  },
+  Smartwatches: {
+    displayType: 'Display Type',
+    caseSize: 'Case Size',
+    operatingSystem: 'Operating System',
+    batteryLife: 'Battery Life',
+    waterResistance: 'Water Resistance',
+    connectivity: 'Connectivity',
+    healthSensors: 'Health Sensors'
+  }
+}
+
+// Convert specs object to labeled key-value pairs for backend storage
+const toLabeledSpecifications = (category, specs) => {
+  const labels = specificationLabels[category] || {}
+  const result = {}
+  Object.entries(specs || {}).forEach(([key, value]) => {
+    const label = labels[key] || key
+    if (value !== undefined && value !== null && value !== '') {
+      result[label] = value
+    }
+  })
+  return result
+}
+
 const categories = ['Phones', 'Laptops', 'Televisions', 'Smartwatches']
-const brands = ['Apple', 'Samsung', 'Dell', 'LG', 'HP', 'Sony', 'Google', 'OnePlus']
-const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG Electronics', 'HP Inc.', 'Sony Corporation']
+const brands = ['Apple', 'Samsung', 'Dell', 'LG', 'HP', 'Sony', 'Xiaomi', 'OnePlus']
+const suppliers = ['Apple Inc.', 'Samsung Electronics', 'Dell Technologies', 'LG Electronics', 'HP Inc.', 'Sony Corporation', 'Xiaomi Corporation']
 
 // Computed properties
 const filteredProducts = computed(() => {
@@ -394,6 +452,7 @@ const resetForm = () => {
     discountedPrice: '',
     stock: '',
     lowStockThreshold: '10',
+    vatRate: '0.16',
     supplier: '',
     description: '',
     primaryImage: null,
@@ -403,6 +462,25 @@ const resetForm = () => {
   })
   searchQuery.value = ''
   showNameSuggestions.value = false
+  Object.keys(validationErrors).forEach(key => delete validationErrors[key])
+}
+
+const clearFieldError = (fieldName) => {
+  if (validationErrors[fieldName]) {
+    delete validationErrors[fieldName]
+  }
+}
+
+const scrollToFirstError = () => {
+  nextTick(() => {
+    const firstErrorField = Object.keys(validationErrors)[0]
+    if (firstErrorField) {
+      const element = document.querySelector(`[data-field="${firstErrorField}"]`)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }
+  })
 }
 
 const handleImageUpload = (eventOrFile, imageType) => {
@@ -443,47 +521,70 @@ const triggerFileDialog = (id) => {
 }
 
 const addProduct = async () => {
-  if (!newProduct.name || !newProduct.brand || !newProduct.originalPrice || !newProduct.stock) {
-    alert('Please fill in all required fields')
-    return
-  }
+  // Clear previous errors
+  Object.keys(validationErrors).forEach(key => delete validationErrors[key])
 
   isSubmitting.value = true
 
   try {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    // Create FormData to handle file uploads
+    const formData = new FormData()
+    
+    // Add product data
+    formData.append('name', newProduct.name)
+    formData.append('brand', newProduct.brand)
+    formData.append('category', newProduct.category)
+    formData.append('supplier', newProduct.supplier)
+    formData.append('description', newProduct.description || '')
+    formData.append('specifications', JSON.stringify(toLabeledSpecifications(newProduct.category, newProduct.specifications)))
+    formData.append('base_price', parseFloat(newProduct.originalPrice))
+    formData.append('discount_price', newProduct.discountedPrice ? parseFloat(newProduct.discountedPrice) : '')
+    formData.append('vat_rate', parseFloat(newProduct.vatRate || 0.16))
+    formData.append('status', 'in stock')
+    formData.append('stock_quantity', parseInt(newProduct.stock))
+    formData.append('low_stock_threshold', parseInt(newProduct.lowStockThreshold) || 10)
+    
+    // Add images if they exist
+    if (newProduct.primaryImage) {
+      formData.append('primary_image', newProduct.primaryImage)
+    }
+    if (newProduct.secondaryImage) {
+      formData.append('secondary_image', newProduct.secondaryImage)
+    }
+    if (newProduct.tertiaryImage) {
+      formData.append('tertiary_image', newProduct.tertiaryImage)
+    }
 
-    // Generate product data (in real app, this would be handled by backend)
-    const newId = `${newProduct.category.substring(0,2).toUpperCase()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`
-    const sku = `${newProduct.brand.substring(0,3).toUpperCase()}-${newProduct.name.substring(0,5).toUpperCase()}-${Math.floor(Math.random() * 1000)}`
     
-    // Here you would typically send the data to your backend API
-    console.log('Adding product:', {
-      id: newId,
-      name: newProduct.name,
-      brand: newProduct.brand,
-      category: newProduct.category,
-      sku: sku,
-      originalPrice: parseFloat(newProduct.originalPrice),
-      discountedPrice: newProduct.discountedPrice ? parseFloat(newProduct.discountedPrice) : null,
-      finalPrice: parseFloat(finalPrice.value),
-      stock: parseInt(newProduct.stock),
-      lowStockThreshold: parseInt(newProduct.lowStockThreshold) || 10,
-      dateAdded: new Date().toISOString().split('T')[0],
-      supplier: newProduct.supplier,
-      description: newProduct.description,
-      primaryImage: newProduct.primaryImage,
-      secondaryImage: newProduct.secondaryImage,
-      tertiaryImage: newProduct.tertiaryImage,
-      specifications: newProduct.specifications
-    })
+    // Send POST request to backend
+    const response = await axiosClient.post('/api/admin/product/add', formData)
     
-    alert('Product added successfully!')
-    router.push('/admin/stock')
+    // Show success notification with message from backend
+    successMessage.value = response.data?.message || 'Product added successfully!'
+    showSuccessNotification.value = true
+    
+    // Auto-hide success notification after 3 seconds
+    setTimeout(() => {
+      showSuccessNotification.value = false
+      // Navigate after success
+      router.push('/admin/stock')
+    }, 3000)
   } catch (error) {
     console.error('Error adding product:', error)
-    alert('Error adding product. Please try again.')
+    
+    // Handle validation errors from backend
+    if (error.response?.status === 422 && error.response?.data?.errors) {
+      // Backend returned validation errors
+      const backendErrors = error.response.data.errors
+      Object.entries(backendErrors).forEach(([field, messages]) => {
+        validationErrors[field] = Array.isArray(messages) ? messages[0] : messages
+      })
+      scrollToFirstError()
+    } else {
+      // Handle other errors
+      const errorMessage = error.response?.data?.message || 'Error adding product. Please try again.'
+      alert(errorMessage)
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -501,7 +602,6 @@ const goBack = () => {
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
       <admin-header></admin-header>
-      
       <!-- Add Product Content -->
       <main class="flex-1 overflow-y-auto p-6">
         <div class="max-w-4xl mx-auto">
@@ -531,16 +631,19 @@ const goBack = () => {
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Basic Information</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div class="relative">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Name</label>
                     <input 
                       v-model="newProduct.name"
                       @focus="showNameSuggestions = true, nameSelected = false"
                       @blur="showNameSuggestions = false"
+                      @input="clearFieldError('name')"
                       type="text" 
-                      required
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      data-field="name"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.name ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                       placeholder="Enter product name or select from existing"
                     >
+                    <p v-if="validationErrors.name" class="text-red-500 text-sm mt-1">{{ validationErrors.name }}</p>
                     
                     <!-- Auto-suggestion dropdown -->
                     <div v-if="showNameSuggestions && filteredProducts.length > 0" 
@@ -567,38 +670,48 @@ const goBack = () => {
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Brand</label>
                     <select 
                       v-model="newProduct.brand"
-                      required
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      @change="clearFieldError('brand')"
+                      data-field="brand"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.brand ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                     >
                       <option value="">Select Brand</option>
                       <option v-for="brand in brands" :key="brand" :value="brand">{{ brand }}</option>
                     </select>
+                    <p v-if="validationErrors.brand" class="text-red-500 text-sm mt-1">{{ validationErrors.brand }}</p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
                     <select 
                       v-model="newProduct.category"
-                      required
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      @change="clearFieldError('category')"
+                      data-field="category"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.category ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                     >
                       <option value="">Select Category</option>
                       <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
                     </select>
+                    <p v-if="validationErrors.category" class="text-red-500 text-sm mt-1">{{ validationErrors.category }}</p>
                   </div>
 
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Supplier</label>
                     <select 
                       v-model="newProduct.supplier"
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      @change="clearFieldError('supplier')"
+                      data-field="supplier"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.supplier ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                     >
                       <option value="">Select Supplier</option>
                       <option v-for="supplier in suppliers" :key="supplier" :value="supplier">{{ supplier }}</option>
                     </select>
+                    <p v-if="validationErrors.supplier" class="text-red-500 text-sm mt-1">{{ validationErrors.supplier }}</p>
                   </div>
                 </div>
               </div>
@@ -608,52 +721,80 @@ const goBack = () => {
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Pricing & Inventory</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Price ($) *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Price ($)</label>
                     <input 
                       v-model="newProduct.originalPrice"
+                      @input="clearFieldError('base_price')"
                       type="number" 
                       min="0"
                       step="0.01"
-                      required
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      data-field="base_price"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.base_price ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                       placeholder="0.00"
                     >
+                    <p v-if="validationErrors.base_price" class="text-red-500 text-sm mt-1">{{ validationErrors.base_price }}</p>
                   </div>
 
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Discounted Price ($)</label>
                     <input 
                       v-model="newProduct.discountedPrice"
+                      @input="clearFieldError('discount_price')"
                       type="number" 
                       min="0"
                       step="0.01"
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      data-field="discount_price"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.discount_price ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                       placeholder="Optional"
                     >
+                    <p v-if="validationErrors.discount_price" class="text-red-500 text-sm mt-1">{{ validationErrors.discount_price }}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Leave empty if no discount</p>
                   </div>
 
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Quantity *</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Stock Quantity</label>
                     <input 
                       v-model="newProduct.stock"
+                      @input="clearFieldError('stock_quantity')"
                       type="number" 
                       min="0"
-                      required
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      data-field="stock_quantity"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.stock_quantity ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                       placeholder="0"
                     >
+                    <p v-if="validationErrors.stock_quantity" class="text-red-500 text-sm mt-1">{{ validationErrors.stock_quantity }}</p>
                   </div>
 
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Low Stock Threshold</label>
                     <input 
                       v-model="newProduct.lowStockThreshold"
+                      @input="clearFieldError('low_stock_threshold')"
                       type="number" 
                       min="0"
-                      class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                      data-field="low_stock_threshold"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.low_stock_threshold ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                       placeholder="10"
                     >
+                    <p v-if="validationErrors.low_stock_threshold" class="text-red-500 text-sm mt-1">{{ validationErrors.low_stock_threshold }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">VAT</label>
+                    <input 
+                      v-model="newProduct.vatRate"
+                      @input="clearFieldError('vat_rate')"
+                      type="text" 
+                      min="0"
+                      data-field="vat_rate"
+                      class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                      :class="validationErrors.vat_rate ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
+                      placeholder="0.16"
+                    >
+                    <p v-if="validationErrors.vat_rate" class="text-red-500 text-sm mt-1">{{ validationErrors.vat_rate }}</p>
                   </div>
                 </div>
               </div>
@@ -926,10 +1067,14 @@ const goBack = () => {
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Description</h3>
                 <textarea 
                   v-model="newProduct.description"
+                  @input="clearFieldError('description')"
                   rows="4"
-                  class="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors"
+                  data-field="description"
+                  class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#042EFF] focus:border-[#042EFF] transition-colors dark:bg-gray-900 dark:text-gray-100"
+                  :class="validationErrors.description ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-700'"
                   placeholder="Enter product description (optional)"
                 ></textarea>
+                <p v-if="validationErrors.description" class="text-red-500 text-sm mt-1">{{ validationErrors.description }}</p>
               </div>
 
               <!-- Form Actions -->
@@ -984,6 +1129,26 @@ const goBack = () => {
         </svg>
       </button>
     </div>
+
+    <!-- Success Notification -->
+    <transition name="slide-in-right">
+      <div v-if="showSuccessNotification" 
+           class="fixed top-6 right-6 z-50 bg-white dark:bg-gray-800 border border-green-200 dark:border-green-700 rounded-lg shadow-lg p-4 flex items-center max-w-md">
+        <div class="flex-shrink-0">
+          <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="ml-3 flex-1">
+          <p class="text-sm font-medium text-green-800 dark:text-green-300">{{ successMessage }}</p>
+        </div>
+        <button @click="showSuccessNotification = false" class="ml-4 flex-shrink-0 text-green-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -1022,6 +1187,22 @@ button {
 /* Form animations */
 .grid > div {
   animation: slideUp 0.3s ease-out;
+}
+
+/* Slide in/out transition for notifications */
+.slide-in-right-enter-active,
+.slide-in-right-leave-active {
+  transition: all 0.3s ease-in-out;
+}
+
+.slide-in-right-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-in-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
 }
 
 @keyframes slideUp {

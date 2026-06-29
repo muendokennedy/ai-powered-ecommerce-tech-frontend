@@ -1,12 +1,24 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import axiosClient from '@/axiosClient'
+import { useUserStore, useAdminUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+const adminUserStore = useAdminUserStore()
+
+const getReturnTo = () => {
+  return route.query.returnTo || sessionStorage.getItem('authReturnTo') || '/'
+}
+
+const clearReturnTo = () => {
+  sessionStorage.removeItem('authReturnTo')
+}
 
 // Reactive data
 const registerForm = ref({
@@ -97,10 +109,24 @@ const handleRegister = async () => {
     }
 
     // Axios client now handles CSRF cookie + header automatically
-    await axiosClient.post('/register', payload)
+    const response = await axiosClient.post('/register', payload)
 
-    successMessage.value = 'Account created successfully! Redirecting to login...'
-    setTimeout(() => router.push('/login'), 1200)
+    const registeredUser =
+      response?.data?.user ||
+      response?.data?.data?.user ||
+      response?.data?.data ||
+      { email: registerForm.value.email }
+
+    adminUserStore.clearAdminUser()
+    userStore.setUser(registeredUser)
+
+    successMessage.value = 'Account created successfully! Redirecting...'
+    const returnTo = getReturnTo()
+    clearReturnTo()
+    setTimeout(() => {
+      router.replace(returnTo)
+    }, 800)
+    
   } catch (err) {
     // Handle validation errors from Laravel (422)
     const validation = err?.validation || err?.response?.data?.errors
@@ -124,11 +150,25 @@ const handleSocialLogin = (provider) => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  const returnTo = getReturnTo()
+  router.push({ path: '/login', query: returnTo ? { returnTo } : {} })
 }
+
+onMounted(() => {
+  if (route.query.returnTo) {
+    sessionStorage.setItem('authReturnTo', String(route.query.returnTo))
+  }
+
+  try {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch {
+    window.scrollTo(0, 0)
+  }
+})
 </script>
 
 <template>
+  <div>
   <Header/>
   <main class="menu-toggle">
     <section class="register-section mx-auto pt-16 px-[4%] lg:max-w-[1500px]">
@@ -268,6 +308,8 @@ const goToLogin = () => {
               </div>
               <p v-if="fieldErrors.confirmPassword" class="text-red-500 text-sm mt-1">{{ fieldErrors.confirmPassword }}</p>
             </div>
+
+            
             
             <!-- Register Button -->
             <button
@@ -296,7 +338,7 @@ const goToLogin = () => {
       </div>
     </section>
   </main>
-  <Footer/>
+  </div>
 </template>
 
 <style scoped>

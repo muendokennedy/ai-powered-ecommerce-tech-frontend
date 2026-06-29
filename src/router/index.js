@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/Client/HomeView.vue'
+import { useAdminUserStore } from '@/stores/user'
 import { useUserStore } from '@/stores/user'
 
 const router = createRouter({
@@ -40,9 +41,8 @@ const router = createRouter({
       name: 'checkout',
       component: () => import('@/views/Client/CheckoutView.vue'),
       beforeEnter: (to, from, next) => {
-        // Check if user is logged in using localStorage
-        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
-        if (!isLoggedIn) {
+        const userStore = useUserStore()
+        if (!userStore.user) {
           // Redirect to login page with return URL
           next({ path: '/login', query: { returnTo: to.fullPath } })
         } else {
@@ -70,9 +70,8 @@ const router = createRouter({
       name: 'orders',
       component: () => import('@/views/Client/OrdersView.vue'),
       beforeEnter: (to, from, next) => {
-        // Check if user is logged in
-        const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
-        if (!isLoggedIn) {
+        const userStore = useUserStore()
+        if (!userStore.user) {
           // Redirect to login page with return URL
           next({ path: '/login', query: { returnTo: to.fullPath } })
         } else {
@@ -134,13 +133,9 @@ router.beforeEach(async (to) => {
   const isAuthException = to.path === '/admin/login' || to.path === '/admin/register'
 
   if (isAdminRoute && !isAuthException) {
-    const userStore = useUserStore()
+    const adminUserStore = useAdminUserStore()
 
-    if (!userStore.user && typeof userStore.fetchUser === 'function') {
-      try { await userStore.fetchUser() } catch (_) {}
-    }
-
-    if (!userStore.user) {
+    if (!adminUserStore.adminUser) {
       return { path: '/admin/login', query: { returnTo: to.fullPath } }
     }
   }

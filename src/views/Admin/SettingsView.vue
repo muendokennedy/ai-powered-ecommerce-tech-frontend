@@ -1,8 +1,10 @@
 <script setup>
 import { reactive, ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminSidebar from '@/components/Admin/AdminSidebar.vue'
 import AdminHeader from '@/components/Admin/AdminHeader.vue'
 import AdminToast from '@/components/Admin/AdminToast.vue'
+import axiosClient from '@/axiosClient'
 
 const showEditProfileModal = ref(false)
 const showAdminDetailsModal = ref(false)
@@ -17,35 +19,33 @@ const showMessageModal = ref(false)
 const sendingMessage = ref(false)
 const messageForm = reactive({ subject: '', body: '' })
 
-// Current logged in admin (simulated)
-const currentAdmin = reactive({
-  id: 'ADM-001',
-  name: 'Alex Thompson',
-  email: 'alex.thompson@admin.com',
-  phone: '+1 (555) 123-4567',
-  role: 'Primary Admin',
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-  joinDate: '2023-01-15',
-  lastLogin: '2024-09-26 10:30 AM',
-  department: 'Operations',
-  location: 'New York, NY',
-  permissions: {
-    userManagement: true,
-    orderManagement: true,
-    productManagement: true,
-    systemSettings: true,
-    financialReports: true,
-    analytics: true
-  },
-  preferences: {
-    theme: 'Light',
-    language: 'English',
-    timezone: 'EST (UTC-5)',
-    emailNotifications: true,
-    smsNotifications: false,
-    weeklyReports: true
+// Current logged in admin (will be loaded from server)
+// include defaults for notifications and permissions to avoid undefined access in template
+const currentAdmin = reactive({ preferences: { theme: 'Light', language: 'English' }, notifications: {}, permissions: {} })
+const authenticatedAdmin = ref(null)
+const isLoading = ref(true)
+const router = useRouter()
+
+function normalizePhoneForDisplay(phone) {
+  if (!phone) return ''
+  return String(phone)
+}
+
+// Persist partial admin updates to backend
+const persistAdminUpdate = async (partial) => {
+  if (!currentAdmin.id) return null
+  try {
+    // strip Vue reactivity proxies by serializing the payload
+    const payload = JSON.parse(JSON.stringify(partial))
+    const res = await axiosClient.post(`/api/admins/${partial.admin_id || currentAdmin.id}/update`, payload)
+    showNotification({ type: 'success', title: 'Saved', message: 'Changes saved.' })
+    return res
+  } catch (err) {
+    console.error('Failed to persist admin update', err)
+    showNotification({ type: 'error', title: 'Save failed', message: 'Could not save changes to server.' })
+    throw err
   }
-})
+}
 
 // Edit profile form
 const editForm = reactive({
@@ -60,6 +60,7 @@ const departments = ['Operations','Customer Service','Inventory','Marketing']
 
 // Avatar editing state
 const newAvatarPreview = ref('')
+const avatarFile = ref(null)
 const isDraggingAvatar = ref(false)
 const fileInputRef = ref(null)
 
@@ -73,6 +74,7 @@ function handleAvatarFileList(files){
     showNotification({ type:'warning', title:'Invalid File', message:'Please select an image file.' })
     return
   }
+  avatarFile.value = file
   if(newAvatarPreview.value) URL.revokeObjectURL(newAvatarPreview.value)
   newAvatarPreview.value = URL.createObjectURL(file)
 }
@@ -85,180 +87,139 @@ function onAvatarDrop(e){
 function onAvatarDragOver(e){ e.preventDefault(); isDraggingAvatar.value = true }
 function onAvatarDragLeave(e){ e.preventDefault(); isDraggingAvatar.value = false }
 
+// const res = await axiosClient.get('/api/admin/settings')
+
 // All admins data
 const admins = reactive([
-  {
-    id: 'ADM-001',
-    name: 'Alex Thompson',
-    email: 'alex.thompson@admin.com',
-    phone: '+1 (555) 123-4567',
-    role: 'Primary Admin',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-01-15',
-    lastLogin: '2024-09-26 10:30 AM',
-    department: 'Operations',
-    location: 'New York, NY',
-    permissions: {
-      userManagement: true,
-      orderManagement: true,
-      productManagement: true,
-      systemSettings: true,
-      financialReports: true,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Updated product inventory', date: '2024-09-26 09:15 AM' },
-      { action: 'Processed order refund', date: '2024-09-25 03:22 PM' },
-      { action: 'Added new admin user', date: '2024-09-24 11:45 AM' }
-    ],
-    totalActions: 1247,
-    accountCreated: '2023-01-15'
-  },
-  {
-    id: 'ADM-002',
-    name: 'Sarah Chen',
-    email: 'sarah.chen@admin.com',
-    phone: '+1 (555) 987-6543',
-    role: 'Secondary Admin',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b29c?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-03-22',
-    lastLogin: '2024-09-26 08:45 AM',
-    department: 'Customer Service',
-    location: 'Los Angeles, CA',
-    permissions: {
-      userManagement: true,
-      orderManagement: true,
-      productManagement: false,
-      systemSettings: false,
-      financialReports: false,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Resolved customer complaint', date: '2024-09-26 08:30 AM' },
-      { action: 'Updated client information', date: '2024-09-25 04:15 PM' },
-      { action: 'Processed order cancellation', date: '2024-09-25 02:10 PM' }
-    ],
-    totalActions: 856,
-    accountCreated: '2023-03-22'
-  },
-  {
-    id: 'ADM-003',
-    name: 'Michael Rodriguez',
-    email: 'michael.rodriguez@admin.com',
-    phone: '+1 (555) 456-7890',
-    role: 'Secondary Admin',
-    status: 'Active',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-06-10',
-    lastLogin: '2024-09-25 06:22 PM',
-    department: 'Inventory',
-    location: 'Chicago, IL',
-    permissions: {
-      userManagement: false,
-      orderManagement: true,
-      productManagement: true,
-      systemSettings: false,
-      financialReports: false,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Updated stock levels', date: '2024-09-25 06:00 PM' },
-      { action: 'Added new products', date: '2024-09-25 02:30 PM' },
-      { action: 'Generated inventory report', date: '2024-09-24 10:15 AM' }
-    ],
-    totalActions: 623,
-    accountCreated: '2023-06-10'
-  },
-  {
-    id: 'ADM-004',
-    name: 'Emily Johnson',
-    email: 'emily.johnson@admin.com',
-    phone: '+1 (555) 321-0987',
-    role: 'Secondary Admin',
-    status: 'Inactive',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    joinDate: '2023-08-18',
-    lastLogin: '2024-09-20 02:15 PM',
-    department: 'Marketing',
-    location: 'Miami, FL',
-    permissions: {
-      userManagement: false,
-      orderManagement: false,
-      productManagement: false,
-      systemSettings: false,
-      financialReports: false,
-      analytics: true
-    },
-    activityLog: [
-      { action: 'Updated marketing campaign', date: '2024-09-20 02:00 PM' },
-      { action: 'Generated analytics report', date: '2024-09-19 11:30 AM' },
-      { action: 'Updated client newsletter', date: '2024-09-18 09:45 AM' }
-    ],
-    totalActions: 234,
-    accountCreated: '2023-08-18'
-  }
+  
 ])
 
 const getRoleColor = (role) => {
-  switch (role) {
-    case 'Primary Admin': return 'bg-purple-100 text-purple-800'
-    case 'Secondary Admin': return 'bg-blue-100 text-blue-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
+  const r = (role || '').toString().toLowerCase()
+  if (r === 'primary admin' || r === 'primary') return 'bg-purple-100 text-purple-800'
+  if (r === 'secondary admin' || r === 'secondary') return 'bg-blue-100 text-blue-800'
+  return 'bg-gray-100 text-gray-800'
 }
 
 const getStatusColor = (status) => {
-  switch (status) {
-    case 'Active': return 'bg-green-100 text-green-800'
-    case 'Inactive': return 'bg-red-100 text-red-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
+  const s = (status || '').toString().toLowerCase()
+  if (s === 'active') return 'bg-green-100 text-green-800'
+  if (s === 'inactive') return 'bg-red-100 text-red-800'
+  return 'bg-gray-100 text-gray-800'
 }
 
 const openEditProfile = () => {
-  editForm.name = currentAdmin.name
+  editForm.name = currentAdmin.fullName
   editForm.email = currentAdmin.email
   editForm.phone = currentAdmin.phone
   editForm.department = currentAdmin.department
   editForm.location = currentAdmin.location
+  // prefill avatar preview with existing image
+  newAvatarPreview.value = currentAdmin.profileImg || currentAdmin.avatar || ''
+  avatarFile.value = null
   showEditProfileModal.value = true
 }
 
 const closeEditProfileModal = () => {
   showEditProfileModal.value = false
+  newAvatarPreview.value = ''
+  avatarFile.value = null
 }
 
 const saveProfile = () => {
-  currentAdmin.name = editForm.name
-  currentAdmin.email = editForm.email
-  currentAdmin.phone = editForm.phone
-  currentAdmin.department = editForm.department
-  currentAdmin.location = editForm.location
-  if(newAvatarPreview.value) {
-    currentAdmin.avatar = newAvatarPreview.value
-  }
+  // submit to backend endpoint
+  const form = new FormData()
+  form.append('name', editForm.name)
+  form.append('fullName', editForm.name)
+  form.append('email', editForm.email)
+  form.append('phone', editForm.phone)
+  form.append('department', editForm.department)
+  form.append('location', editForm.location)
+  if (avatarFile.value) form.append('profileImg', avatarFile.value)
 
-  const adminIndex = admins.findIndex(a => a.id === currentAdmin.id)
-  if (adminIndex > -1) {
-    Object.assign(admins[adminIndex], {
-      name: editForm.name,
-      email: editForm.email,
-      phone: editForm.phone,
-      department: editForm.department,
-      location: editForm.location,
-      avatar: newAvatarPreview.value ? newAvatarPreview.value : admins[adminIndex].avatar
+  showNotification({ type: 'info', title: 'Saving', message: 'Saving profile to server...' })
+  axiosClient.post('/api/admin/profile/edit', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then(res => {
+      const admin = (res.data && res.data.admin) ? res.data.admin : null
+      if (admin) {
+        Object.assign(currentAdmin, admin)
+        const adminIndex = admins.findIndex(a => a.id === currentAdmin.id)
+        if (adminIndex > -1) Object.assign(admins[adminIndex], admin)
+      }
+      showNotification({ type: 'success', title: 'Profile Updated', message: 'Your profile was updated.' })
+      newAvatarPreview.value = ''
+      avatarFile.value = null
+      closeEditProfileModal()
     })
-  }
-
-  showNotification({ type: 'success', title: 'Profile Updated', message: 'Your profile information has been saved.' })
-  newAvatarPreview.value = ''
-  closeEditProfileModal()
+    .catch(err => {
+      console.error('Failed to save profile', err)
+      showNotification({ type: 'error', title: 'Save failed', message: 'Could not save profile to server.' })
+    })
 }
 
 const viewAdminDetails = (admin) => {
-  selectedAdmin.value = admin
+  // ensure selectedAdmin has the fields the modal expects to avoid template/runtime errors
+    const actions = admin.actions ?? []
+
+  // Total actions = number of action records
+  const totalActions = actions.length
+
+  // Latest login from actions
+  let lastLogin = null
+
+  actions.forEach(action => {
+    if (!action.last_login) return
+
+    const loginDate = new Date(action.last_login)
+
+    if (!lastLogin || loginDate > lastLogin) {
+      lastLogin = loginDate
+    }
+  })
+
+  const safe = {
+    id: admin.id ?? null,
+    name: admin.name ?? admin.fullName ?? '',
+    email: admin.email ?? '',
+    phone: admin.phone ?? '',
+    location: admin.location ?? '',
+    role: admin.role ?? '',
+    department: admin.department ?? '',
+    avatar: admin.avatar ?? admin.profileImg ?? '',
+
+    // Prefer explicitly supplied values, otherwise use created_at
+    joinDate:
+      admin.joinDate ??
+      admin.accountCreated ??
+      admin.created_at ??
+      null,
+
+    // Count actions from the actions array
+    totalActions,
+
+    accountCreated:
+      admin.accountCreated ??
+      admin.joinDate ??
+      admin.created_at ??
+      null,
+
+    status:
+      admin.status ??
+      (admin.online ? 'Active' : 'Inactive'),
+
+    permissions: admin.permissions ?? {},
+
+    activityLog: actions,
+
+    // Latest login derived from actions
+    lastLogin:
+      admin.lastLogin ??
+      (lastLogin ? lastLogin.toISOString() : null)
+  }
+
+  selectedAdmin.value = safe
+  isEditingPermissions.value = false
+  permissionDraft.value = {}
   showAdminDetailsModal.value = true
 }
 
@@ -318,7 +279,7 @@ function sendAdminMessage() {
 }
 
 const confirmDeleteAdmin = (admin) => {
-  if (admin.role === 'Primary Admin') {
+  if ((admin.role || '').toString().toLowerCase() === 'primary admin') {
     showNotification({ type: 'warning', title: 'Action Blocked', message: 'Primary Admin cannot be deleted.' })
     return
   }
@@ -327,16 +288,22 @@ const confirmDeleteAdmin = (admin) => {
 }
 
 const deleteAdmin = () => {
-  if (adminToDelete.value) {
-    const index = admins.findIndex(a => a.id === adminToDelete.value.id)
-    if (index > -1) {
-      admins.splice(index, 1)
-      showNotification({ type: 'success', title: 'Admin Deleted', message: 'The administrator account was removed.' })
-    }
+  if (!adminToDelete.value) return
+  const id = adminToDelete.value.id
+  showNotification({ type: 'info', title: 'Deleting', message: 'Deleting admin...' })
+  axiosClient.post(`/api/admins/admin/delete/${id}`).then(() => {
+    const index = admins.findIndex(a => a.id === id)
+    if (index > -1) admins.splice(index, 1)
+    showNotification({ type: 'success', title: 'Admin Deleted', message: 'The administrator account was removed.' })
     showDeleteConfirmModal.value = false
     adminToDelete.value = null
-  }
+  }).catch(err => {
+    console.error('Delete failed', err)
+    showNotification({ type: 'error', title: 'Delete failed', message: 'Could not delete administrator.' })
+  })
 }
+
+// Device logout removed (feature disabled)
 
 const closeDeleteConfirmModal = () => {
   showDeleteConfirmModal.value = false
@@ -359,44 +326,126 @@ const diffInDays = (from) => {
   return Math.max(0, Math.floor((now - start)/(1000*60*60*24)))
 }
 const profileMetrics = computed(() => {
-  const a = currentAdminRecord.value
+  const a = authenticatedAdmin.value
   if (!a) return []
-  const permissionsEnabled = Object.values(a.permissions || {}).filter(Boolean).length
+
+  const permissionsEnabled = Object.values(a.permissions || {})
+    .filter(val => val === true || String(val).toLowerCase() === 'enabled')
+    .length
+
+  const actions = a.actions || []
+
+  // Total actions
+  const totalActions = actions.length
+
+  // Last login (latest date from actions)
+  let lastLoginDisplay = '—'
+
+  if (actions.length) {
+    const latestLogin = actions
+      .map(action => action.last_login)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b) - new Date(a))[0]
+
+    if (latestLogin) {
+      lastLoginDisplay = new Date(latestLogin).toLocaleString()
+    }
+  }
+
+  // Days active: active_since -> latest login (or now if none found)
+  let daysActive = '—'
+
+  try {
+    const start = a.active_since ? new Date(a.active_since) : null
+
+    if (start) {
+      const latestLogin = actions
+        .map(action => action.last_login)
+        .filter(Boolean)
+        .sort((a, b) => new Date(b) - new Date(a))[0]
+
+      const end = latestLogin ? new Date(latestLogin) : new Date()
+
+      daysActive =
+        Math.max(
+          0,
+          Math.floor((end - start) / (1000 * 60 * 60 * 24))
+        ) + 1
+    }
+  } catch (e) {}
+
   return [
-    { label: 'Total Actions', value: a.totalActions?.toLocaleString?.() || '—' },
-    { label: 'Permissions Enabled', value: permissionsEnabled },
-    { label: 'Days Active', value: diffInDays(a.joinDate) },
-    { label: 'Last Login', value: a.lastLogin || '—' },
-    { label: 'Joined', value: formatDate(a.joinDate) }
+    {
+      label: 'Total Actions',
+      value: totalActions.toLocaleString()
+    },
+    {
+      label: 'Permissions Enabled',
+      value: permissionsEnabled
+    },
+    {
+      label: 'Days Active',
+      value: daysActive
+    },
+    {
+      label: 'Last Login',
+      value: lastLoginDisplay
+    },
+    {
+      label: 'Joined',
+      value: formatDate(a.created_at)
+    }
   ]
 })
-const recentActivity = computed(() => (currentAdminRecord.value?.activityLog || []).slice(0,6))
+const recentActivity = computed(() => (authenticatedAdmin.value?.actions || []).slice(0,6))
+
+// helper to display permission labels in Title Case (stock_management -> Stock Management)
+const formatPermissionLabel = (s) => {
+  if (!s) return ''
+  return String(s).replace(/_/g, ' ').split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
 
 const updatePreference = (key, value) => {
   currentAdmin.preferences[key] = value
 
-  // Apply theme immediately; the watcher will handle the toast to avoid duplicates.
+  // Apply theme immediately; persist all preferences to backend
   if (key === 'theme') {
-    try {
-      localStorage.setItem(THEME_KEY, String(value))
-    } catch {}
+    try { localStorage.setItem(THEME_KEY, String(value)) } catch {}
     applyTheme(value)
-    return
   }
 
-  showNotification({
-    type: 'success',
-    title: 'Preference Saved',
-    message: `${key.replace(/([A-Z])/g, ' $1')} updated.`
-  })
+  // persist preferences JSON to backend
+  persistAdminUpdate({ preferences: currentAdmin.preferences })
+}
+
+// Notifications are stored as a JSON column on the admin model.
+// Keep notifications separate from preferences and persist them to the same update endpoint.
+const updateNotification = (key, value) => {
+  if (!currentAdmin.notifications) currentAdmin.notifications = {}
+  currentAdmin.notifications[key] = value
+  // persist notifications JSON to backend
+  persistAdminUpdate({ notifications: currentAdmin.notifications })
 }
 
 // --- Permission Editing State for Admin Details Modal ---
 const isEditingPermissions = ref(false)
 const permissionDraft = ref({})
 
+const canEditPermissions = computed(() => {
+  if (!selectedAdmin.value) return false
+  const role = (selectedAdmin.value.role || '').toString().toLowerCase()
+  const isPrimary = role.includes('primary')
+  // Primary admins cannot edit their own permissions
+  if (isPrimary && selectedAdmin.value.id === currentAdmin.id) return false
+  return true
+})
+
 const startEditPermissions = () => {
   if (!selectedAdmin.value) return
+  if (!canEditPermissions.value) {
+    showNotification({ type: 'warning', title: 'Action Blocked', message: 'Primary Admin cannot edit their own permissions.' })
+    return
+  }
   // Create a shallow copy of permissions to edit
   permissionDraft.value = { ...selectedAdmin.value.permissions }
   isEditingPermissions.value = true
@@ -404,7 +453,7 @@ const startEditPermissions = () => {
 
 const togglePermission = (key) => {
   if (!isEditingPermissions.value) return
-  permissionDraft.value[key] = !permissionDraft.value[key]
+  permissionDraft.value[key] = permissionDraft.value[key] === 'enabled' ? 'disabled' : 'enabled'
 }
 
 const cancelEditPermissions = () => {
@@ -412,49 +461,89 @@ const cancelEditPermissions = () => {
   permissionDraft.value = {}
 }
 
-const savePermissions = () => {
+const savePermissions = async () => {
   if (!selectedAdmin.value || !isEditingPermissions.value) return
-  // Persist to selectedAdmin
-  selectedAdmin.value.permissions = { ...permissionDraft.value }
-  // Persist to admins array
-  const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
-  if (idx > -1) {
-    admins[idx].permissions = { ...permissionDraft.value }
+  const newPermissions = { ...permissionDraft.value }
+  showNotification({ type: 'info', title: 'Saving', message: 'Saving permissions...' })
+  try {
+    if (selectedAdmin.value.id === currentAdmin.id) {
+      // updating own permissions
+      await persistAdminUpdate({ permissions: newPermissions })
+      currentAdmin.permissions = newPermissions
+      const idx = admins.findIndex(a => a.id === currentAdmin.id)
+      if (idx > -1) admins[idx].permissions = newPermissions
+      selectedAdmin.value.permissions = newPermissions
+    } else {
+      // primary admin editing another admin: include target admin id in payload
+      await persistAdminUpdate({ admin_id: selectedAdmin.value.id, permissions: JSON.stringify(newPermissions) })
+      const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
+      if (idx > -1) admins[idx].permissions = newPermissions
+      selectedAdmin.value.permissions = newPermissions
+    }
+    isEditingPermissions.value = false
+    permissionDraft.value = {}
+    showNotification({ type: 'success', title: 'Permissions Updated', message: 'Administrator permissions were saved.' })
+  } catch (err) {
+    console.error('Permissions save failed', err)
+    showNotification({ type: 'error', title: 'Save failed', message: 'Could not save permissions to server.' })
+    // keep editing mode so user can retry
+    isEditingPermissions.value = true
   }
-  isEditingPermissions.value = false
-  showNotification({ type: 'success', title: 'Permissions Updated', message: 'Administrator permissions were saved.' })
 }
 
 // --- Suspend / Activate Account Logic ---
 const isTogglingStatus = ref(false)
-function performStatusToggle(newStatus){
-  if (!selectedAdmin.value) return
-  isTogglingStatus.value = true
-  setTimeout(() => {
-    selectedAdmin.value.status = newStatus
-    const idx = admins.findIndex(a => a.id === selectedAdmin.value.id)
-    if (idx > -1) admins[idx].status = newStatus
-    isTogglingStatus.value = false
-    showNotification({ type: 'success', title: 'Status Updated', message: `${selectedAdmin.value.name} is now ${newStatus}.` })
-  }, 600)
-}
-const toggleSuspendAdmin = () => {
+
+// Toggle suspend/activate using unified status endpoint
+const toggleSuspendAdmin = async () => {
   if (!selectedAdmin.value) return
   if (isTogglingStatus.value) return
+  const roleLower = (selectedAdmin.value.role || '').toString().toLowerCase()
   if (selectedAdmin.value.status === 'Active') {
-    if (selectedAdmin.value.role === 'Primary Admin') {
+    if (roleLower.includes('primary')) {
       showNotification({ type: 'warning', title: 'Protected Account', message: 'Primary Admin cannot be suspended.' })
       return
     }
     showSuspendConfirmModal.value = true
-  } else {
-    performStatusToggle('Active')
+    return
+  }
+
+  // Reactivate an inactive admin
+  const id = selectedAdmin.value.id
+  isTogglingStatus.value = true
+  showNotification({ type: 'info', title: 'Activating', message: 'Reactivating admin...' })
+  try {
+    await axiosClient.post(`/api/admins/admin/status/change/${id}`, { status: 'Active' })
+    selectedAdmin.value.status = 'Active'
+    const idx = admins.findIndex(a => a.id === id)
+    if (idx > -1) admins[idx].status = 'Active'
+    showNotification({ type: 'success', title: 'Activated', message: `${selectedAdmin.value.name} has been reactivated.` })
+  } catch (err) {
+    console.error('Activation failed', err)
+    showNotification({ type: 'error', title: 'Failed', message: 'Could not reactivate administrator.' })
+  } finally {
+    isTogglingStatus.value = false
   }
 }
-function confirmSuspend(){
+
+const confirmSuspend = async () => {
   if (!selectedAdmin.value) return
   showSuspendConfirmModal.value = false
-  performStatusToggle('Inactive')
+  const id = selectedAdmin.value.id
+  isTogglingStatus.value = true
+  showNotification({ type: 'info', title: 'Suspending', message: 'Suspending admin...' })
+  try {
+    await axiosClient.post(`/api/admins/admin/status/change/${id}`, { status: 'Inactive' })
+    selectedAdmin.value.status = 'Inactive'
+    const idx = admins.findIndex(a => a.id === id)
+    if (idx > -1) admins[idx].status = 'Inactive'
+    showNotification({ type: 'success', title: 'Suspended', message: `${selectedAdmin.value.name} has been suspended.` })
+  } catch (err) {
+    console.error('Suspend failed', err)
+    showNotification({ type: 'error', title: 'Failed', message: 'Could not suspend administrator.' })
+  } finally {
+    isTogglingStatus.value = false
+  }
 }
 function cancelSuspend(){
   showSuspendConfirmModal.value = false
@@ -523,8 +612,131 @@ function handleSystemThemeChange(e) {
   }
   setDarkMode(!!e.matches)
 }
-
 onMounted(() => {
+  // load server settings
+  (async () => {
+    isLoading.value = true
+    try {
+      const res = await axiosClient.get('/api/admin/settings')
+      const data = res.data || {}
+      const auth = data.currentAuthenticatedAdmin || data.authenticatedAdmin || null
+      if (!auth) {
+        router.push('/admin/login')
+        return
+      }
+      // helper: transform server admin record into UI-friendly shape
+      const transformAdmin = (a) => {
+        if (!a) return a
+        const admin = { ...a }
+
+        // normalize profile image: ensure absolute URL pointing to backend baseURL
+        if (admin.profileImg && typeof admin.profileImg === 'string') {
+          const base = (axiosClient && axiosClient.defaults && axiosClient.defaults.baseURL) ? String(axiosClient.defaults.baseURL).replace(/\/$/, '') : window.location.origin
+          if (admin.profileImg.startsWith('/storage')) {
+            admin.profileImg = base + admin.profileImg
+          } else if (admin.profileImg.includes('/storage/') && admin.profileImg.startsWith('http')) {
+            // replace origin with backend base if it was incorrectly set to frontend origin
+            try {
+              const u = new URL(admin.profileImg)
+              const p = u.pathname + (u.search || '') + (u.hash || '')
+              admin.profileImg = base + p
+            } catch (e) {
+              // leave as-is on parse error
+            }
+          }
+        }
+
+        // normalize permissions: convert empty arrays to empty object
+        if (Array.isArray(admin.permissions) && admin.permissions.length === 0) admin.permissions = {}
+        if (typeof admin.permissions === 'string') {
+          try { admin.permissions = JSON.parse(admin.permissions) } catch { admin.permissions = {} }
+        }
+
+        // normalize notifications JSON column
+        if (!admin.notifications) admin.notifications = {}
+        if (typeof admin.notifications === 'string') {
+          try { admin.notifications = JSON.parse(admin.notifications) } catch { admin.notifications = {} }
+        }
+
+        // normalize status: 1 -> 'Active', 0 -> 'Inactive'
+        if (admin.status === 1 || admin.status === '1') admin.status = 'Active'
+        else if (admin.status === 0 || admin.status === '0') admin.status = 'Inactive'
+
+        // normalize preferences and theme casing
+        if (!admin.preferences) admin.preferences = { theme: 'Light', language: 'English' }
+        // normalize language and apply to document
+        if (admin.preferences.language) {
+          const langVal = String(admin.preferences.language).trim()
+          admin.preferences.language = langVal.charAt(0).toUpperCase() + langVal.slice(1).toLowerCase()
+        }
+        if (admin.preferences.theme) {
+          const t = String(admin.preferences.theme).toLowerCase()
+          if (t === 'light') admin.preferences.theme = 'Light'
+          else if (t === 'dark') admin.preferences.theme = 'Dark'
+          else admin.preferences.theme = t === 'auto' ? 'Auto' : admin.preferences.theme
+        }
+
+        // parse actions -> activityLog with friendly action text and date
+        const acts = Array.isArray(admin.actions) ? admin.actions : []
+
+        admin.activityLog = acts.map((it) => {
+          let parsed = it.action
+          if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed) } catch { parsed = { activity: parsed } }
+          }
+          const actionText = parsed.activity ?? parsed.action ?? String(parsed)
+          const ts = parsed.time ? Number(parsed.time) * 1000 : (it.created_at ? Date.parse(it.created_at) : null)
+          const date = ts ? new Date(ts).toISOString() : (it.last_login ? new Date(it.last_login).toISOString() : '')
+          return {
+            id: it.id,
+            action: actionText,
+            date,
+            raw: it,
+          }
+        })
+
+        // expose a lastLogin field: prefer latest activity raw.last_login then activityLog date then active_since
+        admin.lastLogin = (admin.activityLog && admin.activityLog.length) ? (admin.activityLog[0].raw.last_login || admin.activityLog[0].date) : (admin.last_login || admin.active_since || null)
+
+        // total actions - try to use numeric value
+        admin.totalActions = Number((acts[0] && (acts[0].total_actions ?? acts[0].totalActions)) || admin.totalActions || 0)
+
+        // joined date (created_at)
+        admin.joinDate = admin.created_at || admin.joinDate || null
+
+        return admin
+      }
+
+      // merge transformed authenticated admin
+      const authTransformed = transformAdmin(auth)
+      Object.assign(currentAdmin, authTransformed)
+      authenticatedAdmin.value = data.currentAuthenticatedAdmin
+      // persist theme from backend into localStorage for immediate reuse
+      try {
+        if (currentAdmin.preferences && currentAdmin.preferences.theme) {
+          localStorage.setItem(THEME_KEY, String(currentAdmin.preferences.theme))
+          applyTheme(currentAdmin.preferences.theme)
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
+
+      // populate admins list directly when provided (returned only for primary admin)
+      if (Array.isArray(data.admins)) {
+        const transformed = data.admins.map(transformAdmin)
+        admins.splice(0, admins.length, ...transformed)
+      }
+    } catch (e) {
+      console.error('Failed to load admin settings', e)
+      if (e?.response?.status === 401 || e?.response?.data?.error === 'unauthenticated') {
+        router.push('/admin/login')
+        return
+      }
+    } finally {
+      isLoading.value = false
+    }
+  })()
+
   let initial = 'Light'
   try {
     const saved = localStorage.getItem(THEME_KEY)
@@ -545,14 +757,9 @@ onMounted(() => {
 })
 
 watch(
-  () => currentAdmin.preferences.theme,
+  () => currentAdmin.preferences?.theme ?? 'Light',
   (val) => {
     applyTheme(val)
-    showNotification({
-      type: 'success',
-      title: 'Theme Updated',
-      message: val === 'Auto' ? 'Following system appearance.' : `Switched to ${val} theme.`
-    })
   }
 )
 
@@ -569,15 +776,15 @@ watch(
       :zIndex="70"
       @close="activeNotification = null"
     />
-    <admin-sidebar></admin-sidebar>
+    <admin-sidebar :admin="authenticatedAdmin"></admin-sidebar>
     
     <!-- Main Content -->
     <div class="flex-1 flex flex-col">
-      <admin-header></admin-header>
+      <admin-header :admin="authenticatedAdmin"></admin-header>
       
       <!-- Settings Content -->
       <main class="flex-1 overflow-y-auto p-6">
-        <div class="max-w-7xl mx-auto">
+        <div v-if="!isLoading" class="max-w-7xl mx-auto">
           <div class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Settings</h1>
             <p class="text-gray-600 dark:text-gray-400 mt-2">Manage your profile</p>
@@ -595,43 +802,39 @@ watch(
                        Edit Profile
                      </button>
                    </div>
-                   
                    <div class="p-6">
-                     <div class="flex items-start space-x-6">
-                       <img :src="currentAdmin.avatar" :alt="currentAdmin.name" class="h-20 w-20 rounded-full object-cover">
-                       <div class="flex-1">
-                         <div class="flex items-center space-x-3 mb-2">
-                           <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ currentAdmin.name }}</h2>
-                           <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
-                             {{ currentAdmin.role }}
-                           </span>
+                     <div class="flex flex-col items-center text-center">
+                       <img :src="currentAdmin.profileImg || currentAdmin.avatar" :alt="currentAdmin.fullName || currentAdmin.name" class="h-28 w-28 rounded-full object-cover mb-4" />
+                       <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ currentAdmin.fullName || currentAdmin.name }}</h2>
+                       <div class="mt-2">
+                         <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(currentAdmin.role)]">
+                           {{ currentAdmin.role }}
+                         </span>
+                       </div>
+                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 w-full">
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Email</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.email }}</p>
                          </div>
-                         
-                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Email</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.email }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Phone</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.phone }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Department</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.department }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Location</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.location }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Join Date</p>
-                             <p class="font-medium dark:text-gray-100">{{ formatDate(currentAdmin.joinDate) }}</p>
-                           </div>
-                           <div>
-                             <p class="text-sm text-gray-600 dark:text-gray-400">Last Login</p>
-                             <p class="font-medium dark:text-gray-100">{{ currentAdmin.lastLogin }}</p>
-                           </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Phone</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ normalizePhoneForDisplay(currentAdmin.phone) }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Department</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.department }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Location</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.location }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Join Date</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ formatDate(currentAdmin.created_at || currentAdmin.joinDate) }}</p>
+                         </div>
+                         <div>
+                           <p class="text-sm text-left text-gray-600 dark:text-gray-400">Last Login</p>
+                           <p class="font-medium text-left dark:text-gray-100">{{ currentAdmin.lastLogin ? new Date(currentAdmin.lastLogin).toLocaleString() : '—' }}</p>
                          </div>
                        </div>
                      </div>
@@ -666,8 +869,8 @@ watch(
                     <li v-for="(item,idx) in recentActivity" :key="idx" class="flex items-start space-x-3">
                       <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#042EFF] ring-4 ring-[#042EFF]/10"></div>
                       <div class="flex-1">
-                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ item.action }}</p>
-                        <p class="text-xs text-gray-500">{{ item.date }}</p>
+                        <p class="text-sm font-medium text-gray-800 dark:text-gray-100">{{ JSON.parse(item.action).activity }}</p>
+                        <p class="text-xs text-gray-500">{{ item.created_at ? new Date(item.created_at).toLocaleString() : '' }}</p>
                       </div>
                     </li>
                   </ul>
@@ -692,7 +895,7 @@ watch(
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Theme</label>
                     <select 
-                      :value="currentAdmin.preferences.theme"
+                      :value="currentAdmin.preferences?.theme || 'Light'"
                       @change="updatePreference('theme', $event.target.value)"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                     >
@@ -705,7 +908,7 @@ watch(
                   <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Language</label>
                     <select 
-                      :value="currentAdmin.preferences.language"
+                      :value="currentAdmin.preferences?.language || 'English'"
                       @change="updatePreference('language', $event.target.value)"
                       class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-[#042EFF] focus:border-[#042EFF] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                     >
@@ -724,28 +927,28 @@ watch(
                 </div>
                 
                 <div class="p-6 space-y-4">
-                  <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Notifications</span>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        :checked="currentAdmin.preferences.emailNotifications"
-                        @change="updatePreference('emailNotifications', $event.target.checked)"
-                        class="sr-only peer"
-                      >
-                      <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
-                    </label>
-                  </div>
+                          <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Email Notifications</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                :checked="!!currentAdmin.notifications?.emailNotifications"
+                                @change="updateNotification('emailNotifications', $event.target.checked)"
+                                class="sr-only peer"
+                              >
+                              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
+                            </label>
+                          </div>
 
                   <div class="flex items-center justify-between">
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">SMS Notifications</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
-                        type="checkbox" 
-                        :checked="currentAdmin.preferences.smsNotifications"
-                        @change="updatePreference('smsNotifications', $event.target.checked)"
-                        class="sr-only peer"
-                      >
+                          type="checkbox" 
+                          :checked="!!currentAdmin.notifications?.smsNotifications"
+                          @change="updateNotification('smsNotifications', $event.target.checked)"
+                          class="sr-only peer"
+                        >
                       <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
                     </label>
                   </div>
@@ -755,8 +958,8 @@ watch(
                     <label class="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
-                        :checked="currentAdmin.preferences.weeklyReports"
-                        @change="updatePreference('weeklyReports', $event.target.checked)"
+                        :checked="!!currentAdmin.notifications?.weeklyReports"
+                        @change="updateNotification('weeklyReports', $event.target.checked)"
                         class="sr-only peer"
                       >
                       <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#042EFF]"></div>
@@ -770,19 +973,19 @@ watch(
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                   <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">My Permissions</h3>
                 </div>
-                
+              
                 <div class="p-6 space-y-3">
                   <div v-for="(hasPermission, permission) in currentAdmin.permissions" :key="permission" class="flex items-center justify-between">
-                    <span class="text-sm text-gray-700 dark:text-gray-300 capitalize">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
-                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', hasPermission ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
-                      {{ hasPermission ? 'Granted' : 'Denied' }}
+                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ formatPermissionLabel(permission) }}</span>
+                    <span :class="['inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium', (hasPermission === 'enabled')  ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800']">
+                      {{ hasPermission === 'enabled' ? 'Granted' : hasPermission === 'disabled' ? 'Denied' : 'unknown' }}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
             <!-- System Administrators Table -->
-              <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <div v-if="authenticatedAdmin.role === 'primary admin'" class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                   <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">System Administrators</h3>
                 </div>
@@ -796,17 +999,16 @@ watch(
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Last Login</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                        <!-- Last Login and Actions columns removed per requirements -->
                       </tr>
                     </thead>
                     <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       <tr v-for="admin in admins" :key="admin.id" @click.stop="viewAdminDetails(admin)" class="hover:bg-gray-50 dark:hover:bg-gray-900/40 cursor-pointer">
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div class="flex items-center">
-                            <img :src="admin.avatar" :alt="admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
+                            <img :src="admin.profileImg || admin.avatar" :alt="admin.fullName || admin.name" class="h-10 w-10 rounded-full object-cover mr-4">
                             <div>
-                              <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ admin.name }}</div>
+                              <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ admin.fullName || admin.name }}</div>
                               <div class="text-sm text-gray-500">{{ admin.id }}</div>
                             </div>
                           </div>
@@ -816,7 +1018,7 @@ watch(
                           <div class="text-sm text-gray-500">{{ admin.phone }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium', getRoleColor(admin.role)]">
+                          <span :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize', getRoleColor(admin.role)]">
                             {{ admin.role }}
                           </span>
                         </td>
@@ -828,37 +1030,110 @@ watch(
                             {{ admin.status }}
                           </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {{ admin.lastLogin }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div class="flex space-x-2">
-                            <button @click.stop="viewAdminDetails(admin)" class="text-[#042EFF] hover:text-blue-600" title="View Details">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                              </svg>
-                            </button>
-                            <button 
-                              @click="confirmDeleteAdmin(admin)" 
-                              :class="[
-                                'hover:text-red-800',
-                                admin.role === 'Primary Admin' ? 'text-gray-400 cursor-not-allowed' : 'text-red-600'
-                              ]" 
-                              :disabled="admin.role === 'Primary Admin'"
-                              :title="admin.role === 'Primary Admin' ? 'Primary Admin cannot be deleted' : 'Delete Admin'"
-                            >
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
+                        <!-- Actions removed from table rows per requirements -->
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
+          </div>
+        </div>
+        <div v-else class="max-w-7xl mx-auto">
+          <div class="mb-8">
+            <div class="h-6 bg-gray-200 skeleton-shimmer rounded w-48 mb-2"></div>
+            <div class="h-4 bg-gray-200 skeleton-shimmer rounded w-64"></div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+              <!-- Profile Card Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="flex flex-col items-center text-center">
+                  <div class="rounded-full bg-gray-200 h-28 w-28 mb-4 mx-auto"></div>
+                  <div class="h-6 bg-gray-200 rounded w-48 mx-auto mb-3"></div>
+                  <div class="h-4 bg-gray-200 rounded w-32 mx-auto mb-6"></div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 w-full">
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                    <div class="h-4 bg-gray-200 rounded w-full"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metrics Card Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div class="h-20 bg-gray-200 rounded"></div>
+                  <div class="h-20 bg-gray-200 rounded"></div>
+                  <div class="h-20 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+
+              <!-- Recent Activity Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+                <div class="space-y-4">
+                  <div v-for="i in 4" :key="i" class="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-6">
+              <!-- Preferences Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+                <div class="space-y-3">
+                  <div class="h-4 bg-gray-200 rounded w-full"></div>
+                  <div class="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+
+              <!-- Notifications Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between"><div class="h-4 bg-gray-200 rounded w-3/4"></div><div class="h-6 bg-gray-200 rounded w-12"></div></div>
+                  <div class="flex items-center justify-between"><div class="h-4 bg-gray-200 rounded w-3/4"></div><div class="h-6 bg-gray-200 rounded w-12"></div></div>
+                </div>
+              </div>
+
+              <!-- Permissions Skeleton -->
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 animate-pulse">
+                <div class="h-6 bg-gray-200 rounded w-40 mb-4"></div>
+                <div class="space-y-2">
+                  <div v-for="i in 6" :key="i" class="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Administrators Table Skeleton -->
+          <div class="bg-white dark:bg-gray-800 col-span-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mt-6 p-6 animate-pulse">
+            <div class="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full">
+                <thead class="bg-gray-50 dark:bg-gray-900/40">
+                  <tr>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-36"></div></th>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-28"></div></th>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></th>
+                    <th class="px-6 py-3"><div class="h-4 bg-gray-200 rounded w-20"></div></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="i in 6" :key="i">
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-48"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-36"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-28"></div></td>
+                    <td class="px-6 py-4"><div class="h-4 bg-gray-200 rounded w-20"></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </main>
@@ -953,18 +1228,18 @@ watch(
       <div class="admin-details-modal relative w-full max-w-6xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-auto animate-fade-in h-[95vh]">
         <!-- Sticky Header -->
         <div class="sticky top-0 z-20 bg-white dark:bg-gray-900 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-5 flex items-start justify-between">
-          <div class="flex items-center">
+                <div class="flex items-center">
             <img :src="selectedAdmin.avatar" :alt="selectedAdmin.name" class="h-16 w-16 rounded-full object-cover mr-4 ring-1 ring-gray-200 dark:ring-gray-700 shadow-sm" />
             <div>
               <div class="flex items-center space-x-3 mb-1">
                 <h3 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{{ selectedAdmin.name }}</h3>
-                <span :class="['px-2.5 py-1 rounded-full text-xs font-medium', getRoleColor(selectedAdmin.role)]">{{ selectedAdmin.role }}</span>
+                <span :class="['px-2.5 py-1 rounded-full text-xs font-medium capitalize', getRoleColor(selectedAdmin.role)]">{{ selectedAdmin.role }}</span>
                 <span :class="['px-2 py-1 rounded-full text-xs font-medium', getStatusColor(selectedAdmin.status)]">{{ selectedAdmin.status }}</span>
               </div>
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-mono">
                 <span>ID: {{ selectedAdmin.id }}</span>
                 <span>Dept: {{ selectedAdmin.department }}</span>
-                <span>Last Login: {{ selectedAdmin.lastLogin }}</span>
+                <span>Last Login: {{ selectedAdmin.lastLogin ? new Date(selectedAdmin.lastLogin).toLocaleString() : '' }}</span>
               </div>
             </div>
           </div>
@@ -973,6 +1248,7 @@ watch(
           </button>
         </div>
         <!-- Content -->
+         
         <div class="p-6 space-y-8">
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <!-- Left Column -->
@@ -1032,28 +1308,31 @@ watch(
                 <div class="bg-gray-50 dark:bg-gray-900 px-5 py-3 flex items-center justify-between">
                   <h4 class="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-300 uppercase">Permissions</h4>
                   <div class="flex items-center gap-2">
-                    <button v-if="!isEditingPermissions" @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
+                    <div>
+                      <button v-if="!isEditingPermissions && canEditPermissions"  @click="startEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">
                       <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       Edit
                     </button>
-                    <span v-else class="inline-flex items-center gap-2">
+                    <span class="inline-flex items-center gap-2">
                       <button @click="savePermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-[#042EFF] text-white text-xs font-medium hover:bg-blue-600 shadow-sm transition-colors">
                         <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Save
                       </button>
                       <button @click="cancelEditPermissions" class="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-100 shadow-sm transition-colors">Cancel</button>
                     </span>
+                    </div>
+
                     <span class="text-xs text-gray-400 font-mono">{{ Object.keys(selectedAdmin.permissions).length }}</span>
                   </div>
                 </div>
-                <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                   <div v-for="(hasPermission, permission) in (isEditingPermissions ? permissionDraft : selectedAdmin.permissions)" :key="permission" class="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg px-3 py-2 ring-1 ring-gray-100 dark:ring-gray-700 hover:ring-blue-200 dark:hover:ring-blue-400/40 transition-colors group">
-                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 pr-3">{{ permission.replace(/([A-Z])/g, ' $1').trim() }}</span>
+                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 flex-1 pr-3">{{ formatPermissionLabel(permission) }}</span>
                     <!-- View Mode Badge -->
-                    <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', hasPermission ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission ? 'Granted' : 'Denied' }}</span>
+                    <span v-if="!isEditingPermissions" :class="['inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ring-1 ring-inset', (hasPermission === 'enabled') ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-red-50 text-red-700 ring-red-200']">{{ hasPermission === 'enabled' ? 'Granted' : hasPermission === 'disabled' ? 'Denied' : 'Unknown' }}</span>
                     <!-- Edit Mode Toggle -->
-                    <button v-else @click="togglePermission(permission)" :class="[ 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2', permissionDraft[permission] ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400']" type="button">
-                      <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-gray-200 transition" :class="permissionDraft[permission] ? 'translate-x-5' : 'translate-x-1'"></span>
+                    <button v-else @click="togglePermission(permission)" :class="[ 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2', (permissionDraft[permission] === 'enabled') ? 'bg-green-500 focus:ring-green-400' : 'bg-gray-300 focus:ring-gray-400']" type="button">
+                      <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-1 ring-gray-200 transition" :class="permissionDraft[permission] === 'enabled' ? 'translate-x-5' : 'translate-x-1'"></span>
                     </button>
                   </div>
                 </div>
@@ -1067,8 +1346,8 @@ watch(
                 <div class="divide-y divide-gray-100 dark:divide-gray-700">
                   <div v-for="activity in selectedAdmin.activityLog" :key="activity.date" class="flex items-start p-4 hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
                     <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
-                      <p class="text-xs text-gray-500 mt-1 font-mono">{{ activity.date }}</p>
+                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ JSON.parse(activity.action).activity }}</p>
+                      <p class="text-xs text-gray-500 mt-1 font-mono">{{ activity.created_at }}</p>
                     </div>
                     <div class="ml-4 flex items-center text-green-600">
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -1094,7 +1373,7 @@ watch(
                     <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Created</p>
                   </div>
                   <div class="bg-white dark:bg-gray-800 rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4 col-span-2">
-                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ selectedAdmin.lastLogin }}</p>
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ selectedAdmin.lastLogin ? new Date(selectedAdmin.lastLogin).toLocaleString() : '' }}</p>
                     <p class="text-[10px] tracking-wide uppercase text-gray-600 dark:text-gray-400 mt-1">Last Login</p>
                   </div>
                 </div>
@@ -1109,18 +1388,18 @@ watch(
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     Send Message
                   </button>
-                  <button @click="toggleSuspendAdmin" :disabled="isTogglingStatus || (selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active')" :class="[
+                    <button @click="toggleSuspendAdmin" :disabled="isTogglingStatus || ((selectedAdmin.role || '').toString().toLowerCase() === 'primary admin' && selectedAdmin.status === 'Active')" :class="[
                       'w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm',
                       selectedAdmin.status === 'Active' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-green-600 hover:bg-green-700 text-white',
-                      (selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active') ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : '',
+                      ((selectedAdmin.role || '').toString().toLowerCase() === 'primary admin' && selectedAdmin.status === 'Active') ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : '',
                       isTogglingStatus ? 'opacity-70 cursor-wait' : ''
                     ]">
                     <svg v-if="!isTogglingStatus" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                     <svg v-else class="w-4 h-4 mr-2 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-                    <span v-if="selectedAdmin.role === 'Primary Admin' && selectedAdmin.status === 'Active'">Protected</span>
+                    <span v-if="(selectedAdmin.role || '').toString().toLowerCase() === 'primary admin' && selectedAdmin.status === 'Active'">Protected</span>
                     <span v-else>{{ selectedAdmin.status === 'Active' ? (isTogglingStatus ? 'Suspending...' : 'Suspend Account') : (isTogglingStatus ? 'Activating...' : 'Activate Account') }}</span>
                   </button>
-                  <button v-if="selectedAdmin.role !== 'Primary Admin'" @click="selectedAdmin.status === 'Inactive' ? confirmDeleteAdmin(selectedAdmin) : null" :disabled="selectedAdmin.status !== 'Inactive'" :class="[
+                    <button v-if="(selectedAdmin.role || '').toString().toLowerCase() !== 'primary admin'" @click="selectedAdmin.status === 'Inactive' ? confirmDeleteAdmin(selectedAdmin) : null" :disabled="selectedAdmin.status !== 'Inactive'" :class="[
                       'w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-sm',
                       selectedAdmin.status === 'Inactive' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-200 text-red-500 cursor-not-allowed'
                     ]">
